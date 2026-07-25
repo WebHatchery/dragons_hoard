@@ -12,7 +12,7 @@ use crate::ui::nav::Nav;
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::{
     draw_surface, draw_text_block, draw_text_centered_in_box_ex, draw_text_right, draw_ui_text_ex,
-    RectExt, SurfaceStyle,
+    RectExt, Region, SurfaceStyle,
 };
 
 pub fn draw_control_panel(
@@ -22,6 +22,8 @@ pub fn draw_control_panel(
     nav: &mut Nav,
 ) {
     let rect = Rect::new(852.0, 96.0, 410.0, 520.0);
+    // The wager panel (§5.37).
+    let _region = Region::new(rect);
     draw_surface(
         rect,
         &SurfaceStyle::new(palette::STONE)

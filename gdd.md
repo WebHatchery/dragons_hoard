@@ -1746,6 +1746,58 @@ is not a round thing with a dome; it is a **hook**. Rebuilt as a rising flank, a
 crest thrown forward past its own base, and the lip falling back inside the
 curve.
 
+### 5.37 The layout audit (post-v1)
+
+Four separate text-overflow defects shipped during this game's development and
+every one was found **by looking at a screenshot**: the generated shortcut line
+clipped its last entry (§5.29), the cabinet name ran into the Buy button
+(§5.35), the waveform panel's mood list was cut off (§5.31), and the paytable's
+prose spilled onto the footer behind it.
+
+Text that runs past its panel is the one UI fault no ordinary test sees. The draw
+call succeeds, the frame renders, nothing is out of range — the sentence is
+simply cut off, or drawn over the thing beside it. It is found by looking, which
+means it is found late and only if someone happens to open that screen.
+
+**Bound the region, not the call.** `draw_ui_text_ex` takes a position and no
+width, and there are 107 of them here. Giving every one an explicit box is 107
+edits and 107 chances to write the wrong number. But text is always drawn
+*inside something* — a panel, a row — and that something already knows how wide
+it is, because it was drawn from a `Rect`. So `macroquad-toolkit::ui::bounds`
+adds a `Region` guard that pushes those bounds while it lives, and every text
+draw inside compares what it measured against what it had. **Fifteen guards cover
+all 107 draws**, including code written later that never heard of the module.
+
+It is an RAII guard on purpose: half the panels in a game return early when they
+have nothing to show, and a stack that leaked would bound every later draw by a
+dead panel.
+
+**Recording, not clipping.** Nothing here changes what is drawn. Overflowing text
+still overflows, because silently shrinking or truncating it would replace a
+visible bug with an invisible one — a sentence quietly losing its last three
+words is worse than one that obviously collides.
+
+**Measured with the real font**, which means the audit runs inside the capture
+harness rather than as a unit test: a `layout_audit` scene opens every overlay at
+once, seeds the widest numbers the game can hold, and the frame reports what did
+not fit. Recording is off unless asked for, so a shipped frame pays one
+thread-local read per draw.
+
+**It is a gate, not a report** — findings exit non-zero. A printout nobody reads
+is exactly the state this replaced.
+
+**And it was proved before it was trusted.** The first real run said "nothing
+overflowed", which is a suspicious result for a detector's first outing, so a
+deliberately over-wide string went into the header to see whether it fired. It
+did not — and the reason was instructive: the probe was a hundred characters of
+ordinary prose, and the header is 1,244 pixels wide, so it genuinely fitted. A
+longer probe reported **932px past the edge**. Only then was the clean result
+worth anything.
+
+The audit covers the fifteen bounded regions: every overlay, the header, the
+footer and the wager panel. The gamble, the Vault Pick board and the respin round
+draw from session state rather than a flag and are not yet in the scene.
+
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
 - Winning lines: pulse highlight (`blink`/`pulse`), floating win amounts
@@ -2346,6 +2398,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
+| Text that runs past its panel | A `Region` guard bounds each panel and every text draw inside reports what did not fit, measured with the real font in the capture harness (§5.37). Four such defects shipped and were caught by eye. |
 | A test scoped to one machine | The art baseline guard read only the first cabinet, so nine new shapes slipped past the check written to catch them (§5.36). Every art gate walks all six now. |
 | A new cabinet shipping unexplained | Adding a win model failed the build until it had prose and a name (§5.29, §5.34), and the soak harness validated its payouts untouched (§5.33). |
 | A code in place of a name | Symbol short codes are a rendering fallback and a test now keeps them out of prose (§5.34). They read as correct at every individual call site, which is why they lasted twenty-eight iterations. |
@@ -2386,7 +2439,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus thirty-one post-v1 systems
+## 15. Current State — v1 shipped, plus thirty-two post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
@@ -2397,11 +2450,11 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) and its own symbol set (§5.36). The game is
+navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) and a layout audit (§5.37). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-422 tests pass here and 205 in `macroquad-toolkit`; `cargo fmt --check`,
+422 tests pass here and 216 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
 release build are clean. Every `.rs` file is under the 800-line limit, `data.rs`
 (748) and `ui/reels.rs` (734) the largest — `state/spin.rs` dropped from 615 to

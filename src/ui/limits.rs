@@ -10,7 +10,7 @@ use crate::ui::nav::Nav;
 use crate::ui::{palette, virtual_button, UiAction, LOGICAL_HEIGHT, LOGICAL_WIDTH};
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::{
-    draw_surface, draw_text_block, draw_ui_text_ex, ButtonTone, SurfaceStyle, TextStyle,
+    draw_surface, draw_text_block, draw_ui_text_ex, ButtonTone, Region, SurfaceStyle, TextStyle,
 };
 
 const ROW_HEIGHT: f32 = 62.0;
@@ -32,6 +32,8 @@ pub fn draw(
 
     // Sized to its content: four rows and the rule that governs them.
     let panel = Rect::new(300.0, 130.0, 680.0, 396.0);
+    // Everything drawn below is measured against this panel (§5.37).
+    let _region = Region::new(panel);
     draw_surface(
         panel,
         &SurfaceStyle::new(palette::STONE)

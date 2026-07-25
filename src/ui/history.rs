@@ -26,7 +26,7 @@ use crate::ui::{palette, virtual_button, UiAction, LOGICAL_HEIGHT, LOGICAL_WIDTH
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::{
     draw_surface, draw_text_block, draw_text_centered_in_box_ex, draw_text_right, draw_ui_text_ex,
-    ButtonTone, SurfaceStyle, TextStyle,
+    ButtonTone, Region, SurfaceStyle, TextStyle,
 };
 
 const PANEL: Rect = Rect::new(160.0, 90.0, 960.0, 540.0);
@@ -45,6 +45,8 @@ pub fn draw(
         LOGICAL_HEIGHT,
         Color::new(0.0, 0.0, 0.0, 0.80),
     );
+    // Everything drawn below is measured against this panel (§5.37).
+    let _region = Region::new(PANEL);
     draw_surface(
         PANEL,
         &SurfaceStyle::new(palette::STONE)

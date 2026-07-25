@@ -13,8 +13,8 @@ use crate::ui::nav::Nav;
 use crate::ui::{palette, virtual_button, UiAction, LOGICAL_HEIGHT, LOGICAL_WIDTH};
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::{
-    draw_surface, draw_text_block, draw_text_right, draw_ui_text_ex, ButtonTone, SurfaceStyle,
-    TextStyle,
+    draw_surface, draw_text_block, draw_text_right, draw_ui_text_ex, ButtonTone, Region,
+    SurfaceStyle, TextStyle,
 };
 
 pub fn draw(
@@ -36,6 +36,8 @@ pub fn draw(
     // Sized to the caveat, which is the last thing on it — the first pass left
     // a hand's width of empty stone under the text.
     let panel = Rect::new(190.0, 92.0, 900.0, 516.0);
+    // Everything drawn below is measured against this panel (§5.37).
+    let _region = Region::new(panel);
     draw_surface(
         panel,
         &SurfaceStyle::new(palette::STONE)

@@ -33,7 +33,7 @@ use crate::ui::nav::Nav;
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::{
     draw_badge, draw_surface, draw_text_block, draw_text_centered_in_box_ex, draw_ui_text_ex,
-    meter, ButtonStyle, ButtonTone, RectExt, SurfaceStyle, TextStyle, VirtualUi,
+    meter, ButtonStyle, ButtonTone, RectExt, Region, SurfaceStyle, TextStyle, VirtualUi,
 };
 
 pub const LOGICAL_WIDTH: f32 = 1280.0;
@@ -269,6 +269,8 @@ pub fn draw_game_ui(ctx: UiContext<'_>, nav: &mut Nav) -> Vec<UiAction> {
 
 fn draw_header(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>, nav: &mut Nav) {
     let rect = Rect::new(18.0, 16.0, LOGICAL_WIDTH - 36.0, 64.0);
+    // The header, where the cabinet name ran into the Buy button (§5.35).
+    let _region = Region::new(rect);
     draw_surface(
         rect,
         &SurfaceStyle::new(palette::STONE_HEADER)
@@ -363,6 +365,8 @@ fn draw_header(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>, na
 /// for the notification stack, which anchors bottom-right.
 fn draw_footer(ctx: &UiContext<'_>) {
     let rect = Rect::new(18.0, 632.0, LOGICAL_WIDTH - 36.0, 70.0);
+    // The footer, where the generated shortcut line clipped (§5.29).
+    let _region = Region::new(rect);
     draw_surface(
         rect,
         &SurfaceStyle::new(Color::new(0.07, 0.06, 0.07, 0.96)).with_border(1.0, palette::GOLD_DIM),

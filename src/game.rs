@@ -305,6 +305,29 @@ impl Game {
         self.floating.draw();
         end_virtual_ui_frame();
 
+        // The layout audit (§5.37) runs while the game is genuinely drawing,
+        // because measuring text needs the real font. One frame is enough: the
+        // panels redraw identically, and the recorder de-duplicates anyway.
+        if macroquad_toolkit::ui::auditing() {
+            let overflows = macroquad_toolkit::ui::take_audit();
+            if overflows.is_empty() {
+                println!("layout audit: nothing overflowed");
+            } else {
+                for overflow in &overflows {
+                    println!(
+                        "layout audit: {:.0}px past the edge — {:?}",
+                        overflow.excess(),
+                        overflow.text
+                    );
+                }
+                println!("layout audit: {} findings", overflows.len());
+                // A gate, not a report. A printout nobody reads is the state
+                // this replaced — four overflow defects shipped and were found
+                // by looking at screenshots (§5.37).
+                std::process::exit(1);
+            }
+        }
+
         for action in actions {
             self.events.push(action);
         }

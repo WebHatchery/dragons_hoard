@@ -18,7 +18,8 @@ use crate::ui::nav::Nav;
 use crate::ui::{palette, virtual_button, UiAction, LOGICAL_HEIGHT, LOGICAL_WIDTH};
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::{
-    draw_surface, draw_text_right, draw_ui_text_ex, ButtonTone, RectExt, SurfaceStyle, TextStyle,
+    draw_surface, draw_text_right, draw_ui_text_ex, ButtonTone, RectExt, Region, SurfaceStyle,
+    TextStyle,
 };
 
 const ROW_HEIGHT: f32 = 128.0;
@@ -42,6 +43,8 @@ pub fn draw(
     let tiers = &data.featurebuy.tiers;
     let height = 152.0 + tiers.len() as f32 * ROW_HEIGHT;
     let panel = Rect::new(260.0, (LOGICAL_HEIGHT - height) * 0.5, 760.0, height);
+    // Everything drawn below is measured against this panel (§5.37).
+    let _region = Region::new(panel);
     draw_surface(
         panel,
         &SurfaceStyle::new(palette::STONE)

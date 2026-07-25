@@ -30,7 +30,7 @@ use crate::ui::{palette, virtual_button, UiAction, LOGICAL_HEIGHT, LOGICAL_WIDTH
 use macroquad::prelude::*;
 use macroquad_toolkit::synth::render_waveform;
 use macroquad_toolkit::ui::{
-    draw_surface, draw_text_right, draw_ui_text_ex, ButtonTone, SurfaceStyle, TextStyle,
+    draw_surface, draw_text_right, draw_ui_text_ex, ButtonTone, Region, SurfaceStyle, TextStyle,
 };
 
 /// Seed the panel renders at. The same one the sound bank uses for its first
@@ -53,6 +53,8 @@ pub fn draw(
     );
 
     let panel = Rect::new(150.0, 48.0, 980.0, 624.0);
+    // Everything drawn below is measured against this panel (§5.37).
+    let _region = Region::new(panel);
     draw_surface(
         panel,
         &SurfaceStyle::new(palette::STONE)

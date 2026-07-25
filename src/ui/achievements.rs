@@ -8,7 +8,7 @@ use crate::ui::nav::Nav;
 use crate::ui::{palette, virtual_button, UiAction, LOGICAL_HEIGHT, LOGICAL_WIDTH};
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::{
-    draw_surface, draw_text_right, draw_ui_text_ex, ButtonTone, SurfaceStyle, TextStyle,
+    draw_surface, draw_text_right, draw_ui_text_ex, ButtonTone, Region, SurfaceStyle, TextStyle,
 };
 
 const ROW_HEIGHT: f32 = 44.0;
@@ -24,6 +24,8 @@ pub fn draw(book: &AchievementBook, mouse: Vec2, actions: &mut Vec<UiAction>, na
 
     let height = 108.0 + book.defs().len() as f32 * ROW_HEIGHT;
     let panel = Rect::new(230.0, (LOGICAL_HEIGHT - height) * 0.5, 820.0, height);
+    // Everything drawn below is measured against this panel (§5.37).
+    let _region = Region::new(panel);
     draw_surface(
         panel,
         &SurfaceStyle::new(palette::STONE)

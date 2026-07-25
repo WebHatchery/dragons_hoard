@@ -30,7 +30,7 @@ use crate::ui::nav::Nav;
 use crate::ui::{palette, virtual_button, UiAction, UiContext, LOGICAL_HEIGHT, LOGICAL_WIDTH};
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::{
-    draw_surface, draw_ui_text_ex, wrap_text, ButtonTone, SurfaceStyle, TextStyle,
+    draw_surface, draw_ui_text_ex, wrap_text, ButtonTone, Region, SurfaceStyle, TextStyle,
 };
 
 const PANEL: Rect = Rect::new(120.0, 44.0, 1040.0, 632.0);
@@ -52,6 +52,8 @@ pub fn draw(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>, nav: 
         LOGICAL_HEIGHT,
         Color::new(0.0, 0.0, 0.0, 0.72),
     );
+    // Everything drawn below is measured against this panel (§5.37).
+    let _region = Region::new(PANEL);
     draw_surface(
         PANEL,
         &SurfaceStyle::new(palette::STONE)

@@ -7,7 +7,7 @@ use crate::ui::{
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::{
     draw_surface, draw_text_block, draw_text_centered_in_box_ex, draw_text_right, draw_ui_text_ex,
-    ButtonTone, SurfaceStyle, TextStyle,
+    ButtonTone, Region, SurfaceStyle, TextStyle,
 };
 
 pub fn draw(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>, nav: &mut Nav) {
@@ -23,6 +23,8 @@ pub fn draw(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>, nav: 
     // Dragon's Wrath note (§5.12) overflowed the old 580 and spilled onto the
     // footer behind the overlay.
     let rect = Rect::new(180.0, 44.0, 920.0, 632.0);
+    // Everything drawn below is measured against this panel (§5.37).
+    let _region = Region::new(rect);
     draw_surface(
         rect,
         &SurfaceStyle::new(palette::STONE)

@@ -248,6 +248,27 @@ impl Game {
                 self.particles.clear();
                 self.session.celebrations.clear();
             }
+            // Open everything at once and let the frame report what did not
+            // fit (§5.37). Overlays draw in a fixed order, so one frame with
+            // every flag set exercises every panel's text.
+            "layout_audit" => {
+                self.session.balance = 1_987_654_321;
+                self.session.stats.biggest_win = 987_654_321;
+                self.session.hoard.pot = 87_654_321;
+                self.show_paytable = true;
+                self.show_rules = true;
+                self.show_settings = true;
+                self.show_machines = true;
+                self.show_achievements = true;
+                self.show_featurebuy = true;
+                self.show_ledger = true;
+                self.show_limits = true;
+                self.show_history = true;
+                self.show_waveforms = true;
+                self.show_vision = true;
+                self.reality_check = true;
+                macroquad_toolkit::ui::begin_audit();
+            }
             "rules" => self.show_rules = true,
             "limits" => {
                 // One cap tightened and one loosened, so the panel shows both

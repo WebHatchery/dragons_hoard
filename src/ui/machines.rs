@@ -12,7 +12,7 @@ use crate::ui::{palette, virtual_button, UiAction, LOGICAL_HEIGHT, LOGICAL_WIDTH
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::{
     draw_surface, draw_text_block, draw_text_centered_in_box_ex, draw_text_right, draw_ui_text_ex,
-    ButtonTone, SurfaceStyle, TextStyle,
+    ButtonTone, Region, SurfaceStyle, TextStyle,
 };
 
 const ROW_HEIGHT: f32 = 140.0;
@@ -34,6 +34,8 @@ pub fn draw(
 
     let height = 120.0 + MACHINES.len() as f32 * ROW_HEIGHT;
     let panel = Rect::new(280.0, (LOGICAL_HEIGHT - height) * 0.5, 720.0, height);
+    // Everything drawn below is measured against this panel (§5.37).
+    let _region = Region::new(panel);
     draw_surface(
         panel,
         &SurfaceStyle::new(palette::STONE)
