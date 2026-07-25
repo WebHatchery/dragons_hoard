@@ -2292,6 +2292,54 @@ under an opaque overlay cannot be pressed, so it cannot be ambiguous with
 anything — the same occlusion rule §5.47 needed, which had been applied to
 collisions and not to targets.
 
+### 5.49 Whether an old save still loads (post-v1)
+
+"Adding content must never strand a player" appears throughout this document —
+§5.9 when achievements gained a field, §5.12 when the Wrath arrived, §5.13 when
+the buy menu did. Every time the answer was `#[serde(default)]` and a note in the
+comment.
+
+That is the right mechanism and **nothing enforced it**. Six structures are
+written to disk — the save, preferences, achievements, hints, the ledger and the
+session limits — and between them they have gained a field in most iterations of
+this game. Whether any of them could still read what an earlier build wrote was
+never tested; it was *inferred from the presence of an attribute*.
+
+**The invariant that generalises.** A list of historical shapes goes stale the
+moment someone forgets to add one. The sharp version needs no list:
+
+> A type that loads from `{}` loads from every earlier version of itself.
+
+Every earlier version is a subset of the current fields, and a type that
+tolerates *all* of them missing tolerates any of them missing. One line per
+structure, and it cannot go stale, because it does not describe history — it
+describes a property.
+
+The converse is the same argument run forwards: a build must read what a *later*
+build wrote, or a player who opens a newer version once loses everything by going
+back. That means unknown fields are ignored, which serde does by default and
+`deny_unknown_fields` would silently undo.
+
+**`SaveData` is the one exclusion, and it has to earn it.** It is the structure
+where a defaulted field would be a lie rather than a gap: a save whose balance
+quietly defaults to zero has loaded successfully and taken the player's bankroll
+with it, which is worse than refusing. So it keeps its explicit migration, and a
+separate test holds that migration to the claim — a save carrying only the two
+fields every version has ever had must still come back whole, with its money.
+
+**And this one was disproved before it was believed.** All ten passed on the
+first run, which this session has learned to distrust: three detectors running,
+a clean first result has meant the detector rather than the code (§5.39, §5.40,
+§5.47). Swapping one structure's `default` for `deny_unknown_fields` failed both
+properties immediately and named the field — `missing field 'shared'` — so the
+green is worth something.
+
+Beyond loading, four cases where the value has to survive as well as parse: a bet
+index past the end of a ladder that shrank, a preference index into a list that
+changed (§5.38, §5.30), a ledger naming a cabinet that no longer exists (§5.41
+renamed most of them), and a session cap stored as a value rather than an index,
+which is why a changed list of offered caps cannot strand one.
+
 
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
@@ -2893,6 +2941,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
+| A save that a later build cannot read | Every persisted type must load from `{}` and ignore fields it has never heard of (§5.49). The rule was stated a dozen times and enforced by an attribute nobody checked. |
 | A gate that nobody remembers to run | `verify.ps1` runs all fourteen in one command (§5.48). Its first complete run found hit areas overlapping at a width nothing had ever been checked at. |
 | Text drawn straight through a button | Every string and control records its footprint and collisions are reported, with labels, strokes and occluded panels excluded (§5.47). Overflow and collision are different questions. |
 | Bars on every screen that is not 16:9 | The logical width follows the window between 4:3 and 21:9, with the height fixed and overlays centred per frame (§5.46). Extra width goes to the reels. |
@@ -2945,7 +2994,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus forty-three post-v1 systems
+## 15. Current State — v1 shipped, plus forty-four post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
@@ -2956,11 +3005,11 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) and one command to run every gate (§5.48). The game is
+navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) and a save-compatibility gate (§5.49). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-448 tests pass here and 266 in `macroquad-toolkit`; `cargo fmt --check`,
+458 tests pass here and 266 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
 release build are clean. Every `.rs` file is under the 800-line limit, `data.rs`
 (792) and `ui/reels.rs` (734) the largest — `state/spin.rs` dropped from 615 to

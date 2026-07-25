@@ -4,6 +4,7 @@ pub mod achievements;
 pub mod autospin;
 pub mod bonus;
 pub mod celebration;
+pub mod compat;
 pub mod featurebuy;
 pub mod features;
 pub mod gamble;
