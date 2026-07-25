@@ -158,7 +158,7 @@ mod tests {
     /// a shared helper nudged, a constant tweaked for one shape that four others
     /// also use. This is the audio baseline's bargain (§5.19) applied to
     /// pixels — a change to the art has to be a decision.
-    const FINGERPRINTS: [(&str, u64); 19] = [
+    const FINGERPRINTS: [(&str, u64); 25] = [
         ("coin", 3625727106106365457),
         ("coin_stack", 17006485042544377020),
         ("gem", 614872708312737294),
@@ -178,6 +178,12 @@ mod tests {
         ("kraken", 6863129112100050749),
         ("wave", 5287333683428903937),
         ("anvil", 8517133283585763627),
+        ("snowflake", 14439825930422787029),
+        ("icicle", 11894511740481790761),
+        ("spire", 978386683581501821),
+        ("feather", 18324749348849968957),
+        ("boulder", 7664635896251256177),
+        ("pine", 557502598297273465),
     ];
 
     #[test]

@@ -1,0 +1,122 @@
+[
+  {
+    "id": "shale",
+    "name": "Shale Chip",
+    "tier": "low",
+    "short": "SHL",
+    "art": "coin",
+    "texture": "sym_shale",
+    "color": [
+      0.6,
+      0.58,
+      0.54
+    ]
+  },
+  {
+    "id": "scree",
+    "name": "Scree",
+    "tier": "low",
+    "short": "SCR",
+    "art": "coin_stack",
+    "texture": "sym_scree",
+    "color": [
+      0.74,
+      0.68,
+      0.56
+    ]
+  },
+  {
+    "id": "malachite",
+    "name": "Malachite",
+    "tier": "low",
+    "short": "MAL",
+    "art": "gem",
+    "texture": "sym_malachite",
+    "color": [
+      0.26,
+      0.66,
+      0.48
+    ]
+  },
+  {
+    "id": "skystone",
+    "name": "Skystone",
+    "tier": "mid",
+    "short": "SKY",
+    "art": "gem_round",
+    "texture": "sym_skystone",
+    "color": [
+      0.36,
+      0.62,
+      0.86
+    ]
+  },
+  {
+    "id": "garnet",
+    "name": "Garnet",
+    "tier": "mid",
+    "short": "GRN",
+    "art": "gem_step",
+    "texture": "sym_garnet",
+    "color": [
+      0.8,
+      0.26,
+      0.3
+    ]
+  },
+  {
+    "id": "spire",
+    "name": "The Spire",
+    "tier": "high",
+    "short": "SPR",
+    "art": "spire",
+    "texture": "sym_spire",
+    "color": [
+      0.82,
+      0.74,
+      0.58
+    ]
+  },
+  {
+    "id": "clutch",
+    "name": "High Clutch",
+    "tier": "high",
+    "short": "CLU",
+    "art": "egg",
+    "texture": "sym_clutch",
+    "color": [
+      0.92,
+      0.88,
+      0.78
+    ],
+    "is_hoard": true
+  },
+  {
+    "id": "skywyrm",
+    "name": "Skywyrm",
+    "tier": "high",
+    "short": "SWM",
+    "art": "dragon",
+    "texture": "sym_skywyrm",
+    "color": [
+      0.52,
+      0.34,
+      0.76
+    ],
+    "is_wild": true
+  },
+  {
+    "id": "updraft",
+    "name": "Updraft",
+    "tier": "high",
+    "short": "UPD",
+    "art": "feather",
+    "texture": "sym_updraft",
+    "color": [
+      0.96,
+      0.84,
+      0.44
+    ],
+    "is_scatter": true
+  }
+]

@@ -1979,6 +1979,44 @@ rethemed. They resolve by **role or position** now — `"wild"`, `"scatter"`, or
 index into the set — so a test says *the wild leads a run* rather than *the
 Dragon leads a run*, which is what it always meant.
 
+### 5.42 Three more themes — and how much of one is the palette (post-v1)
+
+§5.41 built the mechanism and used it once. Frost Wyrm, Wyrmspire and Avalanche
+were still drawing Dragon's Hoard's coins and treasure chest, which made three of
+six cabinets visually indistinguishable from a fourth.
+
+**Two new shapes each, not nine.** Tidepool needed a full set because a rock pool
+has nothing in common with a hoard. These three do — they are dragons and
+treasure at altitude, and the low symbols are coins and gems on every one of
+them. Redrawing a coin three more times would be work with no reader.
+
+So each keeps the shared low-tier silhouettes and gets **its own premiums**: the
+symbols a player actually looks for, and the ones that carry a theme. Frost Wyrm
+has an **icefall** and a **snowflake**, Wyrmspire a **spire** and an **updraft
+feather**, Avalanche a **boulder** and a **lone pine**. What separates the three
+at a glance is then the palette, which is the honest answer for three cabinets
+that really are variations on one idea.
+
+The palette is doing more work than it looks like, and §5.24 is why. Two symbols
+sharing a silhouette must stay apart under three simulated dichromacies, so an
+ice cabinet cannot be six blues and a scree cabinet cannot be six greys. Each set
+runs an accent against its base — Frost's amethyst, Wyrmspire's garnet, the
+cinnabar in Avalanche — because the gate does not allow otherwise.
+
+**Every gate fired, and two found real faults.**
+
+- §5.41's paytable check: `frost: no paytable entry for symbol 'icicle'`. Frost's
+  vault had become an icefall in the set and nowhere else — exactly the
+  half-finished rename that check exists for, caught on the first run.
+- §5.25's legibility gate: `wyrmspire/updraft covers 0.091 of its cell`. The
+  feather's vanes were small triangles along a shaft, which at reel size is a
+  scratch rather than a symbol. Redrawn as quads spanning most of the width.
+- §5.36's baseline check demanded fingerprints for all six new routines before
+  the build would pass.
+
+Every cabinet's RTP is unchanged to four decimal places, and the conservation
+harness (§5.33) still agrees with the sim across all six.
+
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
 - Winning lines: pulse highlight (`blink`/`pulse`), floating win amounts
@@ -2579,6 +2617,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
+| Six cabinets that look like one cabinet | Each set keeps the shared low-tier shapes and gets its own premiums and palette (§5.42), with the dichromacy gate forcing an accent rather than a single hue. |
 | Retheming a cabinet meaning editing a copy | A symbol's identity is a shared set and its payouts stay with the cabinet (§5.41). Four cabinets carried byte-identical definitions before the split. |
 | Text nobody can read off its background | Contrast is measured against the declared surface at every draw (§5.40), and button fills are derived from the requirement rather than picked by eye. Every button was below the standard. |
 | Panels laid out to the width of their English copy | Pseudolocalisation expands every string 40%, accents it and brackets it, and the layout audit measures the result (§5.39). Found the layout translation-ready and the font glyph-complete. |
@@ -2624,7 +2663,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus thirty-six post-v1 systems
+## 15. Current State — v1 shipped, plus thirty-seven post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
@@ -2635,7 +2674,7 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) and shared symbol sets (§5.41). The game is
+navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) and a theme per cabinet (§5.42). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 

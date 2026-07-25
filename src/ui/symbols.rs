@@ -15,6 +15,7 @@
 
 mod hoard;
 mod legible;
+mod peaks;
 mod tidepool;
 
 use crate::data::SymbolDef;
@@ -34,6 +35,13 @@ pub enum SymbolArt {
     Dragon,
     Flame,
     Anvil,
+    // The mountain cabinets (§5.42).
+    Snowflake,
+    Icicle,
+    Spire,
+    Feather,
+    Boulder,
+    Pine,
     // The tidepool set (§5.36).
     Shell,
     Pearl,
@@ -59,6 +67,12 @@ impl SymbolArt {
             "dragon" => SymbolArt::Dragon,
             "flame" => SymbolArt::Flame,
             "anvil" => SymbolArt::Anvil,
+            "snowflake" => SymbolArt::Snowflake,
+            "icicle" => SymbolArt::Icicle,
+            "spire" => SymbolArt::Spire,
+            "feather" => SymbolArt::Feather,
+            "boulder" => SymbolArt::Boulder,
+            "pine" => SymbolArt::Pine,
             "shell" => SymbolArt::Shell,
             "pearl" => SymbolArt::Pearl,
             "starfish" => SymbolArt::Starfish,
@@ -248,6 +262,12 @@ pub fn paint<P: Painter>(
         SymbolArt::Dragon => hoard::dragon(&mut canvas, &shades, alpha),
         SymbolArt::Flame => hoard::flame(&mut canvas, &shades, alpha),
         SymbolArt::Anvil => hoard::anvil(&mut canvas, &shades, alpha),
+        SymbolArt::Snowflake => peaks::snowflake(&mut canvas, &shades, alpha),
+        SymbolArt::Icicle => peaks::icicle(&mut canvas, &shades, alpha),
+        SymbolArt::Spire => peaks::spire(&mut canvas, &shades, alpha),
+        SymbolArt::Feather => peaks::feather(&mut canvas, &shades, alpha),
+        SymbolArt::Boulder => peaks::boulder(&mut canvas, &shades, alpha),
+        SymbolArt::Pine => peaks::pine(&mut canvas, &shades, alpha),
         SymbolArt::Shell => tidepool::shell(&mut canvas, &shades, alpha),
         SymbolArt::Pearl => tidepool::pearl(&mut canvas, &shades, alpha),
         SymbolArt::Starfish => tidepool::starfish(&mut canvas, &shades, alpha),

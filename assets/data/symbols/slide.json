@@ -1,0 +1,122 @@
+[
+  {
+    "id": "pebble",
+    "name": "Pebble",
+    "tier": "low",
+    "short": "PBL",
+    "art": "coin",
+    "texture": "sym_pebble",
+    "color": [
+      0.66,
+      0.62,
+      0.58
+    ]
+  },
+  {
+    "id": "drift",
+    "name": "Snowdrift",
+    "tier": "low",
+    "short": "DRF",
+    "art": "coin_stack",
+    "texture": "sym_drift",
+    "color": [
+      0.88,
+      0.9,
+      0.94
+    ]
+  },
+  {
+    "id": "verdite",
+    "name": "Verdite",
+    "tier": "low",
+    "short": "VRD",
+    "art": "gem",
+    "texture": "sym_verdite",
+    "color": [
+      0.3,
+      0.62,
+      0.44
+    ]
+  },
+  {
+    "id": "tarn",
+    "name": "Tarn Stone",
+    "tier": "mid",
+    "short": "TRN",
+    "art": "gem_round",
+    "texture": "sym_tarn",
+    "color": [
+      0.22,
+      0.52,
+      0.7
+    ]
+  },
+  {
+    "id": "cinnabar",
+    "name": "Cinnabar",
+    "tier": "mid",
+    "short": "CIN",
+    "art": "gem_step",
+    "texture": "sym_cinnabar",
+    "color": [
+      0.84,
+      0.3,
+      0.24
+    ]
+  },
+  {
+    "id": "boulder",
+    "name": "Boulder",
+    "tier": "high",
+    "short": "BLD",
+    "art": "boulder",
+    "texture": "sym_boulder",
+    "color": [
+      0.48,
+      0.46,
+      0.44
+    ]
+  },
+  {
+    "id": "cache",
+    "name": "Buried Cache",
+    "tier": "high",
+    "short": "CCH",
+    "art": "egg",
+    "texture": "sym_cache",
+    "color": [
+      0.94,
+      0.9,
+      0.8
+    ],
+    "is_hoard": true
+  },
+  {
+    "id": "slidewyrm",
+    "name": "Slidewyrm",
+    "tier": "high",
+    "short": "SWM",
+    "art": "dragon",
+    "texture": "sym_slidewyrm",
+    "color": [
+      0.7,
+      0.42,
+      0.24
+    ],
+    "is_wild": true
+  },
+  {
+    "id": "pine",
+    "name": "Lone Pine",
+    "tier": "high",
+    "short": "PIN",
+    "art": "pine",
+    "texture": "sym_pine",
+    "color": [
+      0.34,
+      0.56,
+      0.36
+    ],
+    "is_scatter": true
+  }
+]

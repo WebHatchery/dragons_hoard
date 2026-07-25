@@ -104,6 +104,8 @@ pub fn symbol_set(name: &str) -> Option<&'static str> {
         "frost" => include_str!("../../assets/data/symbols/frost.json"),
         "tidepool" => include_str!("../../assets/data/symbols/tidepool.json"),
         "ember" => include_str!("../../assets/data/symbols/ember.json"),
+        "spire" => include_str!("../../assets/data/symbols/spire.json"),
+        "slide" => include_str!("../../assets/data/symbols/slide.json"),
         _ => return None,
     })
 }
