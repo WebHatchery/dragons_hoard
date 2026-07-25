@@ -475,6 +475,83 @@ band (a round pays 20–80× total bet; the shipped table gives 32.7× over 8.1
 coins, filling 0.4% of the time) and a separate test checks the coin table's
 weighted mean, which *is* closed-form.
 
+### 5.13 The Feature Buy (post-v1)
+
+Ten features in, the player's only decision was still how much to bet. The buy
+menu is the first system that asks them to choose something: pay a fixed price
+and skip straight to a feature, or keep spinning for it.
+
+**The price is derived from the feature, not chosen for it.** A bought feature is
+only honest if it costs what it is worth:
+
+```
+price = feature_expected_value / target_rtp
+```
+
+Price it below that and never touching the reels beats spinning; price it above
+and the menu is a trap. The buy must be **the same game, only faster** — not a
+better or worse one.
+
+**The price is JSON, and a test is what keeps it true.** Measuring a feature's EV
+means playing thousands of them, which is not something to do at load time, so
+the price is a plain `price_multiple` in `featurebuy.json`. What stops it drifting
+is `feature_buy_prices_are_exact`: it buys every tier of every machine 200,000
+times through the real session and asserts the measured return lands on that
+cabinet's RTP. Edit `freespins.json` and the test fails — with the correct new
+price in the failure message, because a test that has already done the
+measurement may as well hand over the answer:
+
+```
+dragon/freespins  price  100x  rtp 0.5105  (target 0.9500)  fair price 53.7x
+```
+
+That is how the shipped prices were set. Every tier was priced at a placeholder
+100×, the ignored test was run once, and the six numbers it printed became the
+six prices. Measured after: **0.9454 / 0.9484 / 0.9627** on Dragon's Hoard and
+**0.9446 / 0.9496 / 0.9486** on Frost Wyrm — every tier within 1.3 points of its
+machine.
+
+| Tier | Dragon's Hoard | Frost Wyrm |
+|---|---|---|
+| Free Spins | 54× total bet | 56× |
+| Super Free Spins | 108× | 127× |
+| The Dragon's Wrath | 31× | 29× |
+
+The spread is the interesting part. Doubling the free spins from 10 to 20 **more
+than doubles** the price (54 → 108, and 56 → 127 on the high-volatility cabinet),
+because retriggers and the hoard compound over a longer run. Nobody worked that
+out; the sim did.
+
+**The measurement runs the whole session, deliberately.** `simulate_buys` buys,
+then plays out everything that follows — retriggers, expanding wilds, eggs banked
+into the hoard, a Vault Pick the free spins happened to fill, a Dragon's Wrath a
+bought free spin woke. A tier's price therefore includes its downstream, which is
+the only definition of "what the feature is worth" that a player would recognise.
+
+**A buy is a stake, but it is not a spin.** The price is wagered: it leaves the
+balance, counts toward turnover, and feeds the progressives (§5.6). It does *not*
+roll for a jackpot, and the free spins it grants still cost nothing and still
+cannot draw one. Getting that backwards either way is a real exploit — a buy that
+rolled would hand the player a second draw per credit that the bet-fairness
+argument assumes does not exist, and a buy that did not contribute would let
+someone play the whole game without ever feeding the pots they can win.
+
+Prices are multiples of **total bet**, so buying at a high stake costs
+proportionally more and a player cannot buy cheap to collect expensive — the same
+argument as the jackpot odds (§5.6) and the hoard's per-egg banking (§3).
+
+**Refusals name the actual reason.** A running feature reports itself as one
+rather than as generic busyness; the guard order was flipped for this, since both
+answers are true while a feature's entry card is up and only one of them is
+useful. `can_buy` drives the greying-out in the menu, and a test sweeps every
+tier at four balances asserting it agrees with what buying actually does —
+otherwise a live-looking button could be refused, or a legitimate buy blocked.
+
+Feature buys are restricted or banned in several real jurisdictions for
+accelerating loss rates. That is not a concern for play money with no purchases
+(§1), but it is the reason the menu says what it is priced from rather than only
+what it costs.
+
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
 - Winning lines: pulse highlight (`blink`/`pulse`), floating win amounts
@@ -842,6 +919,20 @@ and a Project Roost deployment record. Verified live — see §15.
   in hit frequency (a reskin fails), must not share a save slot (sharing one
   would silently overwrite a balance and hoard), must not share a symbol set,
   and an unknown machine id falls back to the first rather than failing.
+- **The Feature Buy (`state/featurebuy.rs`, `engine/sim.rs`, `state/tests/featurebuy.rs`):**
+  the shipped menu validates and a **free tier is rejected** (it would return
+  infinite RTP and make the reels pointless), as are duplicate ids and a Wrath
+  tier that opens every cell; price scales with the stake; an opening board
+  spreads its coins and never repeats a cell. In the sim: **every tier returns
+  its machine's RTP** — the assertion the whole design rests on — at a coarse
+  band in CI and 200,000 buys per tier in the ignored run, which prints the fair
+  price for any tier that has drifted; a buy feeds every pot without rolling for
+  one; the price charged is the price the menu quoted. End to end: bought free
+  spins run at the stake that paid for them and **still cost nothing to play**;
+  a bought Wrath opens with its coins locked and room left to respin; a buy with
+  too little credit, during a feature, mid-spin, or for a tier that is not on the
+  menu takes nothing; the price counts as turnover; and `can_buy` agrees with
+  `buy_feature` across every tier at four balances.
 - **The Dragon's Wrath (`state/holdspin.rs`, `state/tests/holdspin.rs`):** the
   triggering eggs open already locked; every locked coin holds a value from the
   table; **a coin restores the full respin allowance** and a dry board runs out;
@@ -917,6 +1008,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Files growing past 800 lines | Five splits so far: `state.rs` into siblings, `ui.rs`'s paytable into `ui/paytable.rs`, `state/tests.rs` (793) into `tests/{jackpots,preferences,machines}.rs`, `game.rs` (779) into `game/capture_scenes.rs`, and `state.rs` (812) into `state/features.rs`. **`state.rs` (742) is still the one to watch.** |
 | A presentation bug hiding behind uniform test data | Reels 2 and 4 landed twenty symbols from their stop for five iterations because every landing test used an even reel index (§5.11). Tests over an indexed family must sweep the whole family, not a representative member. |
 | A feature the second machine can never see | The Dragon's Wrath fired 23 times per million spins on Frost Wyrm under a shared config, because the trigger reads strips that differ per cabinet (§5.12). Anything triggered off the reels must be per-machine data and must be measured on **every** machine, not just the one that boots. |
+| A bought feature priced away from its value | `feature_buy_prices_are_exact` buys every tier 200,000 times and asserts the return matches the machine (§5.13). Mispricing downward makes never spinning the optimal strategy, and nothing else in the suite would notice. |
 | A new machine shipping at the wrong RTP | The sim iterates `MACHINES`; a cabinet cannot be added without being measured (§5.8). |
 | Two machines sharing a save slot | Slots are `<machine>_<slot>`; a test asserts they are distinct. |
 | Jackpots exploitable by bet-switching | Odds are per credit wagered, so the trigger is bet-fair by construction (§5.6) and tested. The bet-ladder sim test excludes jackpots deliberately — they are too high-variance to compare over 20k spins — and their return is checked against its closed form instead. |
@@ -949,30 +1041,30 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus seven post-v1 systems
+## 15. Current State — v1 shipped, plus eight post-v1 systems
 
-**All five phases are done, every item in §14 is met**, and seven systems have
+**All five phases are done, every item in §14 is met**, and eight systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
 machines (§5.8), achievements (§5.9), the Vault Pick (§5.10), the reel-feel pass
-(§5.11) and the Dragon's Wrath (§5.12). The game is
+(§5.11), the Dragon's Wrath (§5.12) and the Feature Buy (§5.13). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-189 tests pass; `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`
+209 tests pass; `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`
 and the `wasm32-unknown-unknown` release build are clean. Every `.rs` file is
-under the 800-line limit; `state.rs` reached 812 adding the Dragon's Wrath and
-its second-screen feature tail was split into `state/features.rs`, leaving it the
-largest at 742.
+under the 800-line limit, `state.rs` still the largest at 743.
 
 Measured RTP over 1,000,000 spins: Dragon's Hoard **0.9612** at **0.411** hit
 frequency, Frost Wyrm **0.9450** at **0.258**. Both paytables were scaled ~2–3%
-down to make room for the Dragon's Wrath (§5.12).
+down to make room for the Dragon's Wrath (§5.12). The Feature Buy (§5.13) moved
+neither, by construction — it is a second door into features that already
+existed, priced to return exactly what the reels return.
 
 Captures in `docs/verification/`: `ui_idle`, `ui_spin`, `ui_win`, `ui_freespins`,
 `ui_paytable`, `ui_settings`, `ui_machines`, `ui_frost`, `ui_achievements`,
 `ui_bonus`, `ui_feature_card`, `ui_hatch`, `ui_jackpot`, `ui_autospin`,
-`ui_anticipation`, `ui_wrath`. The catalog card image at the project root is
-produced by the same harness. `ui_spin` is captured at 20 frames rather than 150 — at the default
+`ui_anticipation`, `ui_wrath`, `ui_featurebuy`. The catalog card image at the
+project root is produced by the same harness. `ui_spin` is captured at 20 frames rather than 150 — at the default
 the spin has already finished, so the blur it is meant to show is not there.
 
 ### Verified, and not
@@ -1011,6 +1103,9 @@ accruing. That closes the gap this section previously listed.
   blur/bounce/anticipation work in `state/spin.rs` — none of it is specific to a
   slot machine beyond the anticipation trigger, and any game with a spinning or
   scrolling strip would want it.
+- The buy menu is a plain list. A real cabinet would show each feature's
+  volatility or a sample of what it pays; the price alone tells a player what it
+  costs but not what to expect for it.
 - **The `CoinLock` effect has never been heard either**, and it is the one that
   most needs to be: in a full round it fires up to fifteen times inside a second,
   so if it has any tail at all it will smear into a wash. It was written short on

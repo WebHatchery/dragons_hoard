@@ -36,6 +36,7 @@ pub struct MachineDef {
     freespins: &'static str,
     jackpots: &'static str,
     holdspin: &'static str,
+    featurebuy: &'static str,
 }
 
 macro_rules! machine {
@@ -54,6 +55,11 @@ macro_rules! machine {
             freespins: include_str!(concat!("../assets/data/machines/", $dir, "/freespins.json")),
             jackpots: include_str!(concat!("../assets/data/machines/", $dir, "/jackpots.json")),
             holdspin: include_str!(concat!("../assets/data/machines/", $dir, "/holdspin.json")),
+            featurebuy: include_str!(concat!(
+                "../assets/data/machines/",
+                $dir,
+                "/featurebuy.json"
+            )),
         }
     };
 }
@@ -309,6 +315,37 @@ pub struct CoinValue {
     pub weight: u32,
 }
 
+/// The Feature Buy menu (§5.13).
+///
+/// Per-machine, and necessarily so: a tier's price is derived from the expected
+/// value of the feature it buys, and every cabinet tunes its own features.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FeatureBuyConfig {
+    /// The return a bought feature is priced to give back, in permille. It is
+    /// the machine's own RTP, so buying is neither better nor worse than
+    /// spinning — see `state::featurebuy`.
+    pub target_rtp_permille: i64,
+    pub tiers: Vec<FeatureBuyTier>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FeatureBuyTier {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub award: FeatureAward,
+    /// Price in multiples of *total* bet.
+    pub price_multiple: i64,
+}
+
+/// What a tier hands over once it is paid for.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum FeatureAward {
+    FreeSpins { spins: u32 },
+    Wrath { coins: usize },
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Payline {
     pub id: u32,
@@ -362,6 +399,7 @@ pub struct GameData {
     pub jackpots: Jackpots,
     pub bonus: BonusConfig,
     pub holdspin: HoldSpinConfig,
+    pub featurebuy: FeatureBuyConfig,
     pub texture_manifest: Vec<TextureConfig>,
 }
 
@@ -387,6 +425,8 @@ impl GameData {
         let bonus: BonusConfig = load_embedded_json_labeled("bonus", BONUS_JSON)?;
         let holdspin: HoldSpinConfig =
             load_embedded_json_labeled(&label("holdspin"), machine.holdspin)?;
+        let featurebuy: FeatureBuyConfig =
+            load_embedded_json_labeled(&label("featurebuy"), machine.featurebuy)?;
         let texture_manifest = load_embedded_json(TEXTURE_MANIFEST_JSON)?;
 
         let reels = resolve_strips(&symbols, &strips)?;
@@ -400,6 +440,7 @@ impl GameData {
             jackpots,
             bonus,
             holdspin,
+            featurebuy,
             texture_manifest,
         };
         data.validate()?;
@@ -527,6 +568,7 @@ impl GameData {
         // nothing else would notice — the sim would simply measure a game
         // without it.
         let cells = self.config.reel_count * self.config.row_count;
+        crate::state::featurebuy::validate(&self.featurebuy, cells)?;
         if self.holdspin.trigger_eggs == 0 || self.holdspin.trigger_eggs > cells {
             return Err(format!(
                 "holdspin trigger_eggs ({}) must fit on a {}-cell grid",

@@ -3,6 +3,7 @@
 pub mod achievements;
 pub mod bonus;
 pub mod celebration;
+pub mod featurebuy;
 pub mod holdspin;
 pub mod machines;
 pub mod paytable;
@@ -12,6 +13,7 @@ pub mod symbols;
 
 use crate::data::GameData;
 use crate::state::achievements::AchievementBook;
+use crate::state::featurebuy::cheapest as cheapest_feature;
 use crate::state::GameSession;
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::{
@@ -49,6 +51,10 @@ pub enum UiAction {
     ToggleSettings,
     ToggleMachines,
     ToggleAchievements,
+    /// Open or close the Feature Buy menu (§5.13).
+    ToggleFeatureBuy,
+    /// Buy the tier at this index of `featurebuy.json`.
+    BuyFeature(usize),
     /// Index into `data::MACHINES`.
     SelectMachine(usize),
     VolumeUp,
@@ -76,6 +82,7 @@ pub struct UiContext<'a> {
     pub show_settings: bool,
     pub show_machines: bool,
     pub show_achievements: bool,
+    pub show_featurebuy: bool,
     /// Screen-shake displacement, applied to the reels panel only.
     pub shake: Vec2,
     /// Accumulated in-game seconds, used for pulsing highlights. Comes from the
@@ -114,6 +121,10 @@ pub fn draw_game_ui(ctx: UiContext<'_>) -> Vec<UiAction> {
     // The respin board takes over the reel window while a round is open.
     if let Some(round) = ctx.session.holdspin.as_ref() {
         holdspin::draw(ctx.data, round, ctx.ui_time);
+    }
+
+    if ctx.show_featurebuy {
+        featurebuy::draw(ctx.data, ctx.session, mouse, &mut actions);
     }
 
     // The bonus board sits over the game but under a card, so the Hatch card
@@ -161,6 +172,22 @@ fn draw_header(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>) {
 
     // The header has the only spare width on screen, and these should be
     // reachable from anywhere rather than buried in the wager panel.
+    // The button carries the entry price, so the cost of the cheapest feature
+    // is visible without opening anything — and it moves with the bet ladder,
+    // which is the quickest way to see that the menu is priced per stake.
+    let from = cheapest_feature(&ctx.data.featurebuy, ctx.session.total_bet(ctx.data));
+    if virtual_button(
+        Rect::new(rect.right() - 946.0, rect.y + 18.0, 108.0, 28.0),
+        &match from {
+            Some(price) => format!("Buy {}", price),
+            None => "Buy".to_owned(),
+        },
+        true,
+        ButtonTone::Secondary,
+        mouse,
+    ) {
+        actions.push(UiAction::ToggleFeatureBuy);
+    }
     if virtual_button(
         Rect::new(rect.right() - 828.0, rect.y + 18.0, 108.0, 28.0),
         "Awards",
@@ -557,7 +584,7 @@ fn draw_footer(ctx: &UiContext<'_>) {
         TextStyle::new(16.0, palette::TEXT).params(),
     );
     draw_ui_text_ex(
-        "Space spins · Up/Down bet · M max · A autospin · P paytable · O settings · C machines · V awards",
+        "Space spins · Up/Down bet · M max · A autospin · B buy · P paytable · O settings · C machines · V awards",
         rect.x + 470.0,
         rect.y + 56.0,
         TextStyle::new(15.0, palette::TEXT_DIM).params(),
@@ -638,6 +665,9 @@ pub fn actions_from_keys(celebrating: bool) -> Vec<UiAction> {
     }
     if is_key_pressed(KeyCode::V) {
         actions.push(UiAction::ToggleAchievements);
+    }
+    if is_key_pressed(KeyCode::B) {
+        actions.push(UiAction::ToggleFeatureBuy);
     }
     if is_key_pressed(KeyCode::S) {
         actions.push(UiAction::Save);

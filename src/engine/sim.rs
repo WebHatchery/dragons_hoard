@@ -142,6 +142,65 @@ pub fn run(data: &GameData, config: SimConfig) -> SimReport {
     report
 }
 
+/// What buying one tier over and over returns per credit spent (§5.13).
+#[derive(Debug, Clone, Default)]
+pub struct BuyReport {
+    pub buys: u64,
+    pub spent: i64,
+    pub won: i64,
+}
+
+impl BuyReport {
+    pub fn rtp(&self) -> f64 {
+        if self.spent == 0 {
+            return 0.0;
+        }
+        self.won as f64 / self.spent as f64
+    }
+}
+
+/// Buy one tier `rounds` times and measure what it gives back.
+///
+/// This is the check that keeps the Feature Buy honest. A tier's price is a
+/// number in JSON, so nothing stops it drifting away from the value of the
+/// feature it buys — except measuring the feature and comparing. Because the
+/// buy hands control back to the real session, everything downstream is
+/// included: retriggers, expanding wilds, eggs banked into the hoard, a Vault
+/// Pick the free spins happened to fill, a Wrath a bought free spin woke.
+///
+/// The balance is topped up between rounds so a bad run cannot end the sample
+/// early; the *stake* is still counted honestly, which is all the ratio needs.
+pub fn simulate_buys(data: &GameData, tier: usize, rounds: u64, seed: u64) -> BuyReport {
+    let mut session = GameSession::new(data, seed);
+    let mut report = BuyReport::default();
+
+    for _ in 0..rounds {
+        session.balance = 1_000_000_000;
+        session.celebrations.clear();
+
+        let before = session.balance;
+        let Ok(purchase) = session.buy_feature(tier, data) else {
+            break;
+        };
+        report.buys += 1;
+        report.spent += purchase.price;
+
+        // Play whatever was bought all the way out, including anything it
+        // triggered in turn.
+        while session.in_free_spins() {
+            if session.spin(data).is_err() {
+                break;
+            }
+        }
+        session.auto_play_bonus(data);
+        session.auto_play_holdspin(data);
+
+        report.won += session.balance - (before - purchase.price);
+    }
+
+    report
+}
+
 fn accumulate(report: &mut SimReport, resolution: &crate::state::SpinResolution, free: bool) {
     let credits = resolution.total_credits();
     report.total_won += credits;
@@ -411,5 +470,141 @@ mod tests {
             FULL_TOLERANCE,
             report.summary()
         );
+    }
+}
+
+#[cfg(test)]
+mod buy_tests {
+    use super::*;
+    use crate::data::MACHINES;
+    use crate::state::featurebuy;
+
+    /// A bought feature must give back what the machine gives back — no more,
+    /// no less. This is the assertion the whole Feature Buy design rests on
+    /// (§5.13): price a tier below its expected value and never spinning beats
+    /// spinning; price it above and the menu is a trap.
+    ///
+    /// Runs in CI at a sample small enough to be quick, which is why the band is
+    /// wide. `feature_buy_prices_are_exact` is the tight one.
+    #[test]
+    fn every_bought_tier_returns_roughly_what_it_cost() {
+        for machine in MACHINES {
+            let data = GameData::load_machine(machine).unwrap();
+            let target = data.featurebuy.target_rtp_permille as f64 / 1000.0;
+
+            for (index, tier) in data.featurebuy.tiers.iter().enumerate() {
+                let report = simulate_buys(&data, index, 3_000, 0x51E_5EED + index as u64);
+                assert!(report.buys > 0, "{} sold nothing", tier.id);
+
+                let rtp = report.rtp();
+                assert!(
+                    (rtp - target).abs() < 0.35,
+                    "{}/{} returns {:.4} against a target of {:.4} — reprice it",
+                    machine.id,
+                    tier.id,
+                    rtp,
+                    target
+                );
+            }
+        }
+    }
+
+    /// The tight version. High-variance features need a large sample before the
+    /// mean settles, so this is `#[ignore]`d and run when tuning:
+    /// `cargo test --release -- --ignored feature_buy_prices_are_exact`.
+    #[test]
+    #[ignore]
+    fn feature_buy_prices_are_exact() {
+        // Every tier is measured and printed *before* anything is asserted. A
+        // run that stopped at the first bad price would make repricing a menu
+        // one slow round trip per tier.
+        let mut wrong: Vec<String> = Vec::new();
+
+        for machine in MACHINES {
+            let data = GameData::load_machine(machine).unwrap();
+            let target = data.featurebuy.target_rtp_permille as f64 / 1000.0;
+
+            for (index, tier) in data.featurebuy.tiers.iter().enumerate() {
+                let report = simulate_buys(&data, index, 200_000, 0xB0_0B5 + index as u64);
+                let rtp = report.rtp();
+                // What the price *should* be, given what the feature actually
+                // paid: the current price scaled by how far off target it came
+                // in. Printed so a failing run hands the designer the answer
+                // rather than only the problem.
+                let fair = tier.price_multiple as f64 * rtp / target;
+
+                println!(
+                    "{:>7}/{:<10} price {:>4}x  rtp {:.4}  (target {:.4})  fair price {:.1}x",
+                    machine.id, tier.id, tier.price_multiple, rtp, target, fair
+                );
+                if (rtp - target).abs() >= 0.02 {
+                    wrong.push(format!(
+                        "{}/{}: returns {:.4} against {:.4} — price it at {:.0}x, not {}x",
+                        machine.id,
+                        tier.id,
+                        rtp,
+                        target,
+                        fair.round(),
+                        tier.price_multiple
+                    ));
+                }
+            }
+        }
+
+        assert!(
+            wrong.is_empty(),
+            "mispriced tiers:
+  {}",
+            wrong.join(
+                "
+  "
+            )
+        );
+    }
+
+    /// Buying must not be a cheaper route to a progressive. The price is a
+    /// stake, so it feeds the pots; it is not a spin, so it does not roll.
+    #[test]
+    fn a_buy_feeds_the_pots_without_drawing_from_them() {
+        let data = GameData::load().unwrap();
+        let mut session = GameSession::new(&data, 77);
+        session.balance = 10_000_000;
+
+        let pots = |session: &GameSession| -> Vec<i64> {
+            (0..data.jackpots.tiers.len())
+                .map(|tier| session.jackpots.value(&data.jackpots, tier))
+                .collect()
+        };
+
+        let before = pots(&session);
+        let purchase = session.buy_feature(0, &data).unwrap();
+        let after = pots(&session);
+
+        assert!(purchase.price > 0);
+        assert!(
+            after.iter().zip(&before).all(|(now, then)| now > then),
+            "a bought feature should feed every tier"
+        );
+        assert_eq!(
+            session.stats.jackpots, 0,
+            "the purchase itself must not roll for a pot"
+        );
+    }
+
+    /// The menu advertises a price; the balance must move by exactly that.
+    #[test]
+    fn the_price_charged_is_the_price_shown() {
+        let data = GameData::load().unwrap();
+        for (index, tier) in data.featurebuy.tiers.iter().enumerate() {
+            let mut session = GameSession::new(&data, 9_000 + index as u64);
+            session.balance = 10_000_000;
+
+            let quoted = featurebuy::price(tier, session.total_bet(&data));
+            let before = session.balance;
+            let purchase = session.buy_feature(index, &data).unwrap();
+
+            assert_eq!(purchase.price, quoted);
+            assert_eq!(session.balance, before - quoted);
+        }
     }
 }

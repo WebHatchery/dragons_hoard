@@ -8,6 +8,7 @@ use crate::data::GameData;
 use crate::state::achievements::AchievementBook;
 use crate::state::autospin::AutospinStop;
 use crate::state::celebration::CelebrationKind;
+use crate::state::featurebuy::BuyBlocked;
 use crate::state::preferences::Preferences;
 use crate::state::spin::SpinEvent;
 use crate::state::{migrate_save_value, GameSession, SaveData, SpinBlocked, SpinResolution};
@@ -42,6 +43,7 @@ pub struct Game {
     show_settings: bool,
     show_machines: bool,
     show_achievements: bool,
+    show_featurebuy: bool,
     achievements: AchievementBook,
     save_exists: bool,
 }
@@ -112,6 +114,7 @@ impl Game {
             show_settings: false,
             show_machines: false,
             show_achievements: false,
+            show_featurebuy: false,
             achievements,
             save_exists: false,
         };
@@ -139,6 +142,7 @@ impl Game {
             self.show_paytable = false;
             self.show_machines = false;
             self.show_achievements = false;
+            self.show_featurebuy = false;
         }
 
         let actions: Vec<UiAction> = self.events.drain().collect();
@@ -159,6 +163,7 @@ impl Game {
             show_settings: self.show_settings,
             show_machines: self.show_machines,
             show_achievements: self.show_achievements,
+            show_featurebuy: self.show_featurebuy,
             achievements: &self.achievements,
             shake: self.shake.offset(),
             ui_time: self.ui_time,
@@ -534,6 +539,25 @@ impl Game {
                 self.show_achievements = !self.show_achievements;
                 self.sound.play(Sfx::Click);
             }
+            ActionOutcome::FeatureBuyToggled => {
+                self.show_featurebuy = !self.show_featurebuy;
+                self.sound.play(Sfx::Click);
+            }
+            ActionOutcome::FeatureBought(purchase) => {
+                // The menu closes itself: what was bought is about to take over
+                // the screen, and leaving the overlay up would hide it.
+                self.show_featurebuy = false;
+                self.sound.play(Sfx::Scatter);
+                self.notifications.success(format!(
+                    "{} bought for {} credits",
+                    purchase.tier_name, purchase.price
+                ));
+                self.autosave();
+            }
+            ActionOutcome::FeatureBuyRefused(reason) => {
+                self.sound.play_at(Sfx::Click, 0.6);
+                self.notifications.warning(buy_refusal(reason));
+            }
             ActionOutcome::MachineSelected(index) => self.switch_machine(index),
             ActionOutcome::PreferenceChanged => {
                 // Apply immediately so the change is audible/visible while the
@@ -669,5 +693,17 @@ impl Game {
 
     fn refresh_save_state(&mut self) {
         self.save_exists = slot_exists(&self.data.config.game_name, &self.data.save_slot());
+    }
+}
+
+/// Why a Feature Buy was refused, in the player's terms rather than the
+/// enum's. Every refusal says something — a menu press that produces silence
+/// reads as a broken button.
+fn buy_refusal(reason: BuyBlocked) -> &'static str {
+    match reason {
+        BuyBlocked::Busy => "Wait for the reels to settle first",
+        BuyBlocked::InsufficientBalance => "Not enough credits for that feature",
+        BuyBlocked::FeatureActive => "A feature is already running",
+        BuyBlocked::UnknownTier => "That feature is no longer on the menu",
     }
 }

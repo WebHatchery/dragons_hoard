@@ -22,6 +22,10 @@ pub struct SessionStats {
     /// strand a player).
     #[serde(default)]
     pub wrath_rounds: u32,
+    /// Features bought outright (§5.13). `default` so a save written before the
+    /// menu existed still loads.
+    #[serde(default)]
+    pub features_bought: u32,
 }
 
 /// What lands on disk. Deliberately excludes the grid and any in-flight spin or

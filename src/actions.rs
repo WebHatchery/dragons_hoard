@@ -2,6 +2,7 @@
 
 use crate::data::GameData;
 use crate::state::autospin::AutospinStop;
+use crate::state::featurebuy::{BuyBlocked, BuyResult};
 use crate::state::{GameSession, SpinBlocked};
 use crate::ui::UiAction;
 
@@ -28,6 +29,11 @@ pub enum ActionOutcome {
     SettingsToggled,
     MachinesToggled,
     AchievementsToggled,
+    FeatureBuyToggled,
+    /// A feature was bought: what it was, and what it cost (§5.13).
+    FeatureBought(BuyResult),
+    /// The buy was refused. Carries why, so the message can say so.
+    FeatureBuyRefused(BuyBlocked),
     /// A chest was turned over and the round continues.
     BonusPicked,
     /// The last blank was found; the round paid out.
@@ -73,6 +79,11 @@ pub fn apply(
         UiAction::ToggleSettings => ActionOutcome::SettingsToggled,
         UiAction::ToggleMachines => ActionOutcome::MachinesToggled,
         UiAction::ToggleAchievements => ActionOutcome::AchievementsToggled,
+        UiAction::ToggleFeatureBuy => ActionOutcome::FeatureBuyToggled,
+        UiAction::BuyFeature(index) => match session.buy_feature(index, data) {
+            Ok(purchase) => ActionOutcome::FeatureBought(purchase),
+            Err(reason) => ActionOutcome::FeatureBuyRefused(reason),
+        },
         UiAction::PickBonus(index) => match session.pick_bonus(index, data) {
             Some(outcome) => ActionOutcome::BonusFinished(outcome.credits),
             None => ActionOutcome::BonusPicked,

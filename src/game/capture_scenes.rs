@@ -80,6 +80,12 @@ impl Game {
                 self.fast_forward_to(|session| session.last_win > 0);
             }
             "wrath" => self.hold_a_wrath_round(),
+            "featurebuy" => {
+                // Enough credit that every tier reads as affordable — a menu of
+                // greyed-out rows would photograph the wallet, not the feature.
+                self.session.balance = 500_000;
+                self.show_featurebuy = true;
+            }
             "settings" => self.show_settings = true,
             "anticipation" => self.hold_a_near_miss(),
             _ => {}

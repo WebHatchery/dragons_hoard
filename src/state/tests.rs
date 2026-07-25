@@ -475,6 +475,7 @@ fn a_legacy_save_migrates_to_the_current_shape() {
 }
 
 mod bonus;
+mod featurebuy;
 mod holdspin;
 mod jackpots;
 mod machines;
