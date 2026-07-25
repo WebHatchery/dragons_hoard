@@ -55,7 +55,7 @@ struct Shades {
 }
 
 impl Shades {
-    fn new(color: [f32; 3], lit: f32) -> Self {
+    fn new(color: [f32; 3], lit: f32, alpha: f32) -> Self {
         // A winning cell lifts every shade rather than overlaying a tint, so the
         // art reads brighter without losing its own colour.
         let boost = 1.0 + 0.35 * lit;
@@ -63,7 +63,7 @@ impl Shades {
             (color[0] * boost).min(1.0),
             (color[1] * boost).min(1.0),
             (color[2] * boost).min(1.0),
-            1.0,
+            alpha.clamp(0.0, 1.0),
         );
         Self {
             base,
@@ -84,6 +84,8 @@ fn scale(color: Color, factor: f32) -> Color {
     )
 }
 
+/// Mixes colour only — `a`'s alpha is preserved, so tinting toward white does
+/// not quietly make a motion-blur pass opaque again.
 fn mix(a: Color, b: Color, t: f32) -> Color {
     Color::new(
         a.r + (b.r - a.r) * t,
@@ -158,27 +160,32 @@ impl Canvas {
 /// the peak of a win pulse. Returns false when the symbol has no art routine,
 /// so the caller can fall back to its short code.
 pub fn draw(def: &SymbolDef, rect: Rect, lit: f32) -> bool {
+    draw_with_alpha(def, rect, lit, 1.0)
+}
+
+/// As [`draw`], but translucent — one pass of a motion-blurred reel.
+pub fn draw_with_alpha(def: &SymbolDef, rect: Rect, lit: f32, alpha: f32) -> bool {
     let Some(art) = SymbolArt::from_id(&def.art) else {
         return false;
     };
 
     let canvas = Canvas::new(rect);
-    let shades = Shades::new(def.color, lit);
+    let shades = Shades::new(def.color, lit, alpha);
 
     match art {
-        SymbolArt::Coin => coin(&canvas, &shades, 0.5, 0.5, 0.30),
-        SymbolArt::CoinStack => coin_stack(&canvas, &shades),
-        SymbolArt::Gem => gem(&canvas, &shades),
-        SymbolArt::Chest => chest(&canvas, &shades),
-        SymbolArt::Egg => egg(&canvas, &shades),
-        SymbolArt::Dragon => dragon(&canvas, &shades),
-        SymbolArt::Flame => flame(&canvas, &shades),
+        SymbolArt::Coin => coin(&canvas, &shades, alpha, 0.5, 0.5, 0.30),
+        SymbolArt::CoinStack => coin_stack(&canvas, &shades, alpha),
+        SymbolArt::Gem => gem(&canvas, &shades, alpha),
+        SymbolArt::Chest => chest(&canvas, &shades, alpha),
+        SymbolArt::Egg => egg(&canvas, &shades, alpha),
+        SymbolArt::Dragon => dragon(&canvas, &shades, alpha),
+        SymbolArt::Flame => flame(&canvas, &shades, alpha),
     }
 
     true
 }
 
-fn coin(canvas: &Canvas, shades: &Shades, cx: f32, cy: f32, radius: f32) {
+fn coin(canvas: &Canvas, shades: &Shades, alpha: f32, cx: f32, cy: f32, radius: f32) {
     canvas.circle(cx, cy, radius, shades.darker);
     canvas.circle(cx, cy, radius * 0.88, shades.base);
     canvas.circle(cx, cy, radius * 0.66, shades.dark);
@@ -195,15 +202,15 @@ fn coin(canvas: &Canvas, shades: &Shades, cx: f32, cy: f32, radius: f32) {
         cx - radius * 0.34,
         cy - radius * 0.36,
         radius * 0.16,
-        Color::new(1.0, 1.0, 1.0, 0.4),
+        Color::new(1.0, 1.0, 1.0, 0.4 * alpha),
     );
 }
 
-fn coin_stack(canvas: &Canvas, shades: &Shades) {
+fn coin_stack(canvas: &Canvas, shades: &Shades, alpha: f32) {
     // A shallow pile: two coins at the back, one leaning in front.
     for (cx, cy, radius) in [(0.33, 0.62, 0.21), (0.67, 0.60, 0.21), (0.50, 0.44, 0.23)] {
         canvas.ellipse(cx, cy + 0.09, radius * 1.1, radius * 0.34, shades.darker);
-        coin(canvas, shades, cx, cy, radius);
+        coin(canvas, shades, alpha, cx, cy, radius);
     }
 }
 
@@ -214,7 +221,7 @@ fn hex_vertex(index: usize, radius: f32) -> (f32, f32) {
     (0.5 + angle.cos() * radius, 0.5 - angle.sin() * radius)
 }
 
-fn gem(canvas: &Canvas, shades: &Shades) {
+fn gem(canvas: &Canvas, shades: &Shades, alpha: f32) {
     const R: f32 = 0.32;
     let v: Vec<(f32, f32)> = (0..6).map(|i| hex_vertex(i, R)).collect();
     let center = (0.5, 0.5);
@@ -238,11 +245,11 @@ fn gem(canvas: &Canvas, shades: &Shades) {
         canvas.tri(center, table[index], table[(index + 1) % 6], shades.lighter);
     }
 
-    canvas.circle(0.44, 0.42, 0.032, Color::new(1.0, 1.0, 1.0, 0.8));
+    canvas.circle(0.44, 0.42, 0.032, Color::new(1.0, 1.0, 1.0, 0.8 * alpha));
 }
 
-fn chest(canvas: &Canvas, shades: &Shades) {
-    let gold = Color::new(0.92, 0.76, 0.32, 1.0);
+fn chest(canvas: &Canvas, shades: &Shades, alpha: f32) {
+    let gold = Color::new(0.92, 0.76, 0.32, alpha);
 
     // Coins spilling over the back edge, drawn first so the lid overlaps them.
     canvas.circle(0.36, 0.30, 0.055, gold);
@@ -262,7 +269,7 @@ fn chest(canvas: &Canvas, shades: &Shades) {
     canvas.circle(0.50, 0.53, 0.035, scale(gold, 0.45));
 }
 
-fn egg(canvas: &Canvas, shades: &Shades) {
+fn egg(canvas: &Canvas, shades: &Shades, alpha: f32) {
     // Stacked ellipses give a proper egg profile — fat at the base, narrowing
     // smoothly to a rounded crown. A cone tapered to a point read as a teardrop.
     canvas.ellipse(0.50, 0.60, 0.25, 0.27, shades.base);
@@ -281,10 +288,16 @@ fn egg(canvas: &Canvas, shades: &Shades) {
         canvas.circle(x, y, r, shades.darker);
     }
 
-    canvas.ellipse(0.40, 0.36, 0.06, 0.09, Color::new(1.0, 1.0, 1.0, 0.26));
+    canvas.ellipse(
+        0.40,
+        0.36,
+        0.06,
+        0.09,
+        Color::new(1.0, 1.0, 1.0, 0.26 * alpha),
+    );
 }
 
-fn dragon(canvas: &Canvas, shades: &Shades) {
+fn dragon(canvas: &Canvas, shades: &Shades, alpha: f32) {
     // Horns behind the skull.
     canvas.tri((0.58, 0.34), (0.80, 0.08), (0.70, 0.36), shades.dark);
     canvas.tri((0.46, 0.32), (0.58, 0.12), (0.56, 0.36), shades.dark);
@@ -304,15 +317,15 @@ fn dragon(canvas: &Canvas, shades: &Shades) {
     canvas.tri((0.22, 0.62), (0.56, 0.66), (0.40, 0.82), shades.darker);
 
     // Eye and nostril.
-    canvas.circle(0.56, 0.42, 0.06, Color::new(1.0, 0.86, 0.30, 1.0));
-    canvas.circle(0.56, 0.42, 0.024, Color::new(0.10, 0.05, 0.08, 1.0));
+    canvas.circle(0.56, 0.42, 0.06, Color::new(1.0, 0.86, 0.30, alpha));
+    canvas.circle(0.56, 0.42, 0.024, Color::new(0.10, 0.05, 0.08, alpha));
     canvas.circle(0.22, 0.50, 0.022, shades.darker);
 }
 
-fn flame(canvas: &Canvas, shades: &Shades) {
+fn flame(canvas: &Canvas, shades: &Shades, alpha: f32) {
     let outer = shades.base;
     let mid = mix(shades.base, Color::new(1.0, 0.85, 0.25, 1.0), 0.6);
-    let core = Color::new(1.0, 0.96, 0.80, 1.0);
+    let core = Color::new(1.0, 0.96, 0.80, alpha);
 
     canvas.circle(0.50, 0.60, 0.28, outer);
     canvas.tri((0.50, 0.08), (0.24, 0.64), (0.76, 0.64), outer);
@@ -349,7 +362,7 @@ mod tests {
 
     #[test]
     fn shades_stay_inside_the_colour_range_even_when_lit() {
-        let shades = Shades::new([0.95, 0.9, 0.85], 1.0);
+        let shades = Shades::new([0.95, 0.9, 0.85], 1.0, 1.0);
 
         for color in [
             shades.base,
@@ -370,8 +383,8 @@ mod tests {
 
     #[test]
     fn a_lit_symbol_is_brighter_than_a_resting_one() {
-        let resting = Shades::new([0.4, 0.3, 0.2], 0.0);
-        let lit = Shades::new([0.4, 0.3, 0.2], 1.0);
+        let resting = Shades::new([0.4, 0.3, 0.2], 0.0, 1.0);
+        let lit = Shades::new([0.4, 0.3, 0.2], 1.0, 1.0);
 
         assert!(lit.base.r > resting.base.r);
         assert!(lit.base.g > resting.base.g);

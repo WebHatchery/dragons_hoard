@@ -1,5 +1,7 @@
 //! High-level game loop: owns the session, routes intents, drives feedback.
 
+mod capture_scenes;
+
 use crate::actions::{self, ActionOutcome, SessionRequest};
 use crate::audio::{Sfx, SoundBank};
 use crate::data::GameData;
@@ -115,111 +117,6 @@ impl Game {
         };
         game.refresh_save_state();
         game
-    }
-
-    /// Fast-forward into a named state so the screenshot harness can photograph
-    /// something other than the boot screen. Uses the headless spin path to skip
-    /// ahead, then hands over to the normal loop.
-    ///
-    /// Scenes: `idle`, `spin` (reels mid-flight), `win`, `freespins`,
-    /// `paytable`, `settings`, `feature_card`, `hatch`, `autospin`.
-    pub fn begin_capture_scene(&mut self, scene: &str) {
-        // A fixed seed keeps every capture reproducible run to run.
-        self.session = GameSession::new(&self.data, 0xD2A6_0F1E);
-        self.notifications.clear();
-
-        match scene {
-            "spin" => {
-                let _ = self.session.begin_spin(&self.data);
-            }
-            "win" => self.fast_forward_to(|session| session.last_win > 0),
-            "freespins" => {
-                self.fast_forward_to(GameSession::in_free_spins);
-                self.session.celebrations.clear();
-                let _ = self.session.begin_spin(&self.data);
-            }
-            "feature_card" => self.fast_forward_to(|session| {
-                matches!(
-                    session.celebrations.active().map(|card| card.kind()),
-                    Some(CelebrationKind::FreeSpinsEntry { .. })
-                )
-            }),
-            "hatch" => self.fast_forward_to(|session| {
-                matches!(
-                    session.celebrations.active().map(|card| card.kind()),
-                    Some(CelebrationKind::Hatch { .. })
-                )
-            }),
-            "autospin" => {
-                let spins = self.session.preferences.autospin_spins(&self.data.config);
-                self.session.start_autospin(spins);
-                let _ = self.session.begin_spin(&self.data);
-            }
-            "paytable" => self.show_paytable = true,
-            "machines" => self.show_machines = true,
-            "bonus" => {
-                self.fast_forward_to(|session| session.bonus.is_some());
-                self.session.celebrations.clear();
-                // Turn a few over so the capture shows a board in play rather
-                // than twelve closed chests.
-                for index in [0usize, 1, 2, 5] {
-                    self.session.pick_bonus(index, &self.data);
-                }
-            }
-            "achievements" => {
-                self.fast_forward_to(|session| session.stats.hatches > 0);
-                // The hatch that got us here raised a card; the panel is the
-                // subject of this capture, not the card.
-                self.session.celebrations.clear();
-                self.show_achievements = true;
-            }
-            "jackpot" => self.fast_forward_to(|session| {
-                matches!(
-                    session.celebrations.active().map(|card| card.kind()),
-                    Some(CelebrationKind::Jackpot { .. })
-                )
-            }),
-            "frost" => {
-                self.data = GameData::load_machine(&crate::data::MACHINES[1]).unwrap();
-                self.session = GameSession::new(&self.data, 0xD2A6_0F1E);
-                self.fast_forward_to(|session| session.last_win > 0);
-            }
-            "settings" => self.show_settings = true,
-            _ => {}
-        }
-    }
-
-    /// Spin headlessly, topping the balance up, until `reached` holds. Cards
-    /// raised by earlier spins are cleared each time, so a scene keyed on a card
-    /// always lands on one the *last* spin produced. Bounded so a capture can
-    /// never hang on an unreachable state.
-    fn fast_forward_to(&mut self, reached: impl Fn(&GameSession) -> bool) {
-        for _ in 0..20_000 {
-            self.session.balance = self.data.config.starting_balance;
-            self.session.celebrations.clear();
-            // A scene may want to catch a board mid-round, so settle without the
-            // headless auto-play and let the predicate look first.
-            let Ok(resolution) = self.session.spin_leaving_bonus(&self.data) else {
-                break;
-            };
-            // The headless path skips `report_spin`, so record here too — a
-            // capture of the achievements panel should show real progress
-            // rather than a column of zeroes.
-            self.achievements
-                .observe(self.data.machine_id(), &resolution, self.session.balance);
-
-            if reached(&self.session) {
-                return;
-            }
-
-            // Nothing wanted the open board, so play it out — and look again,
-            // because finishing a board is what raises the Hatch card. Checking
-            // only before this is what left the `hatch` scene spinning 20,000
-            // times and photographing nothing.
-            if self.session.auto_play_bonus(&self.data).is_some() && reached(&self.session) {
-                return;
-            }
-        }
     }
 
     pub fn update(&mut self, dt: f32) {

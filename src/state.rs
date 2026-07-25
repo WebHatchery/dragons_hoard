@@ -102,6 +102,20 @@ struct PendingSpin {
     line_bet: i64,
 }
 
+/// Scatters landing on each reel of a decided grid.
+fn scatters_per_reel(data: &GameData, grid: &Grid) -> Vec<usize> {
+    let Some(scatter) = data.symbols.scatter() else {
+        return vec![0; grid.reel_count()];
+    };
+    (0..grid.reel_count())
+        .map(|reel| {
+            (0..grid.row_count())
+                .filter(|row| grid.at(reel, *row) == scatter)
+                .count()
+        })
+        .collect()
+}
+
 #[derive(Debug, Clone)]
 pub struct GameSession {
     pub balance: i64,
@@ -348,11 +362,20 @@ impl GameSession {
 
         let pending = self.roll_spin(data)?;
         let lengths: Vec<usize> = data.reels.iter().map(Vec::len).collect();
+        // The grid is already decided, so anticipation can be worked out before
+        // a single reel moves — it only ever fires when the feature really is
+        // still live (§5.11).
+        let anticipating = spin::anticipating_reels(
+            &scatters_per_reel(data, &pending.result.grid),
+            data.freespins.trigger_count(),
+            data.config.reel_count.saturating_sub(1),
+        );
         self.phase = SpinPhase::Spinning(ReelSpinner::new(
             &lengths,
             &self.reel_stops,
             &pending.result.stops,
             self.preferences.time_scale(),
+            &anticipating,
         ));
         self.pending = Some(pending);
         Ok(())

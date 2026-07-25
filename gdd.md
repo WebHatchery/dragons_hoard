@@ -362,6 +362,56 @@ An open board **holds the game** for the same reason a celebration card does
 it. `is_settled()` gained a third clause. Re-picking a revealed chest is ignored
 rather than an error — a double click must not cost the player a blank.
 
+### 5.11 Reel feel — blur, bounce, anticipation (post-v1)
+
+Everything above is maths the player cannot see. This is the opposite: no number
+moves, and the difference is entirely in how a spin *reads*. Verified by the sim,
+which measures both cabinets unchanged at **0.9591** and **0.9475** after the
+work — as it must, since none of it touches the outcome.
+
+**Real motion blur.** A fast reel used to drop its symbol labels and fall back to
+a flat colour tint, which reads as "the art vanished" rather than "the reel is
+moving". Now the strip is drawn five times per frame across the distance it
+covers, each pass at a fifth alpha, so the symbols streak. The one thing that
+made this hard was discovered from a capture: drawing all five passes whole
+stacked five translucent *tiles* as well, which summed toward white and bleached
+the vault. Cells are now split into a tile and its art (`StripLayer`); the tiles
+go down once at the reel's true position, and only the art repeats. Drawing the
+tiles on the leading pass instead — the obvious first fix — left them visibly
+trailing the art they were supposed to sit under.
+
+**A landing bounce.** The last 18% of a reel's travel overshoots and settles back
+by a sixth of a cell, decaying to nothing. It is presentation only, and a test
+holds it to that: for every target, the reel must still come to rest exactly on
+its decided stop.
+
+That test found a bug that had been there since the animation was written.
+Revolutions were `2.0 + index * 0.5`, so reels 2 and 4 turned two and a half
+times and landed **exactly half a strip** from their decided stop — twenty
+symbols out — then popped to the right symbols the instant the resting draw took
+over. Every landing test happened to use an even reel index, so nothing caught
+it for five iterations. Revolutions are now whole (`2 + index / 2`), and a second
+test asserts the invariant directly: every reel's travel is a whole number of
+strip lengths. The landing test now sweeps all five reels rather than one.
+
+**Anticipation.** When the scatters still showing could complete the free-spins
+trigger, the reels that could complete it are stretched to 2.6× their spin time —
+the held breath a physical cabinet draws out, and the reason a near-miss is
+agonising rather than instant. The held reel gets an ember-bordered frame so the
+pause reads as the game making something of the moment rather than as a stutter.
+
+Two details matter. The trigger count is **derived** from the free-spins award
+table (`FreeSpinsConfig::trigger_count`) rather than configured separately, so
+the two can never disagree. And *every* reel still to land is held, not just the
+next one — with two scatters showing and three reels to go, any of the three
+could be the third. A cap of `reel_count - 1` keeps a scatter-rich board from
+turning one spin into a slideshow.
+
+The effect lasts under a second and depends on where the scatters fall, so it
+cannot be photographed by waiting. The `anticipation` capture scene searches for
+a spin that raises it and freezes at the moment the held reels are the only ones
+still turning.
+
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
 - Winning lines: pulse highlight (`blink`/`pulse`), floating win amounts
@@ -788,7 +838,8 @@ and a Project Roost deployment record. Verified live — see §15.
 | A second Spin press mid-spin taking a second stake | `begin_spin` refuses with `SpinBlocked::Busy` before touching the balance; covered by a test that asserts the balance is untouched. |
 | A feature firing unseen underneath its own auto-chain | A showing celebration card holds the reels, the payout and the auto-chain (§8.2.1); tested. Autospin also stops on every notable outcome. |
 | Autospin quietly draining the balance | It stops on features, hatches, big wins and an empty balance, each with its own message; the bet ladder is locked for the run. |
-| Files growing past 800 lines | Three splits so far: `state.rs` into siblings, `ui.rs`'s paytable into `ui/paytable.rs`, and `state/tests.rs` (793) into `tests/{jackpots,preferences,machines}.rs`. **`game.rs` (699) is now the one to watch.** |
+| Files growing past 800 lines | Four splits so far: `state.rs` into siblings, `ui.rs`'s paytable into `ui/paytable.rs`, `state/tests.rs` (793) into `tests/{jackpots,preferences,machines}.rs`, and `game.rs` (779) into `game/capture_scenes.rs`. **`ui.rs` (643) is now the one to watch.** |
+| A presentation bug hiding behind uniform test data | Reels 2 and 4 landed twenty symbols from their stop for five iterations because every landing test used an even reel index (§5.11). Tests over an indexed family must sweep the whole family, not a representative member. |
 | A new machine shipping at the wrong RTP | The sim iterates `MACHINES`; a cabinet cannot be added without being measured (§5.8). |
 | Two machines sharing a save slot | Slots are `<machine>_<slot>`; a test asserts they are distinct. |
 | Jackpots exploitable by bet-switching | Odds are per credit wagered, so the trigger is bet-fair by construction (§5.6) and tested. The bet-ladder sim test excludes jackpots deliberately — they are too high-variance to compare over 20k spins — and their return is checked against its closed form instead. |
@@ -821,31 +872,38 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus five post-v1 systems
+## 15. Current State — v1 shipped, plus six post-v1 systems
 
-**All five phases are done, every item in §14 is met**, and five systems have
+**All five phases are done, every item in §14 is met**, and six systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
-machines (§5.8), achievements (§5.9) and the Vault Pick (§5.10). The game is
+machines (§5.8), achievements (§5.9), the Vault Pick (§5.10) and the reel-feel
+pass (§5.11). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-164 tests pass; `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`
+172 tests pass; `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`
 and the `wasm32-unknown-unknown` release build are clean. Every `.rs` file is
-under the 800-line limit; `game.rs` is the largest and closest to it.
+under the 800-line limit; `game.rs` reached 779 and its capture-scene harness was
+split into `game/capture_scenes.rs`, leaving `ui.rs` (643) the largest.
 
 Measured RTP over 1,000,000 spins: Dragon's Hoard **0.9591** at **0.411** hit
 frequency, Frost Wyrm **0.9475** at **0.258**.
 
 Captures in `docs/verification/`: `ui_idle`, `ui_spin`, `ui_win`, `ui_freespins`,
 `ui_paytable`, `ui_settings`, `ui_machines`, `ui_frost`, `ui_achievements`,
-`ui_bonus`, `ui_feature_card`, `ui_hatch`, `ui_jackpot`, `ui_autospin`. The catalog card image
-at the project root is produced by the same harness.
+`ui_bonus`, `ui_feature_card`, `ui_hatch`, `ui_jackpot`, `ui_autospin`,
+`ui_anticipation`. The catalog card image at the project root is produced by the
+same harness. `ui_spin` is captured at 20 frames rather than 150 — at the default
+the spin has already finished, so the blur it is meant to show is not there.
 
 ### Verified, and not
 
 Tested and seen: the maths, the spin lifecycle, the features, and every screen
 above — the art was reviewed from real captures and revised twice off them (the
 gems read as kites, the coin stack as a blob, the egg as a teardrop).
+
+Reviewed from captures again this iteration: the first motion-blur attempt
+bleached the reels to near-white, which no test would ever have caught.
 
 **Not verified: how the sound actually sounds.** The synthesis is covered by unit
 tests — well-formed header, correct rate and bit depth, audible peak, no clipping,
@@ -866,5 +924,7 @@ accruing. That closes the gap this section previously listed.
   not a substitute for hearing it.
 - Work is committed per iteration following `rust_management/docs/COMMIT_STYLE.md`
   — a diegetic subject, a plain parenthetical tag, and a prose body.
-- The reel "blur" is still label suppression rather than a real motion effect.
-- `audio.rs` is worth promoting into `macroquad-toolkit` (§7.1).
+- `audio.rs` is worth promoting into `macroquad-toolkit` (§7.1). So, now, is the
+  blur/bounce/anticipation work in `state/spin.rs` — none of it is specific to a
+  slot machine beyond the anticipation trigger, and any game with a spinning or
+  scrolling strip would want it.

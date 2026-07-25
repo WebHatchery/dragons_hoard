@@ -14,6 +14,9 @@ use macroquad_toolkit::ui::{
 };
 
 const CELL_PADDING: f32 = 8.0;
+/// Copies drawn per blurred reel. Enough to read as motion, few enough that
+/// five reels of it stay cheap.
+const BLUR_PASSES: usize = 5;
 /// Radians per second of the winning-cell highlight pulse.
 const PULSE_RATE: f32 = 6.0;
 
@@ -257,14 +260,75 @@ fn draw_spinning_reel(
     shake: Vec2,
     bounds: Rect,
 ) {
+    let spinner = session.phase.spinner();
+    let blurred = spinner.is_some_and(|spinner| spinner.is_blurred(reel));
+    let anticipating = spinner.is_some_and(|spinner| spinner.is_anticipating(reel));
+
+    if anticipating {
+        draw_anticipation_frame(data, reel, shake, bounds);
+    }
+
+    // Real motion blur: the strip is drawn several times across the distance it
+    // covers in one frame, each pass at a fraction of the alpha. Previously a
+    // fast reel simply dropped its labels, which read as "the art vanished"
+    // rather than "the reel is moving".
+    let smear = if blurred {
+        spinner.map_or(0.0, |spinner| spinner.blur_symbols(reel))
+    } else {
+        0.0
+    };
+    let passes = if smear > 0.05 { BLUR_PASSES } else { 1 };
+    let alpha = 1.0 / passes as f32;
+
+    // Tiles are laid once, at the reel's true position, under every art pass.
+    // Stacking one translucent tile per pass summed to near-white and bleached
+    // the whole vault; drawing them on the leading pass instead left them
+    // trailing the art they were supposed to sit beneath. The reel face is a
+    // surface, and a surface does not smear — only what is printed on it does.
+    draw_strip_pass(data, reel, position, shake, bounds, 1.0, StripLayer::Tiles);
+
+    for pass in 0..passes {
+        // Spread the passes either side of the reel's current position, so the
+        // streak covers the ground it crossed this frame.
+        let lag = if passes == 1 {
+            0.0
+        } else {
+            smear * (pass as f32 / (passes - 1) as f32 - 0.5)
+        };
+        draw_strip_pass(
+            data,
+            reel,
+            position + lag,
+            shake,
+            bounds,
+            alpha,
+            StripLayer::Art,
+        );
+    }
+}
+
+/// Which half of a cell a strip pass draws. Splitting them is what keeps motion
+/// blur from bleaching the reels: the tiles go down once, the art many times.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum StripLayer {
+    Tiles,
+    Art,
+}
+
+/// One pass of the strip at a given fractional position.
+fn draw_strip_pass(
+    data: &GameData,
+    reel: usize,
+    position: f32,
+    shake: Vec2,
+    bounds: Rect,
+    alpha: f32,
+    layer: StripLayer,
+) {
     let strip = &data.reels[reel];
     let rows = data.config.row_count as i32;
     let top = position.floor();
     let offset = position - top;
-    let blurred = session
-        .phase
-        .spinner()
-        .is_some_and(|spinner| spinner.is_blurred(reel));
 
     for row in -1..=rows {
         let slot = cell_slot(data, reel, row as f32 - offset).offset(shake);
@@ -273,9 +337,33 @@ fn draw_spinning_reel(
         };
 
         let index = (top as i64 + row as i64).rem_euclid(strip.len() as i64) as usize;
+        // A clipped cell still skips its art — half a dragon drawn into the
+        // panel edge reads as a glitch. Blur is no longer a reason to skip it.
         let whole = (visible.h - slot.inset(CELL_PADDING).h).abs() < 0.5;
-        draw_symbol_cell(data, visible, strip[index], 0.0, whole && !blurred);
+        match layer {
+            StripLayer::Tiles => draw_cell_tile(data, visible, strip[index], 0.0, alpha),
+            // A clipped cell keeps its tile but skips its art — half a dragon
+            // sliced into the panel edge reads as a glitch.
+            StripLayer::Art if whole => draw_cell_art(data, visible, strip[index], 0.0, alpha),
+            StripLayer::Art => {}
+        }
     }
+}
+
+/// The held-back reel gets a frame of its own, so the pause reads as the game
+/// making something of the moment rather than as a stutter.
+fn draw_anticipation_frame(data: &GameData, reel: usize, shake: Vec2, bounds: Rect) {
+    let size = cell_size(data);
+    let column = Rect::new(
+        grid_rect().offset(shake).x + reel as f32 * size.x,
+        bounds.y,
+        size.x,
+        bounds.h,
+    );
+    draw_surface(
+        column.inset(2.0),
+        &SurfaceStyle::new(Color::new(0.30, 0.14, 0.03, 0.55)).with_border(3.0, palette::EMBER),
+    );
 }
 
 /// Intersection of a cell with the reel window, or `None` when fully outside.
@@ -291,18 +379,23 @@ fn clip(cell: Rect, bounds: Rect) -> Option<Rect> {
 /// would be sliced or smeared — those keep a stronger tile tint instead, so a
 /// spinning reel still reads as a band of colours.
 fn draw_symbol_cell(data: &GameData, rect: Rect, symbol: usize, highlight: f32, detailed: bool) {
+    draw_cell_tile(data, rect, symbol, highlight, 1.0);
+    if detailed {
+        draw_cell_art(data, rect, symbol, highlight, 1.0);
+    }
+}
+
+/// The tile a symbol sits on: stone, tinted by the symbol's colour. Drawn once
+/// per cell however many blur passes follow.
+fn draw_cell_tile(data: &GameData, rect: Rect, symbol: usize, highlight: f32, alpha: f32) {
     let def = data.symbols.get(symbol);
     let tint = Color::new(def.color[0], def.color[1], def.color[2], 1.0);
-    let strength = if detailed {
-        0.14 + 0.24 * highlight
-    } else {
-        0.42
-    };
+    let strength = 0.14 + 0.24 * highlight;
     let fill = Color::new(
         0.055 + tint.r * strength,
         0.05 + tint.g * strength,
         0.065 + tint.b * strength,
-        1.0,
+        alpha,
     );
 
     let border = if highlight > 0.0 {
@@ -310,32 +403,43 @@ fn draw_symbol_cell(data: &GameData, rect: Rect, symbol: usize, highlight: f32, 
             palette::GOLD_BRIGHT.r,
             palette::GOLD_BRIGHT.g,
             palette::GOLD_BRIGHT.b,
-            0.35 + 0.65 * highlight,
+            (0.35 + 0.65 * highlight) * alpha,
         )
     } else {
-        Color::new(0.0, 0.0, 0.0, 0.55)
+        Color::new(0.0, 0.0, 0.0, 0.55 * alpha)
     };
 
     draw_surface(
         rect,
         &SurfaceStyle::new(fill)
             .with_border(if highlight > 0.0 { 3.0 } else { 1.0 }, border)
-            .with_top_highlight(3.0, Color::new(1.0, 1.0, 1.0, 0.12)),
+            .with_top_highlight(3.0, Color::new(1.0, 1.0, 1.0, 0.12 * alpha)),
     );
+}
 
-    if !detailed {
-        return;
-    }
-
-    if symbols::draw(def, rect, highlight) {
+/// The symbol itself. This is the only part that repeats across blur passes, so
+/// a fast reel reads as streaked art on a solid reel face.
+fn draw_cell_art(data: &GameData, rect: Rect, symbol: usize, highlight: f32, alpha: f32) {
+    let def = data.symbols.get(symbol);
+    if symbols::draw_with_alpha(def, rect, highlight, alpha) {
         return;
     }
 
     // Only reached when a symbol names art the renderer does not have.
     let text_color = if highlight > 0.5 {
-        palette::GOLD_BRIGHT
+        Color::new(
+            palette::GOLD_BRIGHT.r,
+            palette::GOLD_BRIGHT.g,
+            palette::GOLD_BRIGHT.b,
+            alpha,
+        )
     } else {
-        palette::TEXT_BRIGHT
+        Color::new(
+            palette::TEXT_BRIGHT.r,
+            palette::TEXT_BRIGHT.g,
+            palette::TEXT_BRIGHT.b,
+            alpha,
+        )
     };
     draw_text_centered_in_box_ex(
         &def.short,

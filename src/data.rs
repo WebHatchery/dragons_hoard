@@ -298,6 +298,19 @@ pub struct FreeSpinsConfig {
 }
 
 impl FreeSpinsConfig {
+    /// The fewest scatters that award anything — the count the reels are
+    /// chasing, and what anticipation (§5.11) is measured against. Derived from
+    /// the award table rather than configured separately, so the two can never
+    /// disagree.
+    pub fn trigger_count(&self) -> usize {
+        self.awards
+            .iter()
+            .filter(|(_, spins)| **spins > 0)
+            .filter_map(|(count, _)| count.parse::<usize>().ok())
+            .min()
+            .unwrap_or(usize::MAX)
+    }
+
     pub fn award_for(&self, scatter_count: usize) -> u32 {
         self.awards
             .get(&scatter_count.to_string())

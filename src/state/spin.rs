@@ -13,14 +13,28 @@ use macroquad_toolkit::timing::Timer;
 const BASE_SPIN_TIME: f32 = 0.62;
 /// Extra spin time per reel, which is what produces the left-to-right stop.
 const REEL_STAGGER: f32 = 0.26;
-/// Whole strip revolutions a reel travels before landing, plus half a
-/// revolution per reel so later reels visibly spin faster rather than longer.
-const SPIN_REVOLUTIONS: f32 = 2.0;
+/// Strip revolutions a reel travels before landing, plus one more every second
+/// reel so later reels visibly spin faster rather than merely longer.
+///
+/// This **must** be a whole number of revolutions. It was `2.0 + index * 0.5`,
+/// which gave reels 2 and 4 two-and-a-half turns — landing them exactly half a
+/// strip from their decided stop, so they popped twenty symbols the instant they
+/// settled and the resting draw took over. Every landing test happened to use an
+/// even reel index, so it went unseen until one looped over reel 1.
+const SPIN_REVOLUTIONS: usize = 2;
 /// Seconds the win count-up takes.
 const PAYOUT_TIME: f32 = 0.75;
 /// A reel slower than this many symbols per second is drawn crisply rather than
 /// blurred.
 const BLUR_SPEED: f32 = 6.0;
+/// How much longer an anticipating reel turns for (§5.11). The whole point is
+/// that it feels like an age.
+const ANTICIPATION_STRETCH: f32 = 2.6;
+/// Depth of the landing bounce, in symbols. Small: the reel should settle, not
+/// wobble.
+const BOUNCE_DEPTH: f32 = 0.16;
+/// Fraction of a reel's travel spent bouncing at the end.
+const BOUNCE_TAIL: f32 = 0.18;
 
 /// One reel travelling from its previous stop to its decided stop.
 ///
@@ -34,6 +48,9 @@ pub struct ReelAnimation {
     duration: f32,
     elapsed: f32,
     strip_len: f32,
+    /// This reel is being held back because the ones already stopped could
+    /// still add up to a feature.
+    anticipating: bool,
 }
 
 impl ReelAnimation {
@@ -41,29 +58,62 @@ impl ReelAnimation {
     /// the reveal without touching `travel`, so a Turbo spin lands on exactly
     /// the same symbol as a Normal one — the outcome was decided before either
     /// started (§8.2).
-    pub fn new(strip_len: usize, from: usize, to: usize, index: usize, time_scale: f32) -> Self {
+    pub fn new(
+        strip_len: usize,
+        from: usize,
+        to: usize,
+        index: usize,
+        time_scale: f32,
+        anticipating: bool,
+    ) -> Self {
         let len = strip_len.max(1);
         let from = from % len;
         let to = to % len;
         let delta = (to + len - from) % len;
-        let revolutions = SPIN_REVOLUTIONS + index as f32 * 0.5;
+        let revolutions = SPIN_REVOLUTIONS + index / 2;
         // Never zero: a duration of 0 would land the reels in the frame they
         // start and skip every ReelStopped event.
         let scale = time_scale.clamp(0.05, 4.0);
 
+        let stretch = if anticipating {
+            ANTICIPATION_STRETCH
+        } else {
+            1.0
+        };
+
         Self {
             start: from as f32,
-            travel: revolutions * len as f32 + delta as f32,
-            duration: (BASE_SPIN_TIME + index as f32 * REEL_STAGGER) * scale,
+            travel: (revolutions * len + delta) as f32,
+            duration: (BASE_SPIN_TIME + index as f32 * REEL_STAGGER) * scale * stretch,
             elapsed: 0.0,
             strip_len: len as f32,
+            anticipating,
         }
+    }
+
+    pub fn is_anticipating(&self) -> bool {
+        self.anticipating
+    }
+
+    /// A damped wobble over the last stretch of the travel, in symbols.
+    ///
+    /// It is exactly zero at `t == 1`, so the reel still comes to rest on the
+    /// symbol it was told to — the bounce is presentation, never a change of
+    /// mind. A test pins that.
+    fn bounce(&self, t: f32) -> f32 {
+        if t <= 1.0 - BOUNCE_TAIL {
+            return 0.0;
+        }
+        let u = ((t - (1.0 - BOUNCE_TAIL)) / BOUNCE_TAIL).clamp(0.0, 1.0);
+        let decay = 1.0 - u;
+        BOUNCE_DEPTH * decay * (u * std::f32::consts::PI * 2.0).sin()
     }
 
     /// Fractional strip position of the reel's top visible cell.
     pub fn position(&self) -> f32 {
-        let eased = ease_out_cubic(self.progress());
-        (self.start + self.travel * eased).rem_euclid(self.strip_len)
+        let t = self.progress();
+        let eased = ease_out_cubic(t);
+        (self.start + self.travel * eased + self.bounce(t)).rem_euclid(self.strip_len)
     }
 
     /// Symbols per second, used to decide how hard to blur the reel.
@@ -101,7 +151,15 @@ pub struct ReelSpinner {
 }
 
 impl ReelSpinner {
-    pub fn new(strip_lengths: &[usize], from: &[usize], to: &[usize], time_scale: f32) -> Self {
+    /// `anticipating` marks the reels to hold back; see
+    /// [`anticipating_reels`].
+    pub fn new(
+        strip_lengths: &[usize],
+        from: &[usize],
+        to: &[usize],
+        time_scale: f32,
+        anticipating: &[bool],
+    ) -> Self {
         let reels = strip_lengths
             .iter()
             .enumerate()
@@ -112,6 +170,7 @@ impl ReelSpinner {
                     to.get(index).copied().unwrap_or(0),
                     index,
                     time_scale,
+                    anticipating.get(index).copied().unwrap_or(false),
                 )
             })
             .collect();
@@ -158,6 +217,60 @@ impl ReelSpinner {
     pub fn is_moving(&self, reel: usize) -> bool {
         self.reels.get(reel).is_some_and(|reel| !reel.settled())
     }
+
+    /// Symbols this reel covers in a single 60 Hz frame — the distance the
+    /// motion blur has to smear over. Clamped so a fast reel streaks rather
+    /// than dissolving into a flat band.
+    pub fn blur_symbols(&self, reel: usize) -> f32 {
+        self.reels
+            .get(reel)
+            .map_or(0.0, |reel| (reel.speed() / 60.0).min(1.4))
+    }
+
+    /// True while this reel is both held back and still turning — what the UI
+    /// draws the anticipation frame around.
+    pub fn is_anticipating(&self, reel: usize) -> bool {
+        self.reels
+            .get(reel)
+            .is_some_and(|reel| reel.is_anticipating() && !reel.settled())
+    }
+}
+
+/// Which reels should be held back, given the grid this spin is going to land.
+///
+/// The rule is the one every physical cabinet uses: once the reels that have
+/// already stopped carry `trigger - 1` scatters, the next reel is the one that
+/// could complete the feature, so it is made to take its time. Anticipation is
+/// therefore never a lie — it only ever fires when the feature is genuinely
+/// still live, and the outcome was decided before the reels started (§8.2).
+///
+/// Every reel still to land is held back while the count is reachable, not just
+/// the next one — with two scatters showing and three reels to go, any of the
+/// three could be the third scatter, and that is exactly the near-miss a
+/// cabinet draws out. `max_anticipating` caps it so a scatter-rich board cannot
+/// turn one spin into a slideshow.
+pub fn anticipating_reels(
+    scatters_per_reel: &[usize],
+    trigger_count: usize,
+    max_anticipating: usize,
+) -> Vec<bool> {
+    let mut flags = vec![false; scatters_per_reel.len()];
+    if trigger_count == 0 || scatters_per_reel.is_empty() {
+        return flags;
+    }
+
+    let mut running = 0usize;
+    let mut stretched = 0usize;
+    for (index, scatters) in scatters_per_reel.iter().enumerate() {
+        // Decide *before* folding this reel in: it is the one still to land.
+        let still_reachable = running + (scatters_per_reel.len() - index) >= trigger_count;
+        if running + 1 >= trigger_count && still_reachable && stretched < max_anticipating {
+            flags[index] = true;
+            stretched += 1;
+        }
+        running += scatters;
+    }
+    flags
 }
 
 /// Counts a win up rather than snapping it on.
@@ -243,20 +356,43 @@ mod tests {
 
     #[test]
     fn a_reel_lands_exactly_on_its_target_stop() {
-        for target in [0usize, 1, 17, 39] {
-            let mut reel = ReelAnimation::new(40, 7, target, 2, 1.0);
-            for _ in 0..600 {
-                reel.tick(1.0 / 60.0);
-            }
+        // Every reel index, deliberately: this test used to pass only index 2,
+        // and the odd-indexed reels were landing half a strip out.
+        for index in 0..5 {
+            for target in [0usize, 1, 17, 39] {
+                let mut reel = ReelAnimation::new(40, 7, target, index, 1.0, false);
+                for _ in 0..900 {
+                    reel.tick(1.0 / 60.0);
+                }
 
-            assert!(reel.settled());
-            assert_eq!(reel.position().round() as usize % 40, target);
+                assert!(reel.settled());
+                assert_eq!(
+                    reel.position().round() as usize % 40,
+                    target,
+                    "reel {} missed its stop",
+                    index
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn every_reel_travels_a_whole_number_of_revolutions() {
+        // The invariant behind the bug above, stated directly.
+        for index in 0..5 {
+            let reel = ReelAnimation::new(40, 7, 7, index, 1.0, false);
+            assert_eq!(
+                reel.travel % 40.0,
+                0.0,
+                "reel {} travels a fractional strip",
+                index
+            );
         }
     }
 
     #[test]
     fn a_reel_lands_on_target_even_from_a_ragged_frame_rate() {
-        let mut reel = ReelAnimation::new(40, 3, 22, 0, 1.0);
+        let mut reel = ReelAnimation::new(40, 3, 22, 0, 1.0, false);
         for dt in [0.004, 0.1, 0.017, 0.05, 0.2, 0.033, 0.4, 0.016] {
             reel.tick(dt);
         }
@@ -267,14 +403,15 @@ mod tests {
 
     #[test]
     fn a_reel_that_does_not_move_still_spins_a_full_revolution() {
-        let reel = ReelAnimation::new(40, 12, 12, 0, 1.0);
+        let reel = ReelAnimation::new(40, 12, 12, 0, 1.0, false);
         assert!(reel.travel >= 40.0, "travel was {}", reel.travel);
     }
 
     #[test]
     fn reels_stop_left_to_right_exactly_once_each() {
         let lengths = vec![40; 5];
-        let mut spinner = ReelSpinner::new(&lengths, &[0; 5], &[10, 20, 30, 5, 15], 1.0);
+        let mut spinner =
+            ReelSpinner::new(&lengths, &[0; 5], &[10, 20, 30, 5, 15], 1.0, &[false; 5]);
 
         let mut order = Vec::new();
         for _ in 0..400 {
@@ -289,7 +426,7 @@ mod tests {
 
     #[test]
     fn a_spinning_reel_is_blurred_early_and_crisp_at_rest() {
-        let mut reel = ReelAnimation::new(40, 0, 20, 0, 1.0);
+        let mut reel = ReelAnimation::new(40, 0, 20, 0, 1.0, false);
         reel.tick(0.01);
         assert!(reel.speed() > BLUR_SPEED);
 
@@ -297,6 +434,78 @@ mod tests {
             reel.tick(1.0 / 60.0);
         }
         assert_eq!(reel.speed(), 0.0);
+    }
+
+    #[test]
+    fn the_landing_bounce_never_changes_where_a_reel_stops() {
+        // The bounce is presentation. If it could shift the resting position by
+        // even one symbol it would be quietly rewriting a decided outcome.
+        for target in [0usize, 3, 19, 39] {
+            let mut reel = ReelAnimation::new(40, 11, target, 1, 1.0, false);
+            for _ in 0..900 {
+                reel.tick(1.0 / 60.0);
+            }
+            assert!(reel.settled());
+            assert_eq!(reel.position().round() as usize % 40, target);
+        }
+    }
+
+    #[test]
+    fn the_bounce_actually_happens() {
+        // Guards the opposite failure: a bounce tuned to nothing is dead code.
+        let mut reel = ReelAnimation::new(40, 0, 20, 0, 1.0, false);
+        let mut peak: f32 = 0.0;
+        for _ in 0..600 {
+            reel.tick(1.0 / 60.0);
+            peak = peak.max(reel.bounce(reel.progress()).abs());
+        }
+        assert!(peak > 0.02, "the reel never wobbled (peak {})", peak);
+    }
+
+    #[test]
+    fn an_anticipating_reel_turns_for_longer() {
+        let plain = ReelAnimation::new(40, 0, 10, 2, 1.0, false);
+        let held = ReelAnimation::new(40, 0, 10, 2, 1.0, true);
+
+        assert!(held.duration > plain.duration * 2.0);
+        assert!(held.is_anticipating());
+        assert!(!plain.is_anticipating());
+    }
+
+    #[test]
+    fn anticipation_fires_only_when_the_feature_is_still_live() {
+        // Two scatters on the first two reels, needing three: every reel still
+        // to land could be the one that completes it, so all three are held
+        // back. That is what a physical cabinet does, and it is the reason a
+        // near-miss is agonising rather than instant.
+        let flags = anticipating_reels(&[1, 1, 0, 0, 0], 3, 4);
+        assert_eq!(flags, vec![false, false, true, true, true]);
+    }
+
+    #[test]
+    fn anticipation_never_fires_when_the_feature_cannot_be_reached() {
+        // One scatter and four reels left cannot make three by reel 5 unless
+        // more land, so nothing is held back yet.
+        assert_eq!(anticipating_reels(&[1, 0, 0, 0, 0], 3, 4), vec![false; 5]);
+        // And a board with no scatters at all never anticipates.
+        assert_eq!(anticipating_reels(&[0; 5], 3, 4), vec![false; 5]);
+    }
+
+    #[test]
+    fn anticipation_continues_while_the_count_keeps_climbing() {
+        // Scatters on reels 1 and 2 hold reel 3; a third scatter there means
+        // the feature has already triggered, and reels 4 and 5 are chasing a
+        // bigger award, so they keep anticipating.
+        let flags = anticipating_reels(&[1, 1, 1, 0, 0], 3, 4);
+        assert_eq!(flags, vec![false, false, true, true, true]);
+    }
+
+    #[test]
+    fn anticipation_is_capped() {
+        // Without a cap a scatter-heavy board would stretch every remaining
+        // reel and turn a spin into a slideshow.
+        let flags = anticipating_reels(&[1, 1, 1, 1, 1], 3, 2);
+        assert_eq!(flags.iter().filter(|held| **held).count(), 2);
     }
 
     #[test]
