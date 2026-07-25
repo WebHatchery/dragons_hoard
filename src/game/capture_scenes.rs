@@ -175,6 +175,26 @@ impl Game {
             }
             "waveforms" => self.show_waveforms = true,
             "vision" => self.show_vision = true,
+            "hint" => {
+                // Enough play that the first hint has come due (§5.28). It
+                // arrives because the player has won a few times and never
+                // gambled — not because the game just loaded.
+                self.hints = crate::state::hints::HintBook::load(&self.data.config).unwrap();
+                for _ in 0..60 {
+                    self.session.balance = 1_000_000;
+                    self.session.celebrations.clear();
+                    if self.session.spin(&self.data).is_err() {
+                        break;
+                    }
+                    self.drain_finished_rounds();
+                    self.achievements.observe(
+                        self.data.machine_id(),
+                        &self.session.spin(&self.data).unwrap(),
+                        self.session.balance,
+                    );
+                }
+                self.session.celebrations.clear();
+            }
             "keyboard" => {
                 // An open Vault Pick with the keyboard driving. Before §5.27
                 // this board could only be cleared with a mouse, and it holds

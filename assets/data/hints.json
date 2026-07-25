@@ -1,0 +1,34 @@
+[
+  {
+    "id": "gamble",
+    "text": "Won something? Press G to stake it on the turn of a scale — double or nothing, at even odds.",
+    "when": "wins",
+    "after": 8,
+    "earns": "gambles",
+    "until": 1
+  },
+  {
+    "id": "machines",
+    "text": "Press C to change cabinet. There are five, and they are five different games rather than five themes.",
+    "when": "spins",
+    "after": 40,
+    "earns": "machines_played",
+    "until": 2
+  },
+  {
+    "id": "ledger",
+    "text": "Press L for your ledger — what this cabinet has actually paid you, next to what it pays.",
+    "when": "spins",
+    "after": 120,
+    "earns": "ledger_opened",
+    "until": 1
+  },
+  {
+    "id": "buy",
+    "text": "Press B to buy a feature outright. Each price is set from what that feature actually pays.",
+    "when": "free_spins",
+    "after": 10,
+    "earns": "buys",
+    "until": 1
+  }
+]

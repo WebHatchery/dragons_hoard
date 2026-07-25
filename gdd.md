@@ -1269,6 +1269,42 @@ Moving focus also had to happen in `begin` rather than `finish`. Applying the
 step after the controls had drawn showed the move a frame late and, worse, would
 have activated the control the player had just left.
 
+### 5.28 Hints — telling the player the game exists (post-v1)
+
+Twenty-two systems, five cabinets, twelve overlays, twelve keyboard shortcuts —
+and a new player sees a Spin button. They will never find the gamble, the buy
+menu, the ledger or the machine picker, because nothing ever mentions them.
+
+**Not a tutorial.** A scripted tour is the obvious answer and the wrong one: it
+arrives before the player wants any of it, it gets skipped, it never comes back,
+and it has to be maintained against a game that grows a system every iteration.
+
+This is data. A hint has a **condition** — the same counter-and-threshold shape
+the achievements use (§5.9) — and an **earned** counter that retires it. "You
+have won eight times and never gambled" is a fact the game already knows; the
+hint is that fact said out loud, once.
+
+So a hint arrives when the player is ready rather than when the game loaded, and
+**a player who works something out on their own is never told about it at all**.
+Following the hint retires it just as surely as dismissing it, which is the whole
+value of a separate `earns` counter.
+
+**One at a time, in file order**, so a designer sets the teaching sequence by
+moving a line in `hints.json` rather than by editing code. Dismissals persist
+under their own key alongside preferences and achievements: a hint that has been
+read is done with, whatever happens to the bankroll.
+
+Validation rejects a set that could never work — a hint earned at zero would
+never appear, and one that shows at forty spins but retires at ten is the same
+fault spelled differently.
+
+**Where it goes is the joke that writes itself.** The hint bar sits on the
+footer's shortcut line — the small grey text listing every key, which is exactly
+the thing that does not work and the reason this section exists. While a hint is
+showing it takes that space rather than fighting it for room.
+
+`ui.rs` reached 803 lines and the wager panel moved to `ui/wager.rs`.
+
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
 - Winning lines: pulse highlight (`blink`/`pulse`), floating win amounts
@@ -1636,6 +1672,14 @@ and a Project Roost deployment record. Verified live — see §15.
   in hit frequency (a reskin fails), must not share a save slot (sharing one
   would silently overwrite a balance and hoard), must not share a symbol set,
   and an unknown machine id falls back to the first rather than failing.
+- **Hints (`state/hints.rs`):** the shipped set validates, and a hint that could
+  never appear, one that retires before it appears, or a duplicate id is
+  rejected; **a fresh player is told nothing**, since every hint waits for them
+  to have done something; a hint appears once its condition is met and never
+  returns once dismissed; **acting on a hint retires it without dismissing**,
+  which is what stops a player being told about something they already found;
+  only one shows at a time and it is the first in file order; and dismissals
+  round-trip.
 - **Keyboard navigation (`ui/nav.rs`):** focus starts on the first control and
   **exactly one is ever focused**; it wraps in both directions; activating fires
   the focused control and nothing else; **a disabled control is skipped
@@ -1860,6 +1904,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art verified only by someone looking at it | The symbol routines rasterise to a buffer in a unit test (§5.25). It disproved §5.24's own screenshot-backed claim on its first run. |
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
+| Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
 | A new machine shipping at the wrong RTP | The sim iterates `MACHINES`; a cabinet cannot be added without being measured (§5.8). |
 | Two machines sharing a save slot | Slots are `<machine>_<slot>`; a test asserts they are distinct. |
 | Jackpots exploitable by bet-switching | Odds are per credit wagered, so the trigger is bet-fair by construction (§5.6) and tested. The bet-ladder sim test excludes jackpots deliberately — they are too high-variance to compare over 20k spins — and their return is checked against its closed form instead. |
@@ -1892,9 +1937,9 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus twenty-two post-v1 systems
+## 15. Current State — v1 shipped, plus twenty-three post-v1 systems
 
-**All five phases are done, every item in §14 is met**, and twenty-two systems have
+**All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
 machines (§5.8), achievements (§5.9), the Vault Pick (§5.10), the reel-feel pass
 (§5.11), the Dragon's Wrath (§5.12), the Feature Buy (§5.13), ways-to-win
@@ -1903,11 +1948,11 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27). The game is
+navigation (§5.27) and hints (§5.28). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-298 tests pass here and 169 in `macroquad-toolkit`; `cargo fmt --check`,
+307 tests pass here and 169 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
 release build are clean. Every `.rs` file is under the 800-line limit, `data.rs`
 (741) and `ui/reels.rs` (738) the largest — `state/spin.rs` dropped from 615 to
@@ -1925,7 +1970,7 @@ Captures in `docs/verification/`: `ui_idle`, `ui_spin`, `ui_win`, `ui_freespins`
 `ui_bonus`, `ui_feature_card`, `ui_hatch`, `ui_jackpot`, `ui_autospin`,
 `ui_anticipation`, `ui_wrath`, `ui_featurebuy`, `ui_ways`, `ui_cascade`,
 `ui_gamble`, `ui_ledger`, `ui_waveforms`, `ui_shifting`, `ui_refining`,
-`ui_vision`, `ui_keyboard`. The catalog card image at the project root is produced by the same
+`ui_vision`, `ui_keyboard`, `ui_hint`. The catalog card image at the project root is produced by the same
 harness. `ui_spin` is captured at 20 frames rather than 150 — at the default
 the spin has already finished, so the blur it is meant to show is not there.
 

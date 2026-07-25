@@ -136,6 +136,13 @@ impl Ledger {
         entry.best_round = entry.best_round.max(credits as f64 / wagered as f64);
     }
 
+    /// Rounds that paid anything, across every cabinet. What the hints (§5.28)
+    /// mean by "wins" — a round rather than a spin, so a feature that paid once
+    /// over twelve free spins counts once.
+    pub fn total_hits(&self) -> i64 {
+        self.machines.values().map(|entry| entry.hits as i64).sum()
+    }
+
     /// Total rounds across every cabinet, for the panel header.
     pub fn total_rounds(&self) -> u64 {
         self.machines.values().map(|entry| entry.rounds()).sum()

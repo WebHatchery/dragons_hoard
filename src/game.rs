@@ -51,6 +51,8 @@ pub struct Game {
     /// Which control the keyboard is on (§5.27). Lives here because the index
     /// has to persist and the controls do not.
     nav: ui::nav::Nav,
+    /// What the game has not yet told this player (§5.28).
+    hints: crate::state::hints::HintBook,
     /// Measured cabinet profiles (§5.17). Lives here rather than on the session
     /// because it describes the catalog, not one machine's play.
     profiles: crate::state::profile::ProfileBook,
@@ -113,6 +115,8 @@ impl Game {
         sound.set_volume(session.preferences.sfx_volume());
 
         let ledger = crate::state::ledger::Ledger::load(&data.config);
+        let hints = crate::state::hints::HintBook::load(&data.config)
+            .unwrap_or_else(|err| panic!("hints.json failed to load: {}", err));
 
         let mut game = Self {
             data,
@@ -133,6 +137,7 @@ impl Game {
             show_waveforms: false,
             show_vision: false,
             nav: ui::nav::Nav::default(),
+            hints,
             profiles: crate::state::profile::ProfileBook::default(),
             achievements,
             ledger,
@@ -194,6 +199,9 @@ impl Game {
                 show_ledger: self.show_ledger,
                 show_waveforms: self.show_waveforms,
                 show_vision: self.show_vision,
+                hint: self
+                    .hints
+                    .current(self.achievements.progress(), &self.ledger),
                 profiles: &self.profiles,
                 achievements: &self.achievements,
                 shake: self.shake.offset(),
@@ -309,6 +317,16 @@ impl Game {
                 },
             );
         }
+    }
+
+    /// Record something a hint (§5.28) was waiting for, and persist it.
+    ///
+    /// The counters live with the hints rather than in the save slot: a hint
+    /// already acted on must not come back because the player started a new
+    /// game, any more than an achievement would.
+    fn note_hint_progress(&mut self, note: impl Fn(&mut crate::state::hints::HintProgress)) {
+        note(self.hints.progress_mut());
+        let _ = self.hints.save(&self.data.config);
     }
 
     /// Write any round the last stake closed into the ledger (§5.18).
@@ -510,6 +528,7 @@ impl Game {
                 self.sound.play(Sfx::Click);
             }
             ActionOutcome::GambleOffered => {
+                self.note_hint_progress(|counters| counters.gambles += 1);
                 self.sound.play(Sfx::Scatter);
                 self.show_featurebuy = false;
             }
@@ -539,8 +558,22 @@ impl Game {
                 self.show_waveforms = !self.show_waveforms;
                 self.sound.play(Sfx::Click);
             }
+            ActionOutcome::HintDismissed => {
+                if let Some(id) = self
+                    .hints
+                    .current(self.achievements.progress(), &self.ledger)
+                    .map(|hint| hint.id.clone())
+                {
+                    self.hints.dismiss(&id);
+                    let _ = self.hints.save(&self.data.config);
+                }
+                self.sound.play(Sfx::Click);
+            }
             ActionOutcome::LedgerToggled => {
                 self.show_ledger = !self.show_ledger;
+                if self.show_ledger {
+                    self.note_hint_progress(|counters| counters.ledger_opened += 1);
+                }
                 // The panel compares the player against the machine, so the
                 // machine has to have been measured. Asking here means opening
                 // the ledger starts the profiler if the picker never did.
@@ -554,6 +587,7 @@ impl Game {
                 self.sound.play(Sfx::Click);
             }
             ActionOutcome::FeatureBought(purchase) => {
+                self.note_hint_progress(|counters| counters.buys += 1);
                 // The menu closes itself: what was bought is about to take over
                 // the screen, and leaving the overlay up would hide it.
                 self.show_featurebuy = false;

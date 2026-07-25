@@ -32,6 +32,7 @@ pub enum ActionOutcome {
     AchievementsToggled,
     FeatureBuyToggled,
     LedgerToggled,
+    HintDismissed,
     WaveformsToggled,
     VisionToggled,
     /// A gamble opened, flipped, or was taken (§5.16).
@@ -90,6 +91,7 @@ pub fn apply(
         UiAction::ToggleAchievements => ActionOutcome::AchievementsToggled,
         UiAction::ToggleFeatureBuy => ActionOutcome::FeatureBuyToggled,
         UiAction::ToggleLedger => ActionOutcome::LedgerToggled,
+        UiAction::DismissHint => ActionOutcome::HintDismissed,
         UiAction::ToggleWaveforms => ActionOutcome::WaveformsToggled,
         UiAction::ToggleVision => ActionOutcome::VisionToggled,
         UiAction::OfferGamble => match session.begin_gamble(data) {
