@@ -2061,6 +2061,47 @@ through one helper.
 The audit is clean under all six themes, at 130% text and under
 pseudolocalisation.
 
+### 5.44 A score per cabinet (post-v1)
+
+§5.41 gave every cabinet its own symbols and §5.43 its own room. All six still
+played the same four-track loop, which is the same gap one sense over.
+
+**The constraint shaped the design.** `Music::load` is async and switching
+cabinets is not — re-rendering four tracks mid-game is not something the machine
+picker can await, and pre-rendering six scores at boot is six times the work and
+the memory for five arrangements nobody is listening to.
+
+So a cabinet does not get its own *notes*; it gets its own **instrumentation**.
+The stem palette grew from four to eight — bass, pad, arpeggio, drum, plus a
+**bell** on the bar line, a **drone** under everything, an offbeat **pluck** and a
+sixteenth **rattle** — rendered once, and each cabinet names a mix. It is the same
+shape as the symbol sets: a shared resource, a per-cabinet selection.
+
+Key and tempo are therefore shared, and **have to be**: stems that did not agree
+on both could not be layered at all. That is a real limit and worth stating — the
+cabinets differ in what is playing, not in what it is playing.
+
+The mix is written as a **grid** rather than a match, because that is what it is
+and because a grid reads down a column: it is immediately visible that the drum
+belongs to the held rounds everywhere, and that no two rooms sound alike. Frost
+is bell and drone with the bass held back; Emberfall runs rattle and drum from
+the first spin, which nothing else does; Wyrmspire is pad and air with almost no
+low end; Avalanche is weight waiting to move; Tidepool keeps the arpeggio going
+even at rest.
+
+**Switching cabinet is a fade, not a cut** — the stems never stop, so a machine
+change sounds like a mood change rather than like the music restarting.
+
+Six tests carry it, and two are new in kind: **no two cabinets sound the same**,
+and **every cabinet plays at least three stems in every mood** — fewer reads as a
+sound rather than as music.
+
+**The waveform panel earned its keep a third time.** The drone came out at
+**0.012 peak against the bass's 0.202** — a fifty-percent attack on an eleven-
+second note never arrives — and the pluck and rattle at 0.08, which is audible in
+principle and not in a mix. All three were levelled. That is the same fault, found
+the same way, that §5.31 found in the arpeggio and the drum.
+
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
 - Winning lines: pulse highlight (`blink`/`pulse`), floating win amounts
@@ -2661,6 +2702,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
+| Six cabinets that sound like one cabinet | Eight shared stems rendered once, with a per-cabinet mix (§5.44). Async loading rules out re-rendering on a machine switch, so cabinets differ in instrumentation rather than in key. |
 | Recolouring an interface by hand | 298 palette uses became theme-backed accessors, and every theme is run through the contrast gate and the layout audit (§5.43). A gate is permission to change, not only a check. |
 | Six cabinets that look like one cabinet | Each set keeps the shared low-tier shapes and gets its own premiums and palette (§5.42), with the dichromacy gate forcing an accent rather than a single hue. |
 | Retheming a cabinet meaning editing a copy | A symbol's identity is a shared set and its payouts stay with the cabinet (§5.41). Four cabinets carried byte-identical definitions before the split. |
@@ -2708,7 +2750,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus thirty-eight post-v1 systems
+## 15. Current State — v1 shipped, plus thirty-nine post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
@@ -2719,11 +2761,11 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) and a room to match (§5.43). The game is
+navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) and a score of its own (§5.44). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-433 tests pass here and 245 in `macroquad-toolkit`; `cargo fmt --check`,
+436 tests pass here and 245 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
 release build are clean. Every `.rs` file is under the 800-line limit, `data.rs`
 (792) and `ui/reels.rs` (734) the largest — `state/spin.rs` dropped from 615 to

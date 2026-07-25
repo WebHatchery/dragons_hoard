@@ -133,6 +133,7 @@ impl Game {
         sound.set_volume(session.preferences.sfx_volume());
         let mut music = music;
         music.set_volume(session.preferences.music_volume());
+        music.set_arrangement(crate::music::arrangement(data.theme_name()));
         // Text size (§5.38). Set once at boot and again whenever it changes;
         // the toolkit applies it to drawing and measurement together, so the
         // layout audit measures what the player actually sees.
@@ -296,6 +297,7 @@ impl Game {
                 show_waveforms: self.show_waveforms,
                 music_levels: self.music.levels(),
                 music_mood: self.music.mood(),
+                music_arrangement: self.music.arrangement(),
                 show_vision: self.show_vision,
                 // Not while a panel is up (§5.28). A hint offers something to
                 // do next, and behind a modal there is nothing to do next — it
@@ -641,6 +643,8 @@ impl Game {
         preferences.machine_id = machine.id.to_owned();
         self.data = data;
         ui::theme::set(ui::theme::by_name(self.data.theme_name()));
+        self.music
+            .set_arrangement(crate::music::arrangement(self.data.theme_name()));
         self.session = self.load_machine_session();
         self.session.preferences = preferences;
 

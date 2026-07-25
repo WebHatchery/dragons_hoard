@@ -181,6 +181,7 @@ pub struct UiContext<'a> {
     /// Live mix, for the waveform inspector (§5.31).
     pub music_levels: [f32; crate::music::Track::ALL.len()],
     pub music_mood: crate::music::Mood,
+    pub music_arrangement: crate::music::Arrangement,
     pub show_vision: bool,
     /// The hint on offer, if any (§5.28).
     pub hint: Option<&'a crate::state::hints::HintDef>,
@@ -246,7 +247,14 @@ pub fn draw_game_ui(ctx: UiContext<'_>, nav: &mut Nav) -> Vec<UiAction> {
     }
 
     if ctx.show_waveforms {
-        waveform::draw(ctx.music_levels, ctx.music_mood, mouse, &mut actions, nav);
+        waveform::draw(
+            ctx.music_levels,
+            ctx.music_mood,
+            ctx.music_arrangement,
+            mouse,
+            &mut actions,
+            nav,
+        );
     }
 
     if ctx.show_ledger {

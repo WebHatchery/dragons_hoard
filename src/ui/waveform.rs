@@ -40,6 +40,7 @@ const PLOT_SEED: u64 = 0xA11CE;
 pub fn draw(
     levels: [f32; Track::ALL.len()],
     mood: music::Mood,
+    arrangement: music::Arrangement,
     mouse: Vec2,
     actions: &mut Vec<UiAction>,
     nav: &mut Nav,
@@ -69,7 +70,10 @@ pub fn draw(
         TextStyle::new(20.0, palette::gold_bright()).params(),
     );
     draw_text_right(
-        &format!("mood: {:?}   ·   peak · length · shape", mood),
+        &format!(
+            "{} · {:?}   ·   peak · length · shape",
+            arrangement.id, mood
+        ),
         panel.right() - 130.0,
         panel.y + 29.0,
         TextStyle::new(14.0, palette::text_dim()),
@@ -124,7 +128,7 @@ pub fn draw(
                         // last mood was cut off, which is the one place this
                         // line had to be complete.
                         let initial = format!("{:?}", mood).chars().next().unwrap_or('?');
-                        format!("{}{:.0}", initial, mood.gain(*track) * 100.0)
+                        format!("{}{:.0}", initial, arrangement.gain(*mood, *track) * 100.0)
                     })
                     .collect::<Vec<_>>()
                     .join(" ")
