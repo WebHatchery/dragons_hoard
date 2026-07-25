@@ -157,6 +157,15 @@ impl Game {
             }
             "paytable" => self.show_paytable = true,
             "machines" => self.show_machines = true,
+            "bonus" => {
+                self.fast_forward_to(|session| session.bonus.is_some());
+                self.session.celebrations.clear();
+                // Turn a few over so the capture shows a board in play rather
+                // than twelve closed chests.
+                for index in [0usize, 1, 2, 5] {
+                    self.session.pick_bonus(index, &self.data);
+                }
+            }
             "achievements" => {
                 self.fast_forward_to(|session| session.stats.hatches > 0);
                 // The hatch that got us here raised a card; the panel is the
@@ -188,7 +197,9 @@ impl Game {
         for _ in 0..20_000 {
             self.session.balance = self.data.config.starting_balance;
             self.session.celebrations.clear();
-            let Ok(resolution) = self.session.spin(&self.data) else {
+            // A scene may want to catch a board mid-round, so settle without the
+            // headless auto-play and let the predicate look first.
+            let Ok(resolution) = self.session.spin_leaving_bonus(&self.data) else {
                 break;
             };
             // The headless path skips `report_spin`, so record here too — a
@@ -196,7 +207,16 @@ impl Game {
             // rather than a column of zeroes.
             self.achievements
                 .observe(self.data.machine_id(), &resolution, self.session.balance);
+
             if reached(&self.session) {
+                return;
+            }
+
+            // Nothing wanted the open board, so play it out — and look again,
+            // because finishing a board is what raises the Hatch card. Checking
+            // only before this is what left the `hatch` scene spinning 20,000
+            // times and photographing nothing.
+            if self.session.auto_play_bonus(&self.data).is_some() && reached(&self.session) {
                 return;
             }
         }
@@ -555,6 +575,13 @@ impl Game {
             ActionOutcome::MachinesToggled => {
                 self.show_machines = !self.show_machines;
                 self.sound.play(Sfx::Click);
+            }
+            ActionOutcome::BonusPicked => self.sound.play(Sfx::Click),
+            ActionOutcome::BonusFinished(credits) => {
+                self.sound.play(Sfx::WinBig);
+                self.notifications
+                    .success(format!("The vault yields {} credits", credits));
+                self.autosave();
             }
             ActionOutcome::AchievementsToggled => {
                 self.show_achievements = !self.show_achievements;

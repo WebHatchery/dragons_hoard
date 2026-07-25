@@ -2,6 +2,7 @@
 
 pub mod achievements;
 pub mod autospin;
+pub mod bonus;
 pub mod celebration;
 pub mod hoard;
 pub mod jackpot;
@@ -12,6 +13,7 @@ pub mod spin;
 use crate::data::GameData;
 use crate::engine::{self, Grid, SpinMode, SpinOutcome, SpinResult};
 use autospin::{AutospinState, AutospinStop};
+use bonus::{BonusOutcome, BonusRound};
 use celebration::{CelebrationKind, CelebrationQueue};
 use jackpot::{JackpotState, JackpotWin};
 use macroquad_toolkit::rng::SeededRng;
@@ -42,7 +44,8 @@ pub struct SpinResolution {
     pub was_free_spin: bool,
     /// Line + scatter credits, already multiplied.
     pub spin_credits: i64,
-    /// Hatch bonus paid this spin, if the meter filled.
+    /// Hatch prize paid this spin. Zero when the hoard opened a Vault Pick
+    /// instead and the player has not finished it yet (§5.10).
     pub hatch_credits: i64,
     /// A progressive that landed on this spin. Independent of the reels.
     pub jackpot: Option<JackpotWin>,
@@ -79,11 +82,12 @@ struct SpinHighlights {
     retriggered: bool,
     scatters: usize,
     hatch_credits: i64,
-    eggs_cashed: u32,
     credited: i64,
     finished: Option<FreeSpinState>,
     jackpot: Option<JackpotWin>,
     was_free_spin: bool,
+    /// The hoard filled and dealt a board; the run must stop for it.
+    opened_bonus: bool,
 }
 
 /// A spin that has been paid for and decided but not yet revealed.
@@ -115,6 +119,9 @@ pub struct GameSession {
     pub phase: SpinPhase,
     /// Full-screen cards waiting to be shown. These hold the game while active.
     pub celebrations: CelebrationQueue,
+    /// An open Vault Pick. Holds the game exactly as a celebration card does —
+    /// it is waiting on the player.
+    pub bonus: Option<BonusRound>,
     pub autospin: Option<AutospinState>,
     /// Player preferences. Deliberately *not* part of `SaveData` — volume and
     /// spin speed belong to the player, not to a save slot, so a New Game or a
@@ -143,6 +150,7 @@ impl GameSession {
             rng: SeededRng::new(seed),
             phase: SpinPhase::Idle,
             celebrations: CelebrationQueue::default(),
+            bonus: None,
             autospin: None,
             preferences: Preferences::with_defaults(&data.config),
             reel_stops: vec![0; data.reels.len()],
@@ -169,6 +177,7 @@ impl GameSession {
             rng: save.rng,
             phase: SpinPhase::Idle,
             celebrations: CelebrationQueue::default(),
+            bonus: None,
             autospin: None,
             preferences: Preferences::with_defaults(&data.config),
             reel_stops: vec![0; data.reels.len()],
@@ -204,9 +213,39 @@ impl GameSession {
         self.is_settled() && self.can_afford_spin(data)
     }
 
-    /// Nothing in flight: no reels turning, no payout counting, no card showing.
+    /// Nothing in flight: no reels turning, no payout counting, no card showing,
+    /// no bonus board waiting on a pick.
     pub fn is_settled(&self) -> bool {
-        self.phase.is_idle() && !self.celebrations.is_active()
+        self.phase.is_idle() && !self.celebrations.is_active() && self.bonus.is_none()
+    }
+
+    /// Turn a chest over. Credits the balance and raises the Hatch card when
+    /// the round ends.
+    pub fn pick_bonus(&mut self, index: usize, data: &GameData) -> Option<BonusOutcome> {
+        let outcome = self.bonus.as_mut()?.pick(index)?;
+        self.finish_bonus(&outcome, data);
+        Some(outcome)
+    }
+
+    /// Play an open board out without a player — the headless spin path, the
+    /// sim and the capture harness.
+    pub fn auto_play_bonus(&mut self, data: &GameData) -> Option<BonusOutcome> {
+        let round = self.bonus.as_mut()?;
+        let outcome = bonus::auto_play(round);
+        self.finish_bonus(&outcome, data);
+        Some(outcome)
+    }
+
+    fn finish_bonus(&mut self, outcome: &BonusOutcome, data: &GameData) {
+        self.bonus = None;
+        self.balance += outcome.credits;
+        self.stats.total_won += outcome.credits;
+        self.stats.biggest_win = self.stats.biggest_win.max(outcome.credits);
+        self.last_win += outcome.credits;
+        self.celebrations.push(CelebrationKind::Hatch {
+            credits: outcome.credits,
+            eggs: data.config.hoard_capacity,
+        });
     }
 
     fn can_afford_spin(&self, data: &GameData) -> bool {
@@ -275,12 +314,27 @@ impl GameSession {
     /// Run one spin end to end with no animation: debit, roll, evaluate, credit,
     /// resolve features.
     ///
-    /// This is the headless path, taken by the Monte-Carlo sim, the unit tests,
-    /// and the screenshot harness when it needs to fast-forward into a
-    /// particular game state. Play always goes through
-    /// [`begin_spin`](Self::begin_spin) instead, so the reels get to turn. Both
-    /// share `roll_spin` + `settle_spin`, so the sim exercises the real rules.
+    /// The headless path in one call, for the Monte-Carlo sim and the unit
+    /// tests. Play goes through [`begin_spin`](Self::begin_spin) so the reels
+    /// turn; the capture harness uses
+    /// [`spin_leaving_bonus`](Self::spin_leaving_bonus) directly because it
+    /// sometimes wants to stop on an open board. All three share `roll_spin` +
+    /// `settle_spin`, so the sim exercises the real rules.
+    #[cfg(test)]
     pub fn spin(&mut self, data: &GameData) -> Result<SpinResolution, SpinBlocked> {
+        let mut resolution = self.spin_leaving_bonus(data)?;
+        // A board dealt on this spin is played out immediately, so the headless
+        // path stays one call and the sim measures the feature's real EV.
+        if let Some(outcome) = self.auto_play_bonus(data) {
+            resolution.hatch_credits += outcome.credits;
+        }
+        Ok(resolution)
+    }
+
+    /// Settle a spin but leave any dealt board open, for callers that want to
+    /// present the Vault Pick rather than resolve it — the capture harness, and
+    /// tests that need to observe the moment a board appears.
+    pub fn spin_leaving_bonus(&mut self, data: &GameData) -> Result<SpinResolution, SpinBlocked> {
         let pending = self.roll_spin(data)?;
         Ok(self.settle_spin(data, pending))
     }
@@ -317,6 +371,12 @@ impl GameSession {
             events.push(SpinEvent::CelebrationOpened(opened));
         }
         if self.celebrations.is_active() {
+            return events;
+        }
+        // An open board holds the reels for the same reason a card does: the
+        // game is waiting on the player, and the auto-chain must not run on
+        // underneath it.
+        if self.bonus.is_some() {
             return events;
         }
 
@@ -424,13 +484,14 @@ impl GameSession {
         } = pending;
 
         self.hoard.add_eggs(result.outcome.egg_count, line_bet);
-        let hatch_credits = match self.hoard.take_hatch(&data.config) {
-            Some(credits) => {
-                self.stats.hatches += 1;
-                credits
-            }
-            None => 0,
-        };
+        // A full hoard no longer pays out on the spot: it deals a Vault Pick
+        // board for the same expected prize (§5.10). `hatch_credits` therefore
+        // stays zero here and is credited when the round ends.
+        if let Some(base) = self.hoard.take_hatch(&data.config) {
+            self.stats.hatches += 1;
+            self.bonus = Some(BonusRound::new(base, &data.bonus, &mut self.rng));
+        }
+        let hatch_credits = 0;
 
         // Only a paid spin rolls for a progressive: a free spin staked nothing,
         // so it fed nothing into the pots and cannot draw from them.
@@ -465,11 +526,11 @@ impl GameSession {
             retriggered,
             scatters: result.outcome.scatter_count,
             hatch_credits,
-            eggs_cashed: data.config.hoard_capacity,
             credited,
             finished,
             jackpot: jackpot.clone(),
             was_free_spin,
+            opened_bonus: self.bonus.is_some(),
         };
         self.queue_celebrations(data, &highlights);
         self.check_autospin(data, &highlights);
@@ -507,13 +568,6 @@ impl GameSession {
             });
         }
 
-        if highlights.hatch_credits > 0 {
-            self.celebrations.push(CelebrationKind::Hatch {
-                credits: highlights.hatch_credits,
-                eggs: highlights.eggs_cashed,
-            });
-        }
-
         // A jackpot outranks a big-win card — stacking both would announce the
         // same money twice, with the smaller headline second.
         if let Some(win) = highlights.jackpot.as_ref() {
@@ -540,7 +594,7 @@ impl GameSession {
             Some(AutospinStop::JackpotWon)
         } else if highlights.awarded > 0 {
             Some(AutospinStop::FeatureTriggered)
-        } else if highlights.hatch_credits > 0 {
+        } else if highlights.opened_bonus {
             Some(AutospinStop::Hatched)
         } else if highlights.credited >= self.big_win_threshold(data) {
             Some(AutospinStop::BigWin)

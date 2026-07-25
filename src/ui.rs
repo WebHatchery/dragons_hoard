@@ -1,6 +1,7 @@
 //! Immediate-mode UI. Pure view layer: it reads state and returns intents.
 
 pub mod achievements;
+pub mod bonus;
 pub mod celebration;
 pub mod machines;
 pub mod paytable;
@@ -55,6 +56,8 @@ pub enum UiAction {
     CycleAutospinLength,
     ToggleShake,
     ToggleParticles,
+    /// Turn over a chest in the Vault Pick (§5.10).
+    PickBonus(usize),
     /// Cut the showing celebration card short.
     DismissCelebration,
     NewGame,
@@ -103,6 +106,22 @@ pub fn draw_game_ui(ctx: UiContext<'_>) -> Vec<UiAction> {
             &ctx.data.config,
             &ctx.session.preferences,
             mouse,
+            &mut actions,
+        );
+    }
+
+    // The bonus board sits over the game but under a card, so the Hatch card
+    // that closes the round still reads as the last word.
+    if let Some(round) = ctx.session.bonus.as_ref() {
+        bonus::draw(
+            round,
+            ctx.data
+                .symbols
+                .iter()
+                .find(|(_, def)| def.art == "chest")
+                .map(|(_, def)| def),
+            mouse,
+            ctx.ui_time,
             &mut actions,
         );
     }

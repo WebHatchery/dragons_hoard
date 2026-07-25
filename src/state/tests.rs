@@ -474,6 +474,7 @@ fn a_legacy_save_migrates_to_the_current_shape() {
     assert_eq!(migrated.hoard.count, 6);
 }
 
+mod bonus;
 mod jackpots;
 mod machines;
 mod preferences;

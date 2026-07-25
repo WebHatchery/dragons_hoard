@@ -10,6 +10,10 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 const TEXTURE_MANIFEST_JSON: &str = include_str!("../assets/data/texture_manifest.json");
+/// Shared across machines on purpose: the bonus is a presentation layer over
+/// the hoard whose expected value is normalised to 1000 permille, so each
+/// cabinet's own `hatch_pot_multiplier` is what scales it (§5.10).
+const BONUS_JSON: &str = include_str!("../assets/data/bonus.json");
 
 /// One playable machine: a complete, self-contained set of maths and content.
 ///
@@ -267,6 +271,16 @@ pub struct Jackpots {
     pub tiers: Vec<JackpotTier>,
 }
 
+/// The Vault Pick board (§5.10).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BonusConfig {
+    pub board_size: usize,
+    /// How many empty chests end the round.
+    pub blanks: usize,
+    /// Prize pool, in permille of the hatch base. Drawn with replacement.
+    pub prizes_permille: Vec<i64>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Payline {
     pub id: u32,
@@ -305,6 +319,7 @@ pub struct GameData {
     pub paylines: Vec<Payline>,
     pub freespins: FreeSpinsConfig,
     pub jackpots: Jackpots,
+    pub bonus: BonusConfig,
     pub texture_manifest: Vec<TextureConfig>,
 }
 
@@ -327,6 +342,7 @@ impl GameData {
         let freespins: FreeSpinsConfig =
             load_embedded_json_labeled(&label("freespins"), machine.freespins)?;
         let jackpots: Jackpots = load_embedded_json_labeled(&label("jackpots"), machine.jackpots)?;
+        let bonus: BonusConfig = load_embedded_json_labeled("bonus", BONUS_JSON)?;
         let texture_manifest = load_embedded_json(TEXTURE_MANIFEST_JSON)?;
 
         let reels = resolve_strips(&symbols, &strips)?;
@@ -338,6 +354,7 @@ impl GameData {
             paylines,
             freespins,
             jackpots,
+            bonus,
             texture_manifest,
         };
         data.validate()?;
@@ -438,6 +455,15 @@ impl GameData {
             return Err("autospin choices must all be positive".to_owned());
         }
         crate::state::jackpot::validate(&self.jackpots, &self.config)?;
+        if self.bonus.prizes_permille.is_empty() {
+            return Err("bonus.json declared no prizes".to_owned());
+        }
+        if self.bonus.blanks == 0 {
+            return Err("a bonus round with no blanks could never end".to_owned());
+        }
+        if self.bonus.blanks >= self.bonus.board_size {
+            return Err("bonus blanks must leave room for at least one prize".to_owned());
+        }
         Ok(())
     }
 }

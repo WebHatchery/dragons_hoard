@@ -28,6 +28,10 @@ pub enum ActionOutcome {
     SettingsToggled,
     MachinesToggled,
     AchievementsToggled,
+    /// A chest was turned over and the round continues.
+    BonusPicked,
+    /// The last blank was found; the round paid out.
+    BonusFinished(i64),
     /// The player picked a cabinet; the orchestrator owns the swap because it
     /// has to rebuild `GameData` and move save slots.
     MachineSelected(usize),
@@ -69,6 +73,10 @@ pub fn apply(
         UiAction::ToggleSettings => ActionOutcome::SettingsToggled,
         UiAction::ToggleMachines => ActionOutcome::MachinesToggled,
         UiAction::ToggleAchievements => ActionOutcome::AchievementsToggled,
+        UiAction::PickBonus(index) => match session.pick_bonus(index, data) {
+            Some(outcome) => ActionOutcome::BonusFinished(outcome.credits),
+            None => ActionOutcome::BonusPicked,
+        },
         UiAction::SelectMachine(index) => ActionOutcome::MachineSelected(index),
         UiAction::VolumeUp => {
             session.preferences.adjust_volume(0.1);

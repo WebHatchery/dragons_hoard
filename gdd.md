@@ -325,6 +325,43 @@ would sting more than losing a spin's worth of credits.
 The overlay shows locked entries with their progress (`18 / 100`) rather than
 greying them out: a goal you cannot see the shape of is a surprise, not a goal.
 
+### 5.10 The Vault Pick (post-v1)
+
+Filling the hoard no longer pays on the spot. It deals a board of twelve chests;
+the player picks until three come up empty, and each prize revealed adds a share
+of the hatch prize.
+
+**It replaces a payout rather than adding one.** Every prize is *permille of the
+hatch base*, and the table is built so the expected sum is 1000‰ — so the bonus
+pays what the instant hatch paid, on average, and only the **variance** changes.
+That is why a whole interactive feature could be added to a game already tuned to
+0.9567 and 0.9475 without re-cutting a single reel strip: measured after, Frost
+Wyrm was unmoved at 0.9475 and Dragon's Hoard shifted 0.9567 → 0.9591, drift from
+the RNG stream rather than from the feature. A deliberate contrast with the
+jackpot layer (§5.6), which cost a full paytable retune.
+
+The same normalisation is why **one shared `bonus.json` serves both machines**:
+each cabinet's own `hatch_pot_multiplier` already scales the base, so the board
+does not need to know which machine it is on.
+
+**The board is dealt at trigger, not at pick.** Contents are drawn and shuffled
+from the session RNG the moment the bonus opens, exactly like reel stops (§8.2).
+Picking only reveals a decided board — which is what lets the headless path
+auto-play it so the sim measures the real feature. Because the board is shuffled,
+picking in index order is statistically identical to picking at random, so the
+sim's auto-play is honest rather than a convenient fiction. A test asserts
+hand-picking and auto-play reach the same total from one seed.
+
+`expected_permille` gives the feature's value in closed form: with `p` prizes and
+`b` blanks shuffled together, `p · b / (b + 1)` prizes are revealed before the
+last blank. Two tests hold the table to it — one against the formula, one against
+20,000 simulated boards.
+
+An open board **holds the game** for the same reason a celebration card does
+(§8.2.1): the reels must not turn and the auto-chain must not run on underneath
+it. `is_settled()` gained a third clause. Re-picking a revealed chest is ignored
+rather than an error — a double click must not cost the player a blank.
+
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
 - Winning lines: pulse highlight (`blink`/`pulse`), floating win amounts
@@ -452,6 +489,8 @@ every `.rs` under the **800-line hard limit**; split by responsibility.
 | `src/state/jackpot.rs` | Progressive pots: contribution, bet-fair trigger, closed-form RTP (§5.6). |
 | `src/state/preferences.rs` | Player settings on top of the toolkit's `GameSettings` (§5.7). |
 | `src/state/achievements.rs` | Unlock conditions and cross-machine progress (§5.9). |
+| `src/state/bonus.rs` | The Vault Pick board, deal and auto-play (§5.10). |
+| `src/ui/bonus.rs` | The pick board renderer. |
 | `src/ui/achievements.rs` | The achievements overlay. |
 | `src/ui/settings.rs` | The settings overlay. |
 | `src/ui/paytable.rs` | The paytable overlay (split out of `ui.rs` at the size limit). |
@@ -690,6 +729,17 @@ and a Project Roost deployment record. Verified live — see §15.
   in hit frequency (a reskin fails), must not share a save slot (sharing one
   would silently overwrite a balance and hoard), must not share a symbol set,
   and an unknown machine id falls back to the first rather than failing.
+- **The Vault Pick (`state/bonus.rs`, `state/tests/bonus.rs`):** the board holds
+  exactly the configured blanks; **nothing is visible before it is picked** (the
+  renderer only ever sees `revealed_cell`); a round ends on the last blank and
+  not before; re-picking a chest, or picking after the round is over, costs
+  nothing; auto-play always terminates; the same seed deals the same board; a
+  bigger pot pays proportionally more; a hand-edited config with more blanks than
+  cells still deals a playable board. End to end: filling the hoard deals a board
+  instead of paying, an open board holds the game and refuses a spin without
+  taking a stake, hand-picking and auto-play reach the same total, `spin()`
+  resolves its own board so the sim never stalls, and **boards pay the permille
+  the closed form predicts** — the assertion that the swap did not move the money.
 - **Achievements (`state/achievements.rs`):** the shipped definitions validate;
   a zero threshold is rejected (it would unlock before the player did anything)
   and so are duplicate ids; nothing is unlocked before playing; the first spin
@@ -742,7 +792,8 @@ and a Project Roost deployment record. Verified live — see §15.
 | A new machine shipping at the wrong RTP | The sim iterates `MACHINES`; a cabinet cannot be added without being measured (§5.8). |
 | Two machines sharing a save slot | Slots are `<machine>_<slot>`; a test asserts they are distinct. |
 | Jackpots exploitable by bet-switching | Odds are per credit wagered, so the trigger is bet-fair by construction (§5.6) and tested. The bet-ladder sim test excludes jackpots deliberately — they are too high-variance to compare over 20k spins — and their return is checked against its closed form instead. |
-| A new layer silently moving RTP | Adding jackpots took RTP from 0.961 to 1.000; the Monte-Carlo gate caught it and the paytable JSON absorbed it. Any future layer must be added to the sim in the same change. |
+| A new layer silently moving RTP | Adding jackpots took RTP from 0.961 to 1.000; the Monte-Carlo gate caught it and the paytable JSON absorbed it. Any future layer must be added to the sim in the same change. The Vault Pick (§5.10) shows the other approach: normalise the feature to the payout it replaces and the RTP does not move at all. |
+| A bonus round that cannot end | `blanks` must be non-zero and leave at least one prize, checked in `GameData::validate`; `BonusRound::new` additionally clamps a hand-edited board, and a test plays out a deliberately malformed config. |
 | Gambling optics | Explicit play-money framing in `game_page.json`; no purchases, no real value. Progressives grow only from play-money stakes and reset to a fixed seed. |
 
 ---
@@ -770,24 +821,24 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus four post-v1 systems
+## 15. Current State — v1 shipped, plus five post-v1 systems
 
-**All five phases are done, every item in §14 is met**, and four systems have
+**All five phases are done, every item in §14 is met**, and five systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
-machines (§5.8) and achievements (§5.9). The game is
+machines (§5.8), achievements (§5.9) and the Vault Pick (§5.10). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-148 tests pass; `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`
+164 tests pass; `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`
 and the `wasm32-unknown-unknown` release build are clean. Every `.rs` file is
-under the 800-line limit; `game.rs` (699) is now the largest.
+under the 800-line limit; `game.rs` is the largest and closest to it.
 
-Measured RTP over 1,000,000 spins: Dragon's Hoard **0.9567** at **0.410** hit
-frequency, Frost Wyrm **0.9475** at **0.259**.
+Measured RTP over 1,000,000 spins: Dragon's Hoard **0.9591** at **0.411** hit
+frequency, Frost Wyrm **0.9475** at **0.258**.
 
 Captures in `docs/verification/`: `ui_idle`, `ui_spin`, `ui_win`, `ui_freespins`,
 `ui_paytable`, `ui_settings`, `ui_machines`, `ui_frost`, `ui_achievements`,
-`ui_feature_card`, `ui_hatch`, `ui_jackpot`, `ui_autospin`. The catalog card image
+`ui_bonus`, `ui_feature_card`, `ui_hatch`, `ui_jackpot`, `ui_autospin`. The catalog card image
 at the project root is produced by the same harness.
 
 ### Verified, and not
@@ -813,8 +864,7 @@ accruing. That closes the gap this section previously listed.
   browser build, not just natively. Mitigated but not fixed by §5.7: the volume
   can now be turned down or off, which is a workaround for an unverified mix,
   not a substitute for hearing it.
-- **Nothing is committed to the game's git repo yet** — `git init` ran in Phase 0
-  but there is no initial commit. This is now several thousand lines of unversioned
-  work and is the most urgent item on this list.
+- Work is committed per iteration following `rust_management/docs/COMMIT_STYLE.md`
+  — a diegetic subject, a plain parenthetical tag, and a prose body.
 - The reel "blur" is still label suppression rather than a real motion effect.
 - `audio.rs` is worth promoting into `macroquad-toolkit` (§7.1).
