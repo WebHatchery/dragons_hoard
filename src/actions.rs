@@ -27,6 +27,7 @@ pub enum ActionOutcome {
     PaytableToggled,
     SettingsToggled,
     MachinesToggled,
+    AchievementsToggled,
     /// The player picked a cabinet; the orchestrator owns the swap because it
     /// has to rebuild `GameData` and move save slots.
     MachineSelected(usize),
@@ -67,6 +68,7 @@ pub fn apply(
         }
         UiAction::ToggleSettings => ActionOutcome::SettingsToggled,
         UiAction::ToggleMachines => ActionOutcome::MachinesToggled,
+        UiAction::ToggleAchievements => ActionOutcome::AchievementsToggled,
         UiAction::SelectMachine(index) => ActionOutcome::MachineSelected(index),
         UiAction::VolumeUp => {
             session.preferences.adjust_volume(0.1);

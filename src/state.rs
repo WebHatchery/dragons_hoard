@@ -1,5 +1,6 @@
 //! Runtime session state: the one object the dispatcher mutates.
 
+pub mod achievements;
 pub mod autospin;
 pub mod celebration;
 pub mod hoard;

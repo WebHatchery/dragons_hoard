@@ -3,6 +3,7 @@
 use crate::actions::{self, ActionOutcome, SessionRequest};
 use crate::audio::{Sfx, SoundBank};
 use crate::data::GameData;
+use crate::state::achievements::AchievementBook;
 use crate::state::autospin::AutospinStop;
 use crate::state::celebration::CelebrationKind;
 use crate::state::preferences::Preferences;
@@ -38,6 +39,8 @@ pub struct Game {
     show_paytable: bool,
     show_settings: bool,
     show_machines: bool,
+    show_achievements: bool,
+    achievements: AchievementBook,
     save_exists: bool,
 }
 
@@ -82,6 +85,11 @@ impl Game {
             sound.len()
         ));
 
+        let mut achievements = AchievementBook::load(&data.config)
+            .unwrap_or_else(|err| panic!("achievements.json failed to load: {}", err));
+        // Booting into a cabinet counts as playing it.
+        achievements.note_machine(data.machine_id());
+
         let mut session = GameSession::new(&data, random_u64());
         session.preferences = preferences;
 
@@ -101,6 +109,8 @@ impl Game {
             show_paytable: false,
             show_settings: false,
             show_machines: false,
+            show_achievements: false,
+            achievements,
             save_exists: false,
         };
         game.refresh_save_state();
@@ -147,6 +157,19 @@ impl Game {
             }
             "paytable" => self.show_paytable = true,
             "machines" => self.show_machines = true,
+            "achievements" => {
+                self.fast_forward_to(|session| session.stats.hatches > 0);
+                // The hatch that got us here raised a card; the panel is the
+                // subject of this capture, not the card.
+                self.session.celebrations.clear();
+                self.show_achievements = true;
+            }
+            "jackpot" => self.fast_forward_to(|session| {
+                matches!(
+                    session.celebrations.active().map(|card| card.kind()),
+                    Some(CelebrationKind::Jackpot { .. })
+                )
+            }),
             "frost" => {
                 self.data = GameData::load_machine(&crate::data::MACHINES[1]).unwrap();
                 self.session = GameSession::new(&self.data, 0xD2A6_0F1E);
@@ -165,9 +188,14 @@ impl Game {
         for _ in 0..20_000 {
             self.session.balance = self.data.config.starting_balance;
             self.session.celebrations.clear();
-            if self.session.spin(&self.data).is_err() {
+            let Ok(resolution) = self.session.spin(&self.data) else {
                 break;
-            }
+            };
+            // The headless path skips `report_spin`, so record here too — a
+            // capture of the achievements panel should show real progress
+            // rather than a column of zeroes.
+            self.achievements
+                .observe(self.data.machine_id(), &resolution, self.session.balance);
             if reached(&self.session) {
                 return;
             }
@@ -193,6 +221,7 @@ impl Game {
             self.show_settings = false;
             self.show_paytable = false;
             self.show_machines = false;
+            self.show_achievements = false;
         }
 
         let actions: Vec<UiAction> = self.events.drain().collect();
@@ -212,6 +241,8 @@ impl Game {
             show_paytable: self.show_paytable,
             show_settings: self.show_settings,
             show_machines: self.show_machines,
+            show_achievements: self.show_achievements,
+            achievements: &self.achievements,
             shake: self.shake.offset(),
             ui_time: self.ui_time,
             ui: &virtual_ui,
@@ -311,6 +342,12 @@ impl Game {
         self.refresh_save_state();
         let _ = self.session.preferences.save(&self.data.config);
 
+        for def in self.achievements.note_machine(self.data.machine_id()) {
+            self.notifications
+                .success(format!("Achievement — {}", def.name));
+        }
+        let _ = self.achievements.save(&self.data.config);
+
         self.notifications
             .success(format!("Now playing {}", self.data.config.display_name));
     }
@@ -329,6 +366,31 @@ impl Game {
             Ok(save) => GameSession::from_save(&self.data, save),
             Err(_) => GameSession::new(&self.data, random_u64()),
         }
+    }
+
+    /// Fold a settled spin into the player's lifetime progress and announce
+    /// anything it earned. Achievements are saved as soon as one is unlocked
+    /// rather than on the autosave beat — losing one to a crash would be worse
+    /// than losing a spin's worth of credits.
+    fn record_achievements(&mut self, resolution: &SpinResolution) {
+        let earned =
+            self.achievements
+                .observe(self.data.machine_id(), resolution, self.session.balance);
+        if earned.is_empty() {
+            return;
+        }
+
+        for def in &earned {
+            self.notifications
+                .success(format!("Achievement — {}", def.name));
+            self.floating.spawn(
+                def.name.clone(),
+                ui::celebration::card_center(),
+                palette::GOLD_BRIGHT,
+            );
+        }
+        self.sound.play(Sfx::WinSmall);
+        let _ = self.achievements.save(&self.data.config);
     }
 
     /// Punch up a card as it opens. The card itself is drawn by the UI; this is
@@ -370,6 +432,7 @@ impl Game {
     fn report_spin(&mut self, resolution: &SpinResolution) {
         let credits = resolution.total_credits();
         self.spawn_win_text(resolution);
+        self.record_achievements(resolution);
 
         // A big win gets its sound and its announcement from its celebration
         // card instead, so neither is heard or read twice.
@@ -491,6 +554,10 @@ impl Game {
             }
             ActionOutcome::MachinesToggled => {
                 self.show_machines = !self.show_machines;
+                self.sound.play(Sfx::Click);
+            }
+            ActionOutcome::AchievementsToggled => {
+                self.show_achievements = !self.show_achievements;
                 self.sound.play(Sfx::Click);
             }
             ActionOutcome::MachineSelected(index) => self.switch_machine(index),

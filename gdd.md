@@ -297,6 +297,34 @@ Frost Wyrm reuses every procedural art routine (§7.1) with new colours and
 names, which is the payoff for making `art` a data key: a whole second symbol
 set cost no new drawing code.
 
+### 5.9 Achievements (post-v1)
+
+Twelve goals in `assets/data/achievements.json`, each an id, name, description
+and one `condition` — a counter and a threshold. The registry itself is the
+toolkit's `Achievements`; what `state/achievements.rs` adds is the part the
+toolkit cannot know: **what counts as earning one.**
+
+**Progress is cumulative and cross-machine.** `SessionStats` is per-machine
+because it lives in a machine's save slot (§5.8), so counting from it would
+silently reset "1,000 spins" every time the player walked to another cabinet.
+`AchievementProgress` keeps its own running totals, folded in from every settled
+spin whichever machine raised it, and persists under its own key alongside
+preferences (§5.7).
+
+**Definitions are read from JSON every load; only unlock flags and counters are
+restored.** Renaming an achievement therefore takes effect immediately, and
+adding one cannot invalidate a save — the same "editing the data must not
+strand a player" rule as the jackpot tiers and the autospin ladder.
+
+The `Balance` condition is a **high-water mark**, not a current reading: holding
+25,000 once earns Hoarder even if it is lost again, because punishing a player
+for continuing to play is the wrong incentive. Achievements are written the
+moment one unlocks rather than on the autosave beat — losing one to a crash
+would sting more than losing a spin's worth of credits.
+
+The overlay shows locked entries with their progress (`18 / 100`) rather than
+greying them out: a goal you cannot see the shape of is a surprise, not a goal.
+
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
 - Winning lines: pulse highlight (`blink`/`pulse`), floating win amounts
@@ -423,10 +451,12 @@ every `.rs` under the **800-line hard limit**; split by responsibility.
 | `src/state/celebration.rs` | `CelebrationKind`/`Celebration`/`CelebrationQueue` — the cards that hold the game. |
 | `src/state/jackpot.rs` | Progressive pots: contribution, bet-fair trigger, closed-form RTP (§5.6). |
 | `src/state/preferences.rs` | Player settings on top of the toolkit's `GameSettings` (§5.7). |
+| `src/state/achievements.rs` | Unlock conditions and cross-machine progress (§5.9). |
+| `src/ui/achievements.rs` | The achievements overlay. |
 | `src/ui/settings.rs` | The settings overlay. |
 | `src/ui/paytable.rs` | The paytable overlay (split out of `ui.rs` at the size limit). |
 | `src/ui/machines.rs` | The machine picker (§5.8). |
-| `src/state/tests.rs` | Session integration tests (spin lifecycle, features, autospin, cards). |
+| `src/state/tests.rs` | Session integration tests: spin lifecycle, features, autospin, cards. Split at the size limit into `tests/{jackpots,preferences,machines}.rs`. |
 | `src/ui/celebration.rs` | Full-screen card rendering. |
 | `src/ui/symbols.rs` | Procedural symbol art (§7.1). |
 | `src/audio.rs` | WAV synthesis + the sound bank (§7.1). |
@@ -660,6 +690,14 @@ and a Project Roost deployment record. Verified live — see §15.
   in hit frequency (a reskin fails), must not share a save slot (sharing one
   would silently overwrite a balance and hoard), must not share a symbol set,
   and an unknown machine id falls back to the first rather than failing.
+- **Achievements (`state/achievements.rs`):** the shipped definitions validate;
+  a zero threshold is rejected (it would unlock before the player did anything)
+  and so are duplicate ids; nothing is unlocked before playing; the first spin
+  earns the first achievement and **only ever earns it once** (otherwise the
+  toast repeats every spin); free spins count separately from paid ones; the
+  balance condition is a high-water mark; progress accumulates across machines;
+  a machine counts once however often it is played; the save shape round-trips
+  and a save predating an achievement still loads.
 - **Preferences (`state/preferences.rs`, `state/tests.rs`):** defaults are
   playable; both cycles reach every option and wrap; volume steps in tenths,
   clamps, and **can reach true silence**; the motion toggles are independent; a
@@ -700,7 +738,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | A second Spin press mid-spin taking a second stake | `begin_spin` refuses with `SpinBlocked::Busy` before touching the balance; covered by a test that asserts the balance is untouched. |
 | A feature firing unseen underneath its own auto-chain | A showing celebration card holds the reels, the payout and the auto-chain (§8.2.1); tested. Autospin also stops on every notable outcome. |
 | Autospin quietly draining the balance | It stops on features, hatches, big wins and an empty balance, each with its own message; the bet ladder is locked for the run. |
-| `state.rs` growing past 800 lines | Already happened once; split into `hoard`/`save`/`autospin`/`celebration`/`jackpot`/`preferences`/`spin`/`tests` siblings. `ui.rs` hit the limit next and had its paytable overlay split into `ui/paytable.rs`. **`state/tests.rs` is now the largest file** — split it on the next change that touches it. |
+| Files growing past 800 lines | Three splits so far: `state.rs` into siblings, `ui.rs`'s paytable into `ui/paytable.rs`, and `state/tests.rs` (793) into `tests/{jackpots,preferences,machines}.rs`. **`game.rs` (699) is now the one to watch.** |
 | A new machine shipping at the wrong RTP | The sim iterates `MACHINES`; a cabinet cannot be added without being measured (§5.8). |
 | Two machines sharing a save slot | Slots are `<machine>_<slot>`; a test asserts they are distinct. |
 | Jackpots exploitable by bet-switching | Odds are per credit wagered, so the trigger is bet-fair by construction (§5.6) and tested. The bet-ladder sim test excludes jackpots deliberately — they are too high-variance to compare over 20k spins — and their return is checked against its closed form instead. |
@@ -732,26 +770,25 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus three post-v1 systems
+## 15. Current State — v1 shipped, plus four post-v1 systems
 
-**All five phases are done, every item in §14 is met**, and three systems have
-been built on top since: progressive jackpots (§5.6), settings (§5.7) and
-multiple machines (§5.8). The game is
+**All five phases are done, every item in §14 is met**, and four systems have
+been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
+machines (§5.8) and achievements (§5.9). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-135 tests pass; `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`
+148 tests pass; `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`
 and the `wasm32-unknown-unknown` release build are clean. Every `.rs` file is
-under the 800-line limit; `state/tests.rs` is now the largest and should be
-split next.
+under the 800-line limit; `game.rs` (699) is now the largest.
 
 Measured RTP over 1,000,000 spins: Dragon's Hoard **0.9567** at **0.410** hit
 frequency, Frost Wyrm **0.9475** at **0.259**.
 
 Captures in `docs/verification/`: `ui_idle`, `ui_spin`, `ui_win`, `ui_freespins`,
-`ui_paytable`, `ui_settings`, `ui_machines`, `ui_frost`, `ui_feature_card`,
-`ui_hatch`, `ui_autospin`. The catalog card image at the project root is produced
-by the same harness.
+`ui_paytable`, `ui_settings`, `ui_machines`, `ui_frost`, `ui_achievements`,
+`ui_feature_card`, `ui_hatch`, `ui_jackpot`, `ui_autospin`. The catalog card image
+at the project root is produced by the same harness.
 
 ### Verified, and not
 
@@ -768,6 +805,10 @@ audio playback under WASM in a browser is untested. Treat the mix in
 
 ### Remaining work
 
+A jackpot **has** now been seen: the `jackpot` capture scene photographs a real
+Mini win, with its ladder plate reset to seed while the other three keep
+accruing. That closes the gap this section previously listed.
+
 - **Listen to the SFX** and rebalance `voices_for`; confirm audio works in the
   browser build, not just natively. Mitigated but not fixed by §5.7: the volume
   can now be turned down or off, which is a workaround for an unverified mix,
@@ -775,9 +816,5 @@ audio playback under WASM in a browser is untested. Treat the mix in
 - **Nothing is committed to the game's git repo yet** — `git init` ran in Phase 0
   but there is no initial commit. This is now several thousand lines of unversioned
   work and is the most urgent item on this list.
-- **No jackpot has been seen won in the running game.** The mechanic is covered by
-  integration tests and a 4M-spin sim, but the Grand is a 1-in-62,500-spin event,
-  so the celebration card has only been verified through the capture harness path,
-  not by playing.
 - The reel "blur" is still label suppression rather than a real motion effect.
 - `audio.rs` is worth promoting into `macroquad-toolkit` (§7.1).

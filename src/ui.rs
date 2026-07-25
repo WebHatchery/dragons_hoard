@@ -1,5 +1,6 @@
 //! Immediate-mode UI. Pure view layer: it reads state and returns intents.
 
+pub mod achievements;
 pub mod celebration;
 pub mod machines;
 pub mod paytable;
@@ -8,6 +9,7 @@ pub mod settings;
 pub mod symbols;
 
 use crate::data::GameData;
+use crate::state::achievements::AchievementBook;
 use crate::state::GameSession;
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::{
@@ -44,6 +46,7 @@ pub enum UiAction {
     TogglePaytable,
     ToggleSettings,
     ToggleMachines,
+    ToggleAchievements,
     /// Index into `data::MACHINES`.
     SelectMachine(usize),
     VolumeUp,
@@ -63,10 +66,12 @@ pub enum UiAction {
 pub struct UiContext<'a> {
     pub data: &'a GameData,
     pub session: &'a GameSession,
+    pub achievements: &'a AchievementBook,
     pub save_exists: bool,
     pub show_paytable: bool,
     pub show_settings: bool,
     pub show_machines: bool,
+    pub show_achievements: bool,
     /// Screen-shake displacement, applied to the reels panel only.
     pub shake: Vec2,
     /// Accumulated in-game seconds, used for pulsing highlights. Comes from the
@@ -86,6 +91,9 @@ pub fn draw_game_ui(ctx: UiContext<'_>) -> Vec<UiAction> {
 
     if ctx.show_paytable {
         paytable::draw(&ctx, mouse, &mut actions);
+    }
+    if ctx.show_achievements {
+        achievements::draw(ctx.achievements, mouse, &mut actions);
     }
     if ctx.show_machines {
         machines::draw(ctx.data, mouse, &mut actions);
@@ -128,6 +136,15 @@ fn draw_header(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>) {
 
     // The header has the only spare width on screen, and these should be
     // reachable from anywhere rather than buried in the wager panel.
+    if virtual_button(
+        Rect::new(rect.right() - 828.0, rect.y + 18.0, 108.0, 28.0),
+        "Awards",
+        true,
+        ButtonTone::Secondary,
+        mouse,
+    ) {
+        actions.push(UiAction::ToggleAchievements);
+    }
     if virtual_button(
         Rect::new(rect.right() - 710.0, rect.y + 18.0, 108.0, 28.0),
         "Machines",
@@ -515,7 +532,7 @@ fn draw_footer(ctx: &UiContext<'_>) {
         TextStyle::new(16.0, palette::TEXT).params(),
     );
     draw_ui_text_ex(
-        "Space spins · Up/Down bet · M max · A autospin · P paytable · O settings · C machines",
+        "Space spins · Up/Down bet · M max · A autospin · P paytable · O settings · C machines · V awards",
         rect.x + 470.0,
         rect.y + 56.0,
         TextStyle::new(15.0, palette::TEXT_DIM).params(),
@@ -593,6 +610,9 @@ pub fn actions_from_keys(celebrating: bool) -> Vec<UiAction> {
     }
     if is_key_pressed(KeyCode::C) {
         actions.push(UiAction::ToggleMachines);
+    }
+    if is_key_pressed(KeyCode::V) {
+        actions.push(UiAction::ToggleAchievements);
     }
     if is_key_pressed(KeyCode::S) {
         actions.push(UiAction::Save);
