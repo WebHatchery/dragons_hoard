@@ -55,7 +55,7 @@
     "name": "Glacier Gem",
     "tier": "mid",
     "short": "GLC",
-    "art": "gem",
+    "art": "gem_round",
     "texture": "sym_glacier",
     "color": [
       0.24,
@@ -73,7 +73,7 @@
     "name": "Frozen Amethyst",
     "tier": "mid",
     "short": "AMY",
-    "art": "gem",
+    "art": "gem_step",
     "texture": "sym_amethyst",
     "color": [
       0.58,

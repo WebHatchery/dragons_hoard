@@ -33,6 +33,7 @@ pub enum ActionOutcome {
     FeatureBuyToggled,
     LedgerToggled,
     WaveformsToggled,
+    VisionToggled,
     /// A gamble opened, flipped, or was taken (§5.16).
     GambleOffered,
     GambleFlipped(GambleFlip),
@@ -90,6 +91,7 @@ pub fn apply(
         UiAction::ToggleFeatureBuy => ActionOutcome::FeatureBuyToggled,
         UiAction::ToggleLedger => ActionOutcome::LedgerToggled,
         UiAction::ToggleWaveforms => ActionOutcome::WaveformsToggled,
+        UiAction::ToggleVision => ActionOutcome::VisionToggled,
         UiAction::OfferGamble => match session.begin_gamble(data) {
             Ok(_) => ActionOutcome::GambleOffered,
             Err(reason) => ActionOutcome::GambleRefused(reason),

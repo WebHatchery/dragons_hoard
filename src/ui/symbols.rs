@@ -22,6 +22,8 @@ pub enum SymbolArt {
     Coin,
     CoinStack,
     Gem,
+    GemRound,
+    GemStep,
     Chest,
     Egg,
     Dragon,
@@ -34,6 +36,8 @@ impl SymbolArt {
             "coin" => SymbolArt::Coin,
             "coin_stack" => SymbolArt::CoinStack,
             "gem" => SymbolArt::Gem,
+            "gem_round" => SymbolArt::GemRound,
+            "gem_step" => SymbolArt::GemStep,
             "chest" => SymbolArt::Chest,
             "egg" => SymbolArt::Egg,
             "dragon" => SymbolArt::Dragon,
@@ -176,6 +180,8 @@ pub fn draw_with_alpha(def: &SymbolDef, rect: Rect, lit: f32, alpha: f32) -> boo
         SymbolArt::Coin => coin(&canvas, &shades, alpha, 0.5, 0.5, 0.30),
         SymbolArt::CoinStack => coin_stack(&canvas, &shades, alpha),
         SymbolArt::Gem => gem(&canvas, &shades, alpha),
+        SymbolArt::GemRound => gem_round(&canvas, &shades, alpha),
+        SymbolArt::GemStep => gem_step(&canvas, &shades, alpha),
         SymbolArt::Chest => chest(&canvas, &shades, alpha),
         SymbolArt::Egg => egg(&canvas, &shades, alpha),
         SymbolArt::Dragon => dragon(&canvas, &shades, alpha),
@@ -246,6 +252,113 @@ fn gem(canvas: &Canvas, shades: &Shades, alpha: f32) {
     }
 
     canvas.circle(0.44, 0.42, 0.032, Color::new(1.0, 1.0, 1.0, 0.8 * alpha));
+}
+
+/// A brilliant cut: round, with many narrow facets radiating from the table.
+///
+/// One of three gem shapes (§5.24). Three stones that differed only in hue were
+/// the same picture to a deuteranope; the cut carries the difference now and the
+/// colour only reinforces it.
+fn gem_round(canvas: &Canvas, shades: &Shades, alpha: f32) {
+    const R: f32 = 0.33;
+    const FACETS: usize = 12;
+    let center = (0.5, 0.5);
+    let rim: Vec<(f32, f32)> = (0..FACETS)
+        .map(|i| {
+            let angle =
+                i as f32 / FACETS as f32 * std::f32::consts::TAU - std::f32::consts::FRAC_PI_2;
+            (0.5 + angle.cos() * R, 0.5 + angle.sin() * R)
+        })
+        .collect();
+
+    // Alternating shades so the narrow facets read as facets rather than a disc.
+    for index in 0..FACETS {
+        let shade = match index {
+            0..=2 => shades.lighter,
+            3..=5 => shades.base,
+            6..=8 => shades.darker,
+            _ => shades.light,
+        };
+        canvas.tri(center, rim[index], rim[(index + 1) % FACETS], shade);
+    }
+
+    let table: Vec<(f32, f32)> = (0..FACETS)
+        .map(|i| {
+            let angle = i as f32 / FACETS as f32 * std::f32::consts::TAU;
+            (0.5 + angle.cos() * R * 0.40, 0.5 + angle.sin() * R * 0.40)
+        })
+        .collect();
+    for index in 0..FACETS {
+        canvas.tri(
+            center,
+            table[index],
+            table[(index + 1) % FACETS],
+            shades.lighter,
+        );
+    }
+
+    canvas.circle(0.43, 0.41, 0.030, Color::new(1.0, 1.0, 1.0, 0.85 * alpha));
+}
+
+/// An emerald cut: a rectangle with clipped corners and stepped facets.
+///
+/// Deliberately the least round of the three, so the trio reads as
+/// hexagon / circle / rectangle even at a glance and even in monochrome.
+fn gem_step(canvas: &Canvas, shades: &Shades, alpha: f32) {
+    const W: f32 = 0.25;
+    const H: f32 = 0.33;
+    const CHAMFER: f32 = 0.09;
+    let center = (0.5, 0.5);
+
+    // Octagon: a rectangle with its corners cut off.
+    let outline = [
+        (0.5 - W + CHAMFER, 0.5 - H),
+        (0.5 + W - CHAMFER, 0.5 - H),
+        (0.5 + W, 0.5 - H + CHAMFER),
+        (0.5 + W, 0.5 + H - CHAMFER),
+        (0.5 + W - CHAMFER, 0.5 + H),
+        (0.5 - W + CHAMFER, 0.5 + H),
+        (0.5 - W, 0.5 + H - CHAMFER),
+        (0.5 - W, 0.5 - H + CHAMFER),
+    ];
+    let shades_by_edge = [
+        shades.lighter,
+        shades.lighter,
+        shades.light,
+        shades.dark,
+        shades.darker,
+        shades.darker,
+        shades.dark,
+        shades.base,
+    ];
+    for index in 0..outline.len() {
+        canvas.tri(
+            center,
+            outline[index],
+            outline[(index + 1) % outline.len()],
+            shades_by_edge[index],
+        );
+    }
+
+    // The stepped table, drawn as two nested rectangles.
+    for (inset, shade) in [(0.62, shades.light), (0.34, shades.lighter)] {
+        let w = W * inset;
+        let h = H * inset;
+        canvas.tri(
+            (0.5 - w, 0.5 - h),
+            (0.5 + w, 0.5 - h),
+            (0.5 + w, 0.5 + h),
+            shade,
+        );
+        canvas.tri(
+            (0.5 - w, 0.5 - h),
+            (0.5 + w, 0.5 + h),
+            (0.5 - w, 0.5 + h),
+            shade,
+        );
+    }
+
+    canvas.circle(0.44, 0.40, 0.026, Color::new(1.0, 1.0, 1.0, 0.8 * alpha));
 }
 
 fn chest(canvas: &Canvas, shades: &Shades, alpha: f32) {

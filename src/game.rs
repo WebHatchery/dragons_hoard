@@ -47,6 +47,7 @@ pub struct Game {
     show_featurebuy: bool,
     show_ledger: bool,
     show_waveforms: bool,
+    show_vision: bool,
     /// Measured cabinet profiles (§5.17). Lives here rather than on the session
     /// because it describes the catalog, not one machine's play.
     profiles: crate::state::profile::ProfileBook,
@@ -127,6 +128,7 @@ impl Game {
             show_featurebuy: false,
             show_ledger: false,
             show_waveforms: false,
+            show_vision: false,
             profiles: crate::state::profile::ProfileBook::default(),
             achievements,
             ledger,
@@ -161,6 +163,7 @@ impl Game {
             self.show_featurebuy = false;
             self.show_ledger = false;
             self.show_waveforms = false;
+            self.show_vision = false;
         }
 
         let actions: Vec<UiAction> = self.events.drain().collect();
@@ -185,6 +188,7 @@ impl Game {
             ledger: &self.ledger,
             show_ledger: self.show_ledger,
             show_waveforms: self.show_waveforms,
+            show_vision: self.show_vision,
             profiles: &self.profiles,
             achievements: &self.achievements,
             shake: self.shake.offset(),
@@ -519,6 +523,10 @@ impl Game {
             ActionOutcome::GambleRefused(reason) => {
                 self.sound.play_at(Sfx::Click, 0.6);
                 self.notifications.warning(gamble_refusal(reason));
+            }
+            ActionOutcome::VisionToggled => {
+                self.show_vision = !self.show_vision;
+                self.sound.play(Sfx::Click);
             }
             ActionOutcome::WaveformsToggled => {
                 self.show_waveforms = !self.show_waveforms;

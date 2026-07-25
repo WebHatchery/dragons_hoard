@@ -56,7 +56,7 @@
     "name": "Blue Gem",
     "tier": "mid",
     "short": "SAP",
-    "art": "gem",
+    "art": "gem_round",
     "texture": "sym_sapphire",
     "color": [
       0.31,
@@ -74,7 +74,7 @@
     "name": "Ruby",
     "tier": "mid",
     "short": "RBY",
-    "art": "gem",
+    "art": "gem_step",
     "texture": "sym_ruby",
     "color": [
       0.82,

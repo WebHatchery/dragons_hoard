@@ -7,11 +7,13 @@ pub mod featurebuy;
 pub mod gamble;
 pub mod holdspin;
 pub mod ledger;
+pub mod legibility;
 pub mod machines;
 pub mod paytable;
 pub mod reels;
 pub mod settings;
 pub mod symbols;
+pub mod vision;
 pub mod waveform;
 
 use crate::data::GameData;
@@ -60,6 +62,8 @@ pub enum UiAction {
     ToggleLedger,
     /// Open or close the waveform inspector (§5.19).
     ToggleWaveforms,
+    /// Open or close the colour-vision panel (§5.24).
+    ToggleVision,
     /// Put the last win at risk (§5.16).
     OfferGamble,
     Gamble(crate::state::gamble::Scale),
@@ -99,6 +103,7 @@ pub struct UiContext<'a> {
     pub ledger: &'a crate::state::ledger::Ledger,
     pub show_ledger: bool,
     pub show_waveforms: bool,
+    pub show_vision: bool,
     /// Screen-shake displacement, applied to the reels panel only.
     pub shake: Vec2,
     /// Accumulated in-game seconds, used for pulsing highlights. Comes from the
@@ -143,6 +148,10 @@ pub fn draw_game_ui(ctx: UiContext<'_>) -> Vec<UiAction> {
     // reels behind it are inert until it is made.
     if let Some(round) = ctx.session.gamble.as_ref() {
         gamble::draw(ctx.data, ctx.session, round, mouse, &mut actions);
+    }
+
+    if ctx.show_vision {
+        vision::draw(ctx.data, mouse, &mut actions);
     }
 
     if ctx.show_waveforms {

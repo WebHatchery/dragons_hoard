@@ -174,6 +174,7 @@ impl Game {
                 self.profiles.request(self.data.machine_id(), &self.data);
             }
             "waveforms" => self.show_waveforms = true,
+            "vision" => self.show_vision = true,
             "settings" => self.show_settings = true,
             "anticipation" => self.hold_a_near_miss(),
             _ => {}

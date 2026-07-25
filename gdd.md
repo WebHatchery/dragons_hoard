@@ -1098,6 +1098,51 @@ The game keeps a test of its own for the part the toolkit cannot know:
 `revolutions` edit here is exactly the sort of change that could break the
 landing without the toolkit noticing.
 
+### 5.24 Reading the symbols without colour (post-v1)
+
+With the remaining-work list empty, this iteration went looking for a defect
+rather than a feature — and found one that had been there since §7.1.
+
+**Every machine drew three of its symbols as the same hexagonal gem, separated
+only by hue.** That falls straight out of the art being tinted from a single
+`color` key, which is a good decision (one field re-themes a cabinet) with a
+blind spot. Roughly one man in twelve has some form of red-green colour
+blindness, and to a deuteranope those three stones are one picture.
+
+**The instrument came first.** `ui/legibility.rs` simulates protanopia,
+deuteranopia and tritanopia — in *linear* RGB, because applying the matrices
+straight to sRGB exaggerates the effect and a test that cries wolf gets turned
+off — and measures how far apart two colours land. A test then asserts that any
+two symbols **sharing a shape** stay above a threshold under every vision.
+Symbols drawn differently are told apart by shape and need no colour gap at all.
+
+It failed immediately, and not where expected. Dragon's Hoard's jade/sapphire/
+ruby were far enough apart to pass. **Frost Wyrm's glacier and amethyst were
+0.061 apart under deuteranopia** — the same picture in the same colour.
+
+**The fix is not a colourblind mode.** A mode is something a player has to know
+to look for, and it splits the art into a version that is tested and a version
+that is not. Instead there are now three gem cuts — hexagonal, round brilliant,
+and a stepped emerald cut — and every cabinet's three stones use one each. Shape
+carries the difference; colour only reinforces it. That is better for everyone
+and needs no setting.
+
+**Then it was checked by looking.** `ui/vision.rs` draws the whole symbol set
+four times, one row per vision, colours simulated and art untouched (a dichromat
+sees the same shapes as everyone else — the shapes are the point). The
+deuteranopia row is the proof: jade and ruby collapse to nearly the same olive,
+exactly as the numbers said, and remain trivially distinguishable because one is
+a hexagon and the other a rectangle.
+
+Two tests keep the instrument honest as well as the art: the simulation must
+leave greys untouched, and red and green must visibly collapse for a
+deuteranope. A measurement device that quietly tinted everything would fail both
+the art it judged and every future judgement.
+
+All five cabinets measure exactly the RTP they did before. `art` is a display key
+and nothing downstream of it reads the maths — but a data edit across five
+machines is worth a million-spin run per machine to say so.
+
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
 - Winning lines: pulse highlight (`blink`/`pulse`), floating win amounts
@@ -1465,6 +1510,12 @@ and a Project Roost deployment record. Verified live — see §15.
   in hit frequency (a reskin fails), must not share a save slot (sharing one
   would silently overwrite a balance and hoard), must not share a symbol set,
   and an unknown machine id falls back to the first rather than failing.
+- **Colour legibility (`ui/legibility.rs`):** **no two symbols sharing a shape
+  are too close under any vision** — the check that found Frost Wyrm's glacier
+  and amethyst 0.061 apart under deuteranopia; the simulation leaves greys
+  untouched, since a device that tinted them would skew every measurement it
+  made; and red and green visibly collapse for a deuteranope, which is the
+  sanity check on the instrument itself.
 - **Strip motion (`macroquad-toolkit/src/strip.rs`):** a strip lands exactly on
   its target from every index and from a ragged frame rate; **every strip travels
   a whole number of revolutions**; the bounce never changes where it stops; a
@@ -1660,6 +1711,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | A refactor silently changing every sound | Length and checksum of all eight effects are pinned (§5.19). The move into the toolkit was proved byte-identical; the three later changes were deliberate and re-baselined. |
 | Duplicated grid index arithmetic | `reel * rows + row` lived at eight call sites until §5.20; `Grid::index` owns it now. Reels that differ in height would have silently read the wrong cells at every one of them. |
 | A feature tuned by gutting the base game | Refining took Frost to 6.92; the fix was rebalancing the feature's own spins and multiplier, not a 36% paytable cut that would have paid for the feature out of the base game (§5.21). |
+| Symbols that only differ by colour | Any two sharing a shape must stay apart under three simulated dichromacies (§5.24). The three gems now have three cuts, so the check has nothing left to catch. |
 | A new machine shipping at the wrong RTP | The sim iterates `MACHINES`; a cabinet cannot be added without being measured (§5.8). |
 | Two machines sharing a save slot | Slots are `<machine>_<slot>`; a test asserts they are distinct. |
 | Jackpots exploitable by bet-switching | Odds are per credit wagered, so the trigger is bet-fair by construction (§5.6) and tested. The bet-ladder sim test excludes jackpots deliberately — they are too high-variance to compare over 20k spins — and their return is checked against its closed form instead. |
@@ -1692,20 +1744,20 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus eighteen post-v1 systems
+## 15. Current State — v1 shipped, plus nineteen post-v1 systems
 
-**All five phases are done, every item in §14 is met**, and eighteen systems have
+**All five phases are done, every item in §14 is met**, and nineteen systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
 machines (§5.8), achievements (§5.9), the Vault Pick (§5.10), the reel-feel pass
 (§5.11), the Dragon's Wrath (§5.12), the Feature Buy (§5.13), ways-to-win
 (§5.14), cascading reels (§5.15), the Dragon's Gamble (§5.16), live machine
 profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
-and the reel-motion promotion (§5.23). The game is
+the reel-motion promotion (§5.23) and colour legibility (§5.24). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-282 tests pass here and 158 in `macroquad-toolkit`; `cargo fmt --check`,
+285 tests pass here and 158 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
 release build are clean. Every `.rs` file is under the 800-line limit, `data.rs`
 (741) and `ui/reels.rs` (738) the largest — `state/spin.rs` dropped from 615 to
@@ -1722,7 +1774,8 @@ Captures in `docs/verification/`: `ui_idle`, `ui_spin`, `ui_win`, `ui_freespins`
 `ui_paytable`, `ui_settings`, `ui_machines`, `ui_frost`, `ui_achievements`,
 `ui_bonus`, `ui_feature_card`, `ui_hatch`, `ui_jackpot`, `ui_autospin`,
 `ui_anticipation`, `ui_wrath`, `ui_featurebuy`, `ui_ways`, `ui_cascade`,
-`ui_gamble`, `ui_ledger`, `ui_waveforms`, `ui_shifting`, `ui_refining`. The catalog card image at the project root is produced by the same
+`ui_gamble`, `ui_ledger`, `ui_waveforms`, `ui_shifting`, `ui_refining`,
+`ui_vision`. The catalog card image at the project root is produced by the same
 harness. `ui_spin` is captured at 20 frames rather than 150 — at the default
 the spin has already finished, so the blur it is meant to show is not there.
 
@@ -1786,7 +1839,11 @@ accruing. That closes the gap this section previously listed.
   own rather than over a cell.
 - Nothing is left on the promotion list. `audio.rs` went in §5.19 and the reel
   motion in §5.23; what remains in this project is either this game's tuning or
-  this game's rules. A real cabinet would show each feature's
+  this game's rules.
+- §5.24 checked the symbols against colour blindness. Nothing has checked them
+  against **size** — the reels shrink to a sixth of the window on a six-row
+  shifting board (§5.20), and whether a stepped gem still reads at that scale is
+  a question the same capture harness could answer and has not been asked. A real cabinet would show each feature's
   volatility or a sample of what it pays; the price alone tells a player what it
   costs but not what to expect for it.
 - **Listen to the effects.** The waveform panel closed the part of this that is
