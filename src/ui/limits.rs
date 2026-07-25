@@ -192,7 +192,7 @@ pub fn cap_label(cap: Cap, value: Option<i64>) -> String {
     match (cap, value) {
         (_, None) => "Off".to_owned(),
         (Cap::Time, Some(minutes)) => format!("{} minutes", minutes),
-        (Cap::Loss, Some(credits)) => format!("{} credits", credits),
+        (Cap::Loss, Some(credits)) => format!("{} credits", super::naming::credits(credits)),
         (Cap::Spins, Some(spins)) => format!("{} spins", spins),
     }
 }

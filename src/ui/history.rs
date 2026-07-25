@@ -20,6 +20,7 @@
 
 use crate::state::history::{Cause, History};
 use crate::state::ledger::Ledger;
+use crate::ui::naming;
 use crate::ui::nav::Nav;
 use crate::ui::{palette, virtual_button, UiAction, LOGICAL_HEIGHT, LOGICAL_WIDTH};
 use macroquad::prelude::*;
@@ -58,7 +59,10 @@ pub fn draw(
         TextStyle::new(21.0, palette::GOLD_BRIGHT).params(),
     );
     draw_text_right(
-        &format!("{} rounds across every cabinet", history.rounds()),
+        &format!(
+            "{} rounds across every cabinet",
+            naming::count(history.rounds())
+        ),
         PANEL.right() - 140.0,
         PANEL.y + 31.0,
         TextStyle::new(14.0, palette::TEXT_DIM),
@@ -143,7 +147,7 @@ fn draw_plot(history: &History, plot: Rect) {
             Color::new(1.0, 1.0, 1.0, 0.22),
         );
         draw_ui_text_ex(
-            &format!("start {}", opening),
+            &format!("start {}", naming::credits(opening)),
             plot.x + 6.0,
             y - 5.0,
             TextStyle::new(12.0, palette::TEXT_DIM).params(),
@@ -227,18 +231,18 @@ fn draw_figures(history: &History, ledger: &Ledger, row: Rect) {
     let net = now - opening;
 
     let figures = [
-        ("Peak", high.to_string(), palette::TEXT_BRIGHT),
-        ("Trough", low.to_string(), palette::TEXT_BRIGHT),
+        ("Peak", naming::credits(high), palette::TEXT_BRIGHT),
+        ("Trough", naming::credits(low), palette::TEXT_BRIGHT),
         (
             "Deepest fall",
             // "At least", because once buckets merge a peak and the trough after
             // it can share one and their order is no longer known (§5.32).
-            format!("at least {}", history.deepest_fall()),
+            format!("at least {}", naming::credits(history.deepest_fall())),
             palette::EMBER,
         ),
         (
             "Net",
-            format!("{}{}", if net > 0 { "+" } else { "" }, net),
+            naming::net(net),
             match net.signum() {
                 1 => palette::JADE,
                 -1 => palette::EMBER,
@@ -284,7 +288,10 @@ fn draw_figures(history: &History, ledger: &Ledger, row: Rect) {
     let resolution = history.series().resolution();
     if resolution > 1 {
         draw_text_right(
-            &format!("each step covers {} rounds", resolution),
+            &format!(
+                "each step covers {} rounds",
+                naming::count(resolution as u64)
+            ),
             row.right(),
             row.bottom(),
             TextStyle::new(13.0, palette::TEXT_DIM),

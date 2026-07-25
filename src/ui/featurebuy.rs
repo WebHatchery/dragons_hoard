@@ -13,6 +13,7 @@ use crate::data::GameData;
 use crate::engine::sim::BAND_LABELS;
 use crate::state::profile::{ProfileBook, TierProfile};
 use crate::state::{featurebuy, GameSession};
+use crate::ui::naming;
 use crate::ui::nav::Nav;
 use crate::ui::{palette, virtual_button, UiAction, LOGICAL_HEIGHT, LOGICAL_WIDTH};
 use macroquad::prelude::*;
@@ -57,7 +58,11 @@ pub fn draw(
 
     let total_bet = session.total_bet(data);
     draw_text_right(
-        &format!("Total bet {}  ·  Balance {}", total_bet, session.balance),
+        &format!(
+            "Total bet {}  ·  Balance {}",
+            naming::credits(total_bet),
+            naming::credits(session.balance)
+        ),
         panel.right() - 150.0,
         panel.y + 32.0,
         TextStyle::new(15.0, palette::TEXT_DIM),
@@ -107,7 +112,7 @@ pub fn draw(
         if affordable {
             if virtual_button(
                 button,
-                &format!("Buy {}", price),
+                &format!("Buy {}", naming::credits(price)),
                 true,
                 ButtonTone::Primary,
                 mouse,

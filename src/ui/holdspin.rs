@@ -10,6 +10,7 @@
 
 use crate::data::GameData;
 use crate::state::holdspin::HoldSpinRound;
+use crate::ui::naming;
 use crate::ui::{palette, reels, LOGICAL_HEIGHT, LOGICAL_WIDTH};
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::{
@@ -89,7 +90,7 @@ fn draw_coin(cell: Rect, credits: i64, fresh: bool, ui_time: f32) {
 
     // Long numbers have to fit inside the disc, so the type shrinks with the
     // digit count rather than spilling over the rim.
-    let label = credits.to_string();
+    let label = naming::credits(credits);
     let size = match label.len() {
         0..=3 => 26.0,
         4 => 22.0,
@@ -168,7 +169,7 @@ fn draw_banner(round: &HoldSpinRound, grid: Rect) {
         &SurfaceStyle::new(Color::new(0.06, 0.14, 0.07, 1.0)).with_border(1.0, palette::GOLD_DIM),
     );
     draw_text_centered_in_box_ex(
-        &round.collected().to_string(),
+        &naming::credits(round.collected()),
         total.x,
         total.y,
         total.w,

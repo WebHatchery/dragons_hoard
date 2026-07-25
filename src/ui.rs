@@ -12,6 +12,7 @@ pub mod ledger;
 pub mod legibility;
 pub mod limits;
 pub mod machines;
+pub mod naming;
 pub mod nav;
 pub mod paytable;
 pub mod reality;
@@ -291,7 +292,7 @@ fn draw_header(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>, na
     if virtual_button(
         Rect::new(rect.right() - 946.0, rect.y + 18.0, 108.0, 28.0),
         &match from {
-            Some(price) => format!("Buy {}", price),
+            Some(price) => format!("Buy {}", naming::credits(price)),
             None => "Buy".to_owned(),
         },
         true,
@@ -337,14 +338,16 @@ fn draw_header(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>, na
         Rect::new(rect.right() - 470.0, rect.y + 18.0, 200.0, 28.0),
         &format!(
             "Hoard {}/{}  pot {}",
-            hoard.count, ctx.data.config.hoard_capacity, hoard.pot
+            hoard.count,
+            ctx.data.config.hoard_capacity,
+            naming::credits(hoard.pot)
         ),
         Color::new(0.22, 0.16, 0.10, 1.0),
         palette::TEXT,
     );
     draw_badge(
         Rect::new(rect.right() - 258.0, rect.y + 18.0, 152.0, 28.0),
-        &format!("Balance {}", ctx.session.balance),
+        &format!("Balance {}", naming::credits(ctx.session.balance)),
         Color::new(0.16, 0.20, 0.13, 1.0),
         palette::TEXT_BRIGHT,
     );
@@ -391,7 +394,10 @@ fn draw_footer(ctx: &UiContext<'_>) {
     draw_ui_text_ex(
         &format!(
             "Spins {}   Best win {}   Free spins played {}   Hatches {}",
-            stats.total_spins, stats.biggest_win, stats.free_spins_played, stats.hatches
+            stats.total_spins,
+            naming::credits(stats.biggest_win),
+            stats.free_spins_played,
+            stats.hatches
         ),
         rect.x + 470.0,
         rect.y + 30.0,

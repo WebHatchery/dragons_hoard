@@ -10,6 +10,7 @@
 use crate::data::GameData;
 use crate::state::gamble::{GambleRound, Scale};
 use crate::state::GameSession;
+use crate::ui::naming;
 use crate::ui::nav::{self, Nav};
 use crate::ui::{palette, virtual_button, UiAction, LOGICAL_HEIGHT, LOGICAL_WIDTH};
 use macroquad::prelude::*;
@@ -66,7 +67,7 @@ pub fn draw(
         TextStyle::new(14.0, palette::TEXT_DIM).params(),
     );
     draw_text_centered_in_box_ex(
-        &round.stake().to_string(),
+        &naming::credits(round.stake()),
         stake.x,
         stake.y + 22.0,
         stake.w,

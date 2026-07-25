@@ -6,9 +6,8 @@
 //! stop rather than a decorative loop.
 
 use crate::data::GameData;
-use crate::engine::evaluate::WinSource;
 use crate::state::{jackpot, GameSession};
-use crate::ui::{palette, symbols};
+use crate::ui::{naming, palette, symbols};
 use macroquad::prelude::*;
 use macroquad_toolkit::strip::blur_offsets;
 use macroquad_toolkit::ui::{
@@ -174,14 +173,11 @@ fn feature_title(data: &GameData, session: &GameSession) -> String {
         return base;
     }
 
-    let names: Vec<&str> = refine
-        .order
-        .iter()
-        .take(burned)
-        .filter_map(|id| data.symbols.index_of(id))
-        .map(|index| data.symbols.get(index).short.as_str())
-        .collect();
-    format!("{}  ·  burned {}", base, names.join(" "))
+    format!(
+        "{}  ·  burned {}",
+        base,
+        naming::burned(data, &refine.order, burned)
+    )
 }
 
 /// The progressive ladder: one plate per tier, richest on the right, each
@@ -236,7 +232,7 @@ fn draw_jackpot_ladder(data: &GameData, session: &GameSession, shake: Vec2, ui_t
             TextStyle::new(13.0, palette::TEXT_DIM),
         );
         draw_text_centered_in_box_ex(
-            &format_credits(*credits),
+            &naming::credits(*credits),
             plate.x,
             plate.y + 16.0,
             plate.w,
@@ -250,23 +246,6 @@ fn draw_jackpot_ladder(data: &GameData, session: &GameSession, shake: Vec2, ui_t
                 },
             ),
         );
-    }
-}
-
-/// Thousands separators — a five-figure Grand is unreadable without them.
-fn format_credits(credits: i64) -> String {
-    let digits = credits.abs().to_string();
-    let mut out = String::with_capacity(digits.len() + digits.len() / 3);
-    for (index, ch) in digits.chars().enumerate() {
-        if index > 0 && (digits.len() - index).is_multiple_of(3) {
-            out.push(',');
-        }
-        out.push(ch);
-    }
-    if credits < 0 {
-        format!("-{}", out)
-    } else {
-        out
     }
 }
 
@@ -563,37 +542,7 @@ fn draw_win_summary(data: &GameData, session: &GameSession, rect: Rect) {
         return;
     };
 
-    let text = if outcome.wins.is_empty() && outcome.scatter_credits == 0 {
-        "No win — spin again".to_owned()
-    } else {
-        let mut parts: Vec<String> = outcome
-            .wins
-            .iter()
-            .take(3)
-            .map(|win| {
-                let short = &data.symbols.get(win.symbol).short;
-                match win.source {
-                    WinSource::Line(index) => format!(
-                        "{} x{} on line {}",
-                        short,
-                        win.count,
-                        data.paylines.get(index).map_or(0, |line| line.id)
-                    ),
-                    WinSource::Ways(1) => format!("{} x{}", short, win.count),
-                    WinSource::Ways(ways) => {
-                        format!("{} x{} — {} ways", short, win.count, ways)
-                    }
-                }
-            })
-            .collect();
-        if outcome.wins.len() > 3 {
-            parts.push(format!("+{} more", outcome.wins.len() - 3));
-        }
-        if outcome.scatter_credits > 0 {
-            parts.push(format!("{} scatters", outcome.scatter_count));
-        }
-        parts.join("   ")
-    };
+    let text = naming::wins(data, outcome);
 
     draw_text_centered_in_box_ex(
         &text,

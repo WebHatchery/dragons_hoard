@@ -15,6 +15,7 @@
 //! most likely to be misread.
 
 use crate::state::limits::SessionClock;
+use crate::ui::naming;
 use crate::ui::nav::Nav;
 use crate::ui::{palette, virtual_button, UiAction, LOGICAL_HEIGHT, LOGICAL_WIDTH};
 use macroquad::prelude::*;
@@ -60,12 +61,24 @@ pub fn draw(clock: &SessionClock, mouse: Vec2, actions: &mut Vec<UiAction>, nav:
 
     let net = clock.net();
     let figures = [
-        ("Spins", clock.spins.to_string(), palette::TEXT_BRIGHT),
-        ("Staked", clock.staked.to_string(), palette::TEXT_BRIGHT),
-        ("Returned", clock.returned.to_string(), palette::TEXT_BRIGHT),
+        (
+            "Spins",
+            naming::count(clock.spins as u64),
+            palette::TEXT_BRIGHT,
+        ),
+        (
+            "Staked",
+            naming::credits(clock.staked),
+            palette::TEXT_BRIGHT,
+        ),
+        (
+            "Returned",
+            naming::credits(clock.returned),
+            palette::TEXT_BRIGHT,
+        ),
         (
             "Net",
-            format!("{}{}", if net > 0 { "+" } else { "" }, net),
+            naming::net(net),
             // The one coloured figure, and it is coloured by fact rather than by
             // sentiment: down is ember, up is jade, level is neither.
             match net.signum() {
@@ -104,7 +117,7 @@ pub fn draw(clock: &SessionClock, mouse: Vec2, actions: &mut Vec<UiAction>, nav:
              Every credit here is play money. Nothing you win or lose is real, and nothing in \
              this game can be bought.",
             clock.rtp() * 100.0,
-            clock.spins.max(1),
+            naming::count(clock.spins.max(1) as u64),
         ),
         panel.x + 24.0,
         panel.y + 186.0,

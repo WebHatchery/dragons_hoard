@@ -7,6 +7,7 @@
 use super::{
     palette, virtual_button, ButtonTone, Color, Rect, TextStyle, UiAction, UiContext, Vec2,
 };
+use crate::ui::naming;
 use crate::ui::nav::Nav;
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::{
@@ -66,7 +67,7 @@ fn draw_win_readout(ctx: &UiContext<'_>, content: Rect, y: f32) -> f32 {
     );
     let win = ctx.session.displayed_win();
     draw_text_right(
-        &win.to_string(),
+        &naming::credits(win),
         rect.right() - 14.0,
         rect.y + 42.0,
         TextStyle::new(

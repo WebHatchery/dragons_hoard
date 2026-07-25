@@ -1593,6 +1593,56 @@ The module is `#[cfg(test)]`, like the parts of `sim` it is checked against. It
 exists to prove the shipped game pays what the published figures say, not to be
 part of the shipped game.
 
+### 5.34 The game's own words and numbers (post-v1)
+
+Every symbol carries a `short` — a three-letter code the reel renderer draws when
+it cannot draw the art, and the paytable puts in its swatch. That is what the
+field is for, and it works.
+
+**It had also leaked into prose.** A win read `CHS x3 on line 19` while the
+paytable two keystrokes away called the same symbol "Treasure Chest", and a
+refining free spin announced `burned FRC RIM` (§5.21). The player was being told
+what had just happened in a code they were never given, about symbols the game
+names perfectly well everywhere else.
+
+It survived twenty-eight iterations because nothing was wrong with it *locally*:
+each call site had a symbol in hand and reached for the nearest string on it. So
+the fix is not the two edits — it is one place that decides how anything is
+named, and **a test that no short code can reach prose again**. A win now reads
+`Ruby ×3 on line 17`.
+
+**The same audit found the other half.** A game entirely about quantities was
+rendering them with `to_string()`: `Balance 1000150`, a peak of `1009419`, a
+stake of `35800`. Seven digits a player has to count with their eye to know
+whether they have a million or ten.
+
+The sharpest evidence was already in the codebase. `ui/reels.rs` held a private
+`format_credits` with thousands separators, used by the jackpot ladder and
+nothing else — so the game had known separators were needed since the ladder was
+written, in exactly one place. That is why the Grand read `25,000` while the
+balance beside it read `1000150`. It is deleted; everything goes through the one
+function now.
+
+**`macroquad-toolkit::ui::number`** is where the formatting lives, since every
+game in the workspace counts something. `grouped` keeps every digit, for anything
+the player might do arithmetic on. `compact` trades low digits for width — `1.2M`
+— for axis labels and bars, and **rounds toward zero**, so a compact figure is
+never larger than the number it stands for: a bar labelled `1.3M` beside a total
+of `1,249,999` invites the reader to think a digit went missing. `compact` is
+explicitly wrong for a balance, because being unable to see your own money to the
+credit costs more trust than it saves pixels.
+
+The dividing line is **magnitude against identifier**. Credits and large counts
+are grouped; multipliers and payline numbers are not, because `×1,000` is worse
+than `×1000` and a grouped line number would read as money.
+
+Two of the author's own test expectations were wrong and the toolkit corrected
+them: `compact(999_999)` is `999K`, not `999.9K` — three whole digits, so the
+decimal goes — and `i64::MIN` has no unit above `B`, so it stops shortening rather
+than becoming wrong. The reason that input is tested at all is that `-i64::MIN`
+overflows: it is the one value that sails through every test written with small
+numbers and then panics in a release build.
+
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
 - Winning lines: pulse highlight (`blink`/`pulse`), floating win amounts
@@ -2193,6 +2243,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
+| A code in place of a name | Symbol short codes are a rendering fallback and a test now keeps them out of prose (§5.34). They read as correct at every individual call site, which is why they lasted twenty-eight iterations. |
 | The sim measuring a game nobody plays | The interactive path is driven headless and held to conservation laws, then compared against the sim on the same seed (§5.33). Features resolve through different functions on the two paths. |
 | A summary that hides the shape | The session graph draws the band between bucket extremes, and the toolkit series decimates by extremes rather than averages (§5.32). Averaging would smooth away the spikes the graph exists to show. |
 | Music that is inaudible or clips | Tracks are levelled against each other by test, and every mood's summed peak is checked at its real gains (§5.31). The panel found the arpeggio at a fifth of the bass. |
@@ -2230,7 +2281,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus twenty-eight post-v1 systems
+## 15. Current State — v1 shipped, plus twenty-nine post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
@@ -2241,11 +2292,11 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33). The game is
+navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) and the naming layer (§5.34). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-402 tests pass here and 194 in `macroquad-toolkit`; `cargo fmt --check`,
+411 tests pass here and 205 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
 release build are clean. Every `.rs` file is under the 800-line limit, `data.rs`
 (741) and `ui/reels.rs` (734) the largest — `state/spin.rs` dropped from 615 to

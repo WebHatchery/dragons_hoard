@@ -79,12 +79,22 @@ impl CelebrationKind {
         match self {
             CelebrationKind::FreeSpinsEntry { spins, .. } => format!("{} FREE SPINS", spins),
             CelebrationKind::FreeSpinsRetrigger { spins } => format!("+{} FREE SPINS", spins),
-            CelebrationKind::FreeSpinsSummary { won, .. } => format!("{} CREDITS", won),
-            CelebrationKind::Hatch { credits, .. } => format!("{} CREDITS", credits),
-            CelebrationKind::Jackpot { credits, .. } => format!("{} CREDITS", credits),
-            CelebrationKind::BigWin { credits } => format!("{} CREDITS", credits),
+            CelebrationKind::FreeSpinsSummary { won, .. } => {
+                format!("{} CREDITS", crate::ui::naming::credits(*won))
+            }
+            CelebrationKind::Hatch { credits, .. } => {
+                format!("{} CREDITS", crate::ui::naming::credits(*credits))
+            }
+            CelebrationKind::Jackpot { credits, .. } => {
+                format!("{} CREDITS", crate::ui::naming::credits(*credits))
+            }
+            CelebrationKind::BigWin { credits } => {
+                format!("{} CREDITS", crate::ui::naming::credits(*credits))
+            }
             CelebrationKind::GambleLost { .. } => "NOTHING".to_owned(),
-            CelebrationKind::Wrath { credits, .. } => format!("{} CREDITS", credits),
+            CelebrationKind::Wrath { credits, .. } => {
+                format!("{} CREDITS", crate::ui::naming::credits(*credits))
+            }
         }
     }
 
