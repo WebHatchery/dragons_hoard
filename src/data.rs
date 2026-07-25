@@ -75,6 +75,11 @@ pub static MACHINES: &[MachineDef] = &[
         "frost",
         "High volatility. Rarer wins, far bigger, with tripled free spins."
     ),
+    machine!(
+        "ways",
+        "ways",
+        "243 ways to win — no paylines. Symbols pay from the left wherever they land."
+    ),
 ];
 
 /// Look a machine up by id, falling back to the first so a stale saved id can
@@ -113,6 +118,28 @@ pub struct GameConfig {
     pub big_win_multiple: i64,
     /// Master volume for the synthesised effects, 0.0 to 1.0.
     pub sfx_volume: f32,
+    /// Which win model this cabinet uses (§5.14). `default` so the two payline
+    /// machines need no edit — a key that did not exist yesterday must not
+    /// invalidate data that was correct.
+    #[serde(default)]
+    pub evaluation: Evaluation,
+    /// Line-bet units one spin costs. A payline machine buys one unit per line
+    /// and leaves this unset; a ways machine has no lines to count, so it says
+    /// so outright.
+    #[serde(default)]
+    pub bet_units: Option<usize>,
+}
+
+/// How a cabinet decides what has won.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Evaluation {
+    /// Fixed paths across the grid; one win per line at most (§3).
+    #[default]
+    Lines,
+    /// Any path — a symbol pays if it appears on every reel from the first, and
+    /// the win is multiplied by how many paths there are (§5.14).
+    Ways,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -459,7 +486,21 @@ impl GameData {
 
     /// Total bet for a line bet: every payline is always active.
     pub fn total_bet(&self, line_bet: i64) -> i64 {
-        line_bet * self.paylines.len() as i64
+        line_bet * self.bet_units() as i64
+    }
+
+    /// Line-bet units a spin costs. A payline machine buys its lines; a ways
+    /// machine buys all its ways at once for a configured price, because 243
+    /// units of line bet would be an absurd stake.
+    pub fn bet_units(&self) -> usize {
+        self.config.bet_units.unwrap_or(self.paylines.len()).max(1)
+    }
+
+    /// How many ways this cabinet pays, for the panel readout. `None` on a
+    /// payline machine, which counts lines instead.
+    pub fn ways_count(&self) -> Option<usize> {
+        (self.config.evaluation == Evaluation::Ways)
+            .then(|| self.config.row_count.pow(self.config.reel_count as u32))
     }
 
     pub fn line_bet(&self, index: usize) -> i64 {
@@ -500,8 +541,19 @@ impl GameData {
                 ));
             }
         }
-        if self.paylines.is_empty() {
-            return Err("paylines.json declared no paylines".to_owned());
+        // A ways machine has no paylines by definition; a payline machine with
+        // none would silently pay nothing but scatters.
+        match self.config.evaluation {
+            Evaluation::Lines if self.paylines.is_empty() => {
+                return Err("paylines.json declared no paylines".to_owned());
+            }
+            Evaluation::Ways if !self.paylines.is_empty() => {
+                return Err("a ways machine must not declare paylines".to_owned());
+            }
+            Evaluation::Ways if self.config.bet_units.is_none() => {
+                return Err("a ways machine must declare bet_units".to_owned());
+            }
+            _ => {}
         }
         for line in &self.paylines {
             if line.rows.len() != reel_count {

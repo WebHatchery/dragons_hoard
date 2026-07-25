@@ -260,6 +260,21 @@ impl GameSession {
         data.total_bet(self.line_bet(data))
     }
 
+    /// The grid to draw right now.
+    ///
+    /// While a spin is in flight this is the **decided** grid, not the settled
+    /// one. `self.grid` is only written when every reel has landed, so a reel
+    /// that stops early was drawing the *previous* spin's symbols until the last
+    /// one came to rest — and then the whole board snapped. It read as the reels
+    /// refusing to lock on their result, and a win hid it only because the
+    /// payout count-up holds the board afterwards.
+    pub fn display_grid(&self) -> &Grid {
+        match self.pending.as_ref() {
+            Some(pending) => &pending.result.grid,
+            None => &self.grid,
+        }
+    }
+
     pub fn in_free_spins(&self) -> bool {
         self.free_spins.is_some()
     }

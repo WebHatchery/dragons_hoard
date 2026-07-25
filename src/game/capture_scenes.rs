@@ -74,6 +74,13 @@ impl Game {
                     Some(CelebrationKind::Jackpot { .. })
                 )
             }),
+            "ways" => {
+                // The 243-ways cabinet (§5.14). Fast-forwarded to a win, because
+                // a resting board says nothing about how differently it pays.
+                self.data = GameData::load_machine(&crate::data::MACHINES[2]).unwrap();
+                self.session = GameSession::new(&self.data, 0xD2A6_0F1E);
+                self.fast_forward_to(|session| session.last_win > 0);
+            }
             "frost" => {
                 self.data = GameData::load_machine(&crate::data::MACHINES[1]).unwrap();
                 self.session = GameSession::new(&self.data, 0xD2A6_0F1E);

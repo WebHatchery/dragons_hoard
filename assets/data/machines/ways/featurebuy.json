@@ -1,0 +1,35 @@
+{
+  "target_rtp_permille": 950,
+  "tiers": [
+    {
+      "id": "freespins",
+      "name": "Free Spins",
+      "description": "10 free spins across all 243 ways, with tripled wins.",
+      "award": {
+        "kind": "free_spins",
+        "spins": 10
+      },
+      "price_multiple": 46
+    },
+    {
+      "id": "super",
+      "name": "Super Free Spins",
+      "description": "20 free spins \u2014 the five-scatter award, bought outright.",
+      "award": {
+        "kind": "free_spins",
+        "spins": 20
+      },
+      "price_multiple": 92
+    },
+    {
+      "id": "wrath",
+      "name": "The Dragon's Wrath",
+      "description": "Wake the dragon at once: four coins locked, three respins.",
+      "award": {
+        "kind": "wrath",
+        "coins": 4
+      },
+      "price_multiple": 29
+    }
+  ]
+}

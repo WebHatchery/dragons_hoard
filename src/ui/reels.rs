@@ -6,6 +6,7 @@
 //! stop rather than a decorative loop.
 
 use crate::data::GameData;
+use crate::engine::evaluate::WinSource;
 use crate::state::{jackpot, GameSession};
 use crate::ui::{palette, symbols};
 use macroquad::prelude::*;
@@ -234,7 +235,10 @@ fn draw_resting_reel(
     pulse: f32,
     shake: Vec2,
 ) {
-    let rows = session.grid.row_count();
+    // `display_grid`, not `grid`: a reel that has landed shows what it landed
+    // on even while its neighbours are still turning.
+    let grid = session.display_grid();
+    let rows = grid.row_count();
     for row in 0..rows {
         let cell = cell_slot(data, reel, row as f32)
             .offset(shake)
@@ -243,7 +247,7 @@ fn draw_resting_reel(
         draw_symbol_cell(
             data,
             cell,
-            session.grid.at(reel, row),
+            grid.at(reel, row),
             if winning { pulse } else { 0.0 },
             true,
         );
@@ -470,24 +474,31 @@ fn draw_win_summary(data: &GameData, session: &GameSession, rect: Rect) {
         return;
     };
 
-    let text = if outcome.line_wins.is_empty() && outcome.scatter_credits == 0 {
+    let text = if outcome.wins.is_empty() && outcome.scatter_credits == 0 {
         "No win — spin again".to_owned()
     } else {
         let mut parts: Vec<String> = outcome
-            .line_wins
+            .wins
             .iter()
             .take(3)
             .map(|win| {
-                format!(
-                    "{} x{} on line {}",
-                    data.symbols.get(win.symbol).short,
-                    win.count,
-                    data.paylines[win.line].id
-                )
+                let short = &data.symbols.get(win.symbol).short;
+                match win.source {
+                    WinSource::Line(index) => format!(
+                        "{} x{} on line {}",
+                        short,
+                        win.count,
+                        data.paylines.get(index).map_or(0, |line| line.id)
+                    ),
+                    WinSource::Ways(1) => format!("{} x{}", short, win.count),
+                    WinSource::Ways(ways) => {
+                        format!("{} x{} — {} ways", short, win.count, ways)
+                    }
+                }
             })
             .collect();
-        if outcome.line_wins.len() > 3 {
-            parts.push(format!("+{} more", outcome.line_wins.len() - 3));
+        if outcome.wins.len() > 3 {
+            parts.push(format!("+{} more", outcome.wins.len() - 3));
         }
         if outcome.scatter_credits > 0 {
             parts.push(format!("{} scatters", outcome.scatter_count));
@@ -514,12 +525,13 @@ fn winning_cells(data: &GameData, session: &GameSession) -> Vec<bool> {
         return mask;
     };
 
-    for win in &outcome.line_wins {
-        let Some(payline) = data.paylines.get(win.line) else {
-            continue;
-        };
-        for (reel, row) in payline.rows.iter().enumerate().take(win.count) {
-            mask[reel * grid.row_count() + row] = true;
+    // Wins carry their own cells, so this works for paylines and for ways
+    // without knowing which model produced them.
+    for win in &outcome.wins {
+        for cell in &win.cells {
+            if let Some(lit) = mask.get_mut(*cell) {
+                *lit = true;
+            }
         }
     }
 
@@ -539,23 +551,27 @@ fn winning_cells(data: &GameData, session: &GameSession) -> Vec<bool> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::engine::evaluate::{LineWin, SpinOutcome};
+    use crate::engine::evaluate::{SpinOutcome, Win, WinSource};
 
     #[test]
     fn winning_cells_cover_exactly_the_paying_run() {
         let data = GameData::load().unwrap();
         let chest = data.symbols.index_of("chest").unwrap();
 
-        // Payline index 0 is the middle row, paid as three chests.
+        // Payline index 0 is the middle row, paid as three chests. The win
+        // carries its own cells now, so the fixture states them directly rather
+        // than relying on a payline lookup.
+        let rows = data.config.row_count;
         let mut session = GameSession::new(&data, 1);
         session.last_outcome = Some(SpinOutcome {
-            line_wins: vec![LineWin {
-                line: 0,
+            wins: vec![Win {
+                source: WinSource::Line(0),
                 symbol: chest,
                 count: 3,
                 credits: 40,
+                cells: (0..3).map(|reel| reel * rows + 1).collect(),
             }],
-            line_credits: 40,
+            win_credits: 40,
             total_credits: 40,
             ..SpinOutcome::default()
         });

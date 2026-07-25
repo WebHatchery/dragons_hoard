@@ -260,7 +260,9 @@ synthesised (§7.1) and have never been listened to.
 
 ### 5.8 Multiple machines (post-v1)
 
-The catalog ships two cabinets, and the whole difference between them is JSON.
+The catalog ships three cabinets. For the first two the whole difference is JSON;
+the third (§5.14) changes the evaluator as well, which is what makes it a
+different game rather than a different tuning.
 
 | | Dragon's Hoard | Frost Wyrm |
 |---|---|---|
@@ -551,6 +553,79 @@ Feature buys are restricted or banned in several real jurisdictions for
 accelerating loss rates. That is not a concern for play money with no purchases
 (§1), but it is the reason the menu says what it is priced from rather than only
 what it costs.
+
+### 5.14 Ways to Win, and a third cabinet (post-v1)
+
+Two machines that differ only in their numbers are two tunings of one game. This
+is a different game: **Emberfall** pays 243 ways instead of 20 lines, and it is
+the first thing built here that changes the evaluator rather than the data it
+reads.
+
+**What a way is.** A payline asks whether *one path* through the grid reads as
+five chests. A ways machine asks whether **any** path does: a symbol pays if it
+appears somewhere on each of reels 1..n, multiplied by how many paths there are —
+the product of its per-reel counts. Two on reel 1, one on reel 2, three on reel 3
+is `2 × 1 × 3 = 6` ways, all paid. On a 5×3 grid that is `3⁵ = 243`, always
+active. There is no line to be off.
+
+**Which evaluator runs is a data key, not a caller's choice.** `game_config.json`
+gains `evaluation: "lines" | "ways"`, defaulting to lines so the two existing
+cabinets needed no edit — a key that did not exist yesterday must not invalidate
+data that was already correct. Everything above `evaluate()` reads the same
+`SpinOutcome` either way; a machine *is* its evaluation model.
+
+**Wins now carry their own cells.** `LineWin.line` was an index into the payline
+table, which a ways win has nothing to look up. `Win` carries `cells` instead, so
+the highlight, the floating `+N` and the summary line all work without knowing
+which model produced them. That removed a lookup rather than adding one.
+
+**Every symbol pays, except an all-wild run.** This is the rule that separates
+ways from lines and it was a decision, not an inheritance. On a payline the run
+is one contest and `best_line_result` picks the best single reading. In a ways
+game symbols genuinely pay *alongside* each other — a gem run and a chest run are
+two different sets of paths and both are real. The one thing that must not happen
+is the same cells paying twice under two names, and there is exactly one way for
+that to arise: a run of pure wilds reads as every symbol at once. So a symbol is
+suppressed when no genuine copy of it appears in its run; the wild pays for those
+cells itself, once. `W W W C C` therefore pays both a three-wild run *and* a
+five-chest run, because reels 4 and 5 hold real chests.
+
+**The bet model had to generalise.** `total_bet` was `line_bet × paylines.len()`.
+A ways machine has no lines to count and 243 units of line bet would be an absurd
+stake, so it declares `bet_units` outright — Emberfall buys all 243 ways for 25
+units. Validation makes the two mutually exclusive: a ways cabinet that declared
+paylines would evaluate by ways while charging for lines that do nothing.
+
+**Ways strips are shaped differently, and the sim had to teach me how.** "Appears
+somewhere on this reel" is a far easier bar than "appears on this row", so the
+first pass — premiums thinned and pays cut hard — measured **0.4147**. Scaled
+2.65× it went to 0.9702, and a final 1.75% trim landed **0.9596**. The resulting
+machine feels nothing like the other two:
+
+| | Dragon's Hoard | Frost Wyrm | Emberfall |
+|---|---|---|---|
+| Model | 20 lines | 20 lines | 243 ways |
+| Hit frequency | 0.411 | 0.258 | **0.622** |
+| Bet units | 20 | 20 | 25 |
+| Free spins | 10/15/20 at ×2 | 8/12/18 at ×3 | 10/15/20 at ×3 |
+| Base game share | 0.654 | 0.723 | 0.763 |
+| Measured RTP | 0.9612 | 0.9450 | 0.9596 |
+
+Nearly two spins in three return something. That is the ways feel — constant
+small wins rather than long droughts — and it comes out of the model, not out of
+a volatility dial.
+
+**The Feature Buy caught its own mispricing.** Emberfall inherited Dragon's Hoard
+prices, and `feature_buy_prices_are_exact` (§5.13) failed at once with the right
+answers printed: 46× and 92× rather than 54× and 108×, because tripled free spins
+over 243 ways are worth less per unit of a larger stake. That is the system built
+last iteration doing exactly the job it was built for, on data it had never seen.
+
+**Testing a ways win in isolation is harder than a line.** §11 records that no
+filler symbol isolates a single payline; on ways it is worse, because any filler
+forms its own genuine run — that *is* the mechanic. The all-wild test walls its
+run off with a column of scatters, the only symbol that cannot be substituted for
+and cannot be run into.
 
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
@@ -919,6 +994,20 @@ and a Project Roost deployment record. Verified live — see §15.
   in hit frequency (a reskin fails), must not share a save slot (sharing one
   would silently overwrite a balance and hoard), must not share a symbol set,
   and an unknown machine id falls back to the first rather than failing.
+- **Ways evaluation (`engine/evaluate/ways.rs`):** one of each across three reels
+  is a single way; ways multiply across reels and the payout multiplies with
+  them; a run must start on reel 1; **several symbols pay at once** (the mechanic
+  a payline machine cannot express); wilds substitute and the genuine symbol
+  still pays; **an all-wild run pays only as the wild** and nothing else; a
+  wild-led run with real symbols behind it pays both; wilds never substitute for
+  the scatter; a full grid of one symbol pays all 243; and every cell a win
+  reports really holds that symbol or a wild, since those cells drive the
+  highlight.
+- **Two win models in the catalog (`state/tests/machines.rs`):** the catalog
+  contains both a lines machine and a ways machine — otherwise "multiple
+  machines" is one game tuned twice — and each declares exactly what its model
+  needs: paylines and one bet unit per line, or no paylines and explicit
+  `bet_units`.
 - **The Feature Buy (`state/featurebuy.rs`, `engine/sim.rs`, `state/tests/featurebuy.rs`):**
   the shipped menu validates and a **free tier is rejected** (it would return
   infinite RTP and make the reels pointless), as are duplicate ids and a Wrath
@@ -1009,6 +1098,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | A presentation bug hiding behind uniform test data | Reels 2 and 4 landed twenty symbols from their stop for five iterations because every landing test used an even reel index (§5.11). Tests over an indexed family must sweep the whole family, not a representative member. |
 | A feature the second machine can never see | The Dragon's Wrath fired 23 times per million spins on Frost Wyrm under a shared config, because the trigger reads strips that differ per cabinet (§5.12). Anything triggered off the reels must be per-machine data and must be measured on **every** machine, not just the one that boots. |
 | A bought feature priced away from its value | `feature_buy_prices_are_exact` buys every tier 200,000 times and asserts the return matches the machine (§5.13). Mispricing downward makes never spinning the optimal strategy, and nothing else in the suite would notice. |
+| A new evaluation model quietly breaking the old one | `evaluation` defaults to `lines`, so existing data needed no edit, and both models are asserted present in the catalog (§5.14). Wins carry their own cells, so no consumer branches on the model. |
 | A new machine shipping at the wrong RTP | The sim iterates `MACHINES`; a cabinet cannot be added without being measured (§5.8). |
 | Two machines sharing a save slot | Slots are `<machine>_<slot>`; a test asserts they are distinct. |
 | Jackpots exploitable by bet-switching | Odds are per credit wagered, so the trigger is bet-fair by construction (§5.6) and tested. The bet-ladder sim test excludes jackpots deliberately — they are too high-variance to compare over 20k spins — and their return is checked against its closed form instead. |
@@ -1041,21 +1131,23 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus eight post-v1 systems
+## 15. Current State — v1 shipped, plus nine post-v1 systems
 
-**All five phases are done, every item in §14 is met**, and eight systems have
+**All five phases are done, every item in §14 is met**, and nine systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
 machines (§5.8), achievements (§5.9), the Vault Pick (§5.10), the reel-feel pass
-(§5.11), the Dragon's Wrath (§5.12) and the Feature Buy (§5.13). The game is
+(§5.11), the Dragon's Wrath (§5.12), the Feature Buy (§5.13) and ways-to-win
+(§5.14). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-209 tests pass; `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`
+222 tests pass; `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`
 and the `wasm32-unknown-unknown` release build are clean. Every `.rs` file is
-under the 800-line limit, `state.rs` still the largest at 743.
+under the 800-line limit, `state.rs` still the largest at 758.
 
 Measured RTP over 1,000,000 spins: Dragon's Hoard **0.9612** at **0.411** hit
-frequency, Frost Wyrm **0.9450** at **0.258**. Both paytables were scaled ~2–3%
+frequency, Frost Wyrm **0.9450** at **0.258**, Emberfall **0.9596** at **0.622**
+(§5.14). Both paytables were scaled ~2–3%
 down to make room for the Dragon's Wrath (§5.12). The Feature Buy (§5.13) moved
 neither, by construction — it is a second door into features that already
 existed, priced to return exactly what the reels return.
@@ -1063,8 +1155,8 @@ existed, priced to return exactly what the reels return.
 Captures in `docs/verification/`: `ui_idle`, `ui_spin`, `ui_win`, `ui_freespins`,
 `ui_paytable`, `ui_settings`, `ui_machines`, `ui_frost`, `ui_achievements`,
 `ui_bonus`, `ui_feature_card`, `ui_hatch`, `ui_jackpot`, `ui_autospin`,
-`ui_anticipation`, `ui_wrath`, `ui_featurebuy`. The catalog card image at the
-project root is produced by the same harness. `ui_spin` is captured at 20 frames rather than 150 — at the default
+`ui_anticipation`, `ui_wrath`, `ui_featurebuy`, `ui_ways`. The catalog card image
+at the project root is produced by the same harness. `ui_spin` is captured at 20 frames rather than 150 — at the default
 the spin has already finished, so the blur it is meant to show is not there.
 
 ### Verified, and not
@@ -1079,6 +1171,22 @@ arrows, the same trap §7.1 records for emoji), and the paytable's fourth rules
 paragraph spilled out through the bottom of its panel. Before that, the first
 motion-blur attempt bleached the reels to near-white. None of the three is
 something a test would have caught.
+
+**Two bugs came from the player, not from the tests.** The reels were too fast
+to read the art in flight (`BASE_SPIN_TIME` 0.62 → 0.95, stagger 0.26 → 0.30,
+blur cap 1.4 → 0.85), and — worse — **a reel that had landed kept drawing the
+previous spin's symbols** until the last reel settled, then the whole board
+snapped. `self.grid` is only written when every reel is down, so the resting draw
+was reading stale state for up to a second. A win hid it because the payout
+count-up holds the board afterwards, which is exactly why it was reported as "it
+doesn't stay locked on the result unless I won". `display_grid()` returns the
+decided grid while a spin is in flight, and a regression test steps a spin to a
+partial landing and asserts it.
+
+That neither had a test is the lesson: everything here is asserted about *state*,
+and both of these were about what is on screen at a moment when the state is
+mid-flight. The capture harness photographs settled frames, so it could not have
+caught them either.
 
 **Not verified: how the sound actually sounds.** The synthesis is covered by unit
 tests — well-formed header, correct rate and bit depth, audible peak, no clipping,

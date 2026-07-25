@@ -90,10 +90,22 @@ pub fn draw(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>) {
 
     draw_text_block(
         &format!(
-            "Wins pay left to right from reel 1 on all 20 lines. The Dragon is wild and pays the best reading of a line. Dragon Fire scatters pay anywhere and 3+ award free spins with expanding wilds.\n\
+            "{}\n\
              Progressives: {}% of every stake feeds the four pots, which pay at random on any paid spin. Bigger stakes win them proportionally more often, so the return per credit is the same at every bet — worth {:.1}% of all play.
              The Vault Pick: filling the hoard deals {} chests. Keep picking until {} come up empty; each prize is a share of the hoard, and a board is worth about {:.0}% of it.
              The Dragon's Wrath: {} dragon eggs on one grid lock as coins worth {:.1}x total bet on average and grant {} respins. Every coin that lands restores them in full; fill all {} cells for {}x total bet on top.",
+            // The rules paragraph is per-model: a ways cabinet has no line
+            // to read, so describing one would be describing another game.
+            match ctx.data.ways_count() {
+                Some(ways) => format!(
+                    "Wins pay from reel 1 across all {} ways — a symbol pays wherever it lands on each reel, and every path that forms it is paid. Several symbols can pay at once. The Dragon is wild.",
+                    ways
+                ),
+                None => format!(
+                    "Wins pay left to right from reel 1 on all {} lines. The Dragon is wild and pays the best reading of a line.",
+                    ctx.data.paylines.len()
+                ),
+            },
             ctx.data.jackpots.contribution_permille as f32 / 10.0,
             jackpot::expected_rtp(&ctx.data.jackpots) * 100.0,
             ctx.data.bonus.board_size,

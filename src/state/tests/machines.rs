@@ -1,6 +1,7 @@
 //! The machine catalog: loading, isolation and distinctness (GDD 5.8).
 
 use super::*;
+use crate::data::{Evaluation, MACHINES};
 
 #[test]
 fn every_machine_in_the_catalog_loads_and_validates() {
@@ -76,4 +77,44 @@ fn a_session_is_shaped_by_the_machine_it_belongs_to() {
     assert_ne!(dragon.config.hoard_capacity, frost.config.hoard_capacity);
     assert_eq!(dragon_session.grid.reel_count(), dragon.config.reel_count);
     assert_eq!(frost_session.grid.reel_count(), frost.config.reel_count);
+}
+
+#[test]
+fn the_catalog_offers_more_than_one_win_model() {
+    // Two cabinets that differ only in their numbers are two tunings of one
+    // game. A ways machine is a different game, and this is the assertion that
+    // says the catalog contains one (§5.14).
+    let models: Vec<Evaluation> = MACHINES
+        .iter()
+        .map(|machine| GameData::load_machine(machine).unwrap().config.evaluation)
+        .collect();
+
+    assert!(models.contains(&Evaluation::Lines));
+    assert!(models.contains(&Evaluation::Ways));
+}
+
+#[test]
+fn a_ways_machine_declares_no_paylines_and_a_lines_machine_declares_some() {
+    // The two are mutually exclusive by construction, and `validate` enforces
+    // it — a ways cabinet that shipped paylines would evaluate by ways and
+    // silently charge for lines that do nothing.
+    for machine in MACHINES {
+        let data = GameData::load_machine(machine).unwrap();
+        match data.config.evaluation {
+            Evaluation::Lines => {
+                assert!(!data.paylines.is_empty(), "{} has no lines", machine.id);
+                assert_eq!(
+                    data.bet_units(),
+                    data.paylines.len(),
+                    "{} should buy one unit per line",
+                    machine.id
+                );
+            }
+            Evaluation::Ways => {
+                assert!(data.paylines.is_empty(), "{} declared paylines", machine.id);
+                assert_eq!(data.ways_count(), Some(243));
+                assert!(data.bet_units() > 0);
+            }
+        }
+    }
 }

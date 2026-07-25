@@ -350,8 +350,13 @@ fn draw_bet_controls(
     let y = y + 48.0;
     draw_text_block(
         &format!(
-            "Lines: {}   (all active)\nTotal Bet: {}",
-            ctx.data.paylines.len(),
+            "{}\nTotal Bet: {}",
+            // A ways cabinet has no lines to count, and "Lines: 0" would read as
+            // a fault rather than as a different machine.
+            match ctx.data.ways_count() {
+                Some(ways) => format!("{} ways   (all active)", ways),
+                None => format!("Lines: {}   (all active)", ctx.data.paylines.len()),
+            },
             ctx.data.total_bet(line_bet)
         ),
         content.x,

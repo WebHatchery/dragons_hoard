@@ -1,25 +1,48 @@
-//! Payline / scatter evaluation. Pure: grid in, `SpinOutcome` out.
+//! Reel-win / scatter evaluation. Pure: grid in, `SpinOutcome` out.
+//!
+//! Two evaluators live behind one entry point. Which one runs is a data key
+//! (`game_config.json`'s `evaluation`), not a code path a caller chooses — a
+//! machine *is* its evaluation model, and every consumer above this line reads
+//! the same `SpinOutcome` either way. See `ways` for the second model (§5.14).
 
-use crate::data::{GameData, MAX_RUN};
+pub mod ways;
+
+use crate::data::{Evaluation, GameData, MAX_RUN};
 use crate::engine::reels::Grid;
 
-/// One paying payline.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct LineWin {
+/// How a win was formed, and the part of it that differs between the two
+/// models: a payline win names its line, a ways win names how many paths it
+/// was paid for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WinSource {
     /// Index into `GameData::paylines`.
-    pub line: usize,
-    /// The symbol the line was paid as (may differ from the leading cell when
-    /// wilds lead the run).
+    Line(usize),
+    /// Number of distinct paths through the grid, all paid.
+    Ways(usize),
+}
+
+/// One paying combination.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Win {
+    pub source: WinSource,
+    /// The symbol it was paid as (may differ from the leading cell when wilds
+    /// lead the run).
     pub symbol: usize,
     pub count: usize,
     pub credits: i64,
+    /// Flat `reel * rows + row` cells that formed it.
+    ///
+    /// Carried on the win rather than looked up afterwards: a ways win has no
+    /// line to look up, and making both models report their own cells means the
+    /// win highlight needs to know nothing about either.
+    pub cells: Vec<usize>,
 }
 
 /// Everything one spin produced, before any of it is applied to the session.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct SpinOutcome {
-    pub line_wins: Vec<LineWin>,
-    pub line_credits: i64,
+    pub wins: Vec<Win>,
+    pub win_credits: i64,
     pub scatter_count: usize,
     pub scatter_credits: i64,
     /// Hoard symbols on the grid; each one banks a line bet into the hatch pot.
@@ -74,28 +97,11 @@ pub fn expand_wilds(data: &GameData, grid: &Grid) -> Grid {
 pub fn evaluate(data: &GameData, grid: &Grid, ctx: &EvalContext) -> SpinOutcome {
     let mut outcome = SpinOutcome::default();
 
-    let mut line_cells = Vec::with_capacity(grid.reel_count());
-    for (index, payline) in data.paylines.iter().enumerate() {
-        line_cells.clear();
-        line_cells.extend(
-            payline
-                .rows
-                .iter()
-                .enumerate()
-                .map(|(reel, row)| grid.at(reel, *row)),
-        );
-
-        if let Some((symbol, count, multiplier)) = best_line_result(data, &line_cells) {
-            let credits = multiplier * ctx.line_bet * ctx.win_multiplier;
-            outcome.line_credits += credits;
-            outcome.line_wins.push(LineWin {
-                line: index,
-                symbol,
-                count,
-                credits,
-            });
-        }
-    }
+    outcome.wins = match data.config.evaluation {
+        Evaluation::Lines => line_wins(data, grid, ctx),
+        Evaluation::Ways => ways::wins(data, grid, ctx.line_bet, ctx.win_multiplier),
+    };
+    outcome.win_credits = outcome.wins.iter().map(|win| win.credits).sum();
 
     if let Some(scatter) = data.symbols.scatter() {
         let count = grid.count_of(scatter);
@@ -109,8 +115,45 @@ pub fn evaluate(data: &GameData, grid: &Grid, ctx: &EvalContext) -> SpinOutcome 
         outcome.egg_count = grid.count_of(hoard);
     }
 
-    outcome.total_credits = outcome.line_credits + outcome.scatter_credits;
+    outcome.total_credits = outcome.win_credits + outcome.scatter_credits;
     outcome
+}
+
+/// Every paying payline, in payline order.
+fn line_wins(data: &GameData, grid: &Grid, ctx: &EvalContext) -> Vec<Win> {
+    let rows = grid.row_count();
+    let mut wins = Vec::new();
+    let mut cells = Vec::with_capacity(grid.reel_count());
+
+    for (index, payline) in data.paylines.iter().enumerate() {
+        cells.clear();
+        cells.extend(
+            payline
+                .rows
+                .iter()
+                .enumerate()
+                .map(|(reel, row)| grid.at(reel, *row)),
+        );
+
+        let Some((symbol, count, multiplier)) = best_line_result(data, &cells) else {
+            continue;
+        };
+        wins.push(Win {
+            source: WinSource::Line(index),
+            symbol,
+            count,
+            credits: multiplier * ctx.line_bet * ctx.win_multiplier,
+            cells: payline
+                .rows
+                .iter()
+                .enumerate()
+                .take(count)
+                .map(|(reel, row)| reel * rows + row)
+                .collect(),
+        });
+    }
+
+    wins
 }
 
 /// Best-paying interpretation of one payline, left to right.

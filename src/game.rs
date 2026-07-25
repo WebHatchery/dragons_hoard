@@ -424,20 +424,21 @@ impl Game {
         }
     }
 
-    /// One rising number per winning line, anchored to the line's last paying
-    /// cell so the player can see *which* line paid.
+    /// One rising number per win, anchored to the last cell that formed it so
+    /// the player can see *which* combination paid.
+    ///
+    /// Reads the win's own cells rather than looking up a payline, so a ways win
+    /// — which has no line to look up — lands in the right place too.
     fn spawn_win_text(&mut self, resolution: &SpinResolution) {
         let outcome = resolution.outcome();
-        for win in outcome.line_wins.iter().take(6) {
-            let Some(payline) = self.data.paylines.get(win.line) else {
-                continue;
-            };
-            let reel = win.count.saturating_sub(1);
-            let Some(row) = payline.rows.get(reel) else {
-                continue;
-            };
+        let rows = self.data.config.row_count.max(1);
 
-            let position = ui::reels::cell_center(&self.data, reel, *row);
+        for win in outcome.wins.iter().take(6) {
+            let Some(cell) = win.cells.last().copied() else {
+                continue;
+            };
+            let (reel, row) = (cell / rows, cell % rows);
+            let position = ui::reels::cell_center(&self.data, reel, row);
             self.floating
                 .spawn(format!("+{}", win.credits), position, palette::GOLD_BRIGHT);
             if win.credits >= self.session.total_bet(&self.data) {

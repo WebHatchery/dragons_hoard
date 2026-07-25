@@ -480,3 +480,46 @@ mod holdspin;
 mod jackpots;
 mod machines;
 mod preferences;
+
+#[test]
+fn a_reel_that_has_landed_shows_what_it_landed_on() {
+    // The reels used to keep the *previous* spin's symbols on every reel that
+    // had already stopped, then snap the whole board over when the last one
+    // settled. It read as the game refusing to lock on its result, and a win
+    // hid it because the payout count-up holds the board afterwards.
+    let data = data();
+    let mut session = GameSession::new(&data, 31_337);
+
+    // A first spin so there is a previous grid to wrongly linger.
+    session.spin(&data).unwrap();
+    session.celebrations.clear();
+    let previous = session.grid.clone();
+
+    session.begin_spin(&data).unwrap();
+    let decided = session.display_grid().clone();
+
+    // Step until at least one reel has landed but the spin has not settled.
+    let mut saw_partial = false;
+    for _ in 0..600 {
+        session.update_spin(&data, 1.0 / 60.0);
+        let Some(spinner) = session.phase.spinner() else {
+            break;
+        };
+        let landed = (0..data.config.reel_count).filter(|reel| !spinner.is_moving(*reel));
+        if landed.count() > 0 {
+            saw_partial = true;
+            assert_eq!(
+                session.display_grid(),
+                &decided,
+                "a landed reel was still drawing the previous spin"
+            );
+        }
+    }
+
+    assert!(saw_partial, "no reel ever landed mid-spin");
+    assert_ne!(
+        decided, previous,
+        "the seed produced the same grid twice; the test proves nothing"
+    );
+    assert_eq!(session.grid, decided, "the settled grid is the decided one");
+}

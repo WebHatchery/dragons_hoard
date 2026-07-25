@@ -138,7 +138,7 @@ fn wilds_never_substitute_for_the_scatter() {
 }
 
 #[test]
-fn line_credits_scale_with_the_line_bet() {
+fn win_credits_scale_with_the_line_bet() {
     let fixture = Fixture::new();
     let grid = fixture.grid(&[
         ["ruby", "chest", "ruby"],
@@ -151,8 +151,8 @@ fn line_credits_scale_with_the_line_bet() {
     let one = evaluate(&fixture.data, &grid, &EvalContext::base(&fixture.data, 1));
     let ten = evaluate(&fixture.data, &grid, &EvalContext::base(&fixture.data, 10));
 
-    assert!(one.line_credits > 0);
-    assert_eq!(ten.line_credits, one.line_credits * 10);
+    assert!(one.win_credits > 0);
+    assert_eq!(ten.win_credits, one.win_credits * 10);
 }
 
 #[test]
@@ -212,7 +212,7 @@ fn eggs_on_the_grid_are_counted_for_the_hoard() {
 }
 
 #[test]
-fn the_free_spin_multiplier_lifts_line_wins_but_not_scatters() {
+fn the_free_spin_multiplier_lifts_wins_but_not_scatters() {
     let fixture = Fixture::new();
     let grid = fixture.grid(&[
         ["fire", "chest", "copper"],
@@ -229,11 +229,11 @@ fn the_free_spin_multiplier_lifts_line_wins_but_not_scatters() {
         &EvalContext::free_spin(&fixture.data, 10),
     );
 
-    assert!(base.line_credits > 0);
+    assert!(base.win_credits > 0);
     assert!(base.scatter_credits > 0);
     assert_eq!(
-        free.line_credits,
-        base.line_credits * fixture.data.freespins.multiplier
+        free.win_credits,
+        base.win_credits * fixture.data.freespins.multiplier
     );
     assert_eq!(free.scatter_credits, base.scatter_credits);
 }
@@ -277,10 +277,10 @@ fn the_total_is_the_sum_of_line_and_scatter_credits() {
 
     assert_eq!(
         outcome.total_credits,
-        outcome.line_credits + outcome.scatter_credits
+        outcome.win_credits + outcome.scatter_credits
     );
     assert_eq!(
-        outcome.line_credits,
-        outcome.line_wins.iter().map(|win| win.credits).sum::<i64>()
+        outcome.win_credits,
+        outcome.wins.iter().map(|win| win.credits).sum::<i64>()
     );
 }

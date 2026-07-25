@@ -10,9 +10,9 @@ use macroquad_toolkit::math::{ease_out_cubic, ease_out_quad};
 use macroquad_toolkit::timing::Timer;
 
 /// How long reel 1 spins for. Each later reel adds [`REEL_STAGGER`].
-const BASE_SPIN_TIME: f32 = 0.62;
+const BASE_SPIN_TIME: f32 = 0.95;
 /// Extra spin time per reel, which is what produces the left-to-right stop.
-const REEL_STAGGER: f32 = 0.26;
+const REEL_STAGGER: f32 = 0.30;
 /// Strip revolutions a reel travels before landing, plus one more every second
 /// reel so later reels visibly spin faster rather than merely longer.
 ///
@@ -224,7 +224,7 @@ impl ReelSpinner {
     pub fn blur_symbols(&self, reel: usize) -> f32 {
         self.reels
             .get(reel)
-            .map_or(0.0, |reel| (reel.speed() / 60.0).min(1.4))
+            .map_or(0.0, |reel| (reel.speed() / 60.0).min(0.85))
     }
 
     /// True while this reel is both held back and still turning — what the UI
@@ -396,8 +396,13 @@ mod tests {
 
     #[test]
     fn a_reel_lands_on_target_even_from_a_ragged_frame_rate() {
+        // Deliberately uneven, and deliberately longer than the spin: the
+        // point is that where a reel lands cannot depend on how the frames fell,
+        // so the sequence has to actually reach the end.
         let mut reel = ReelAnimation::new(40, 3, 22, 0, 1.0, false);
-        for dt in [0.004, 0.1, 0.017, 0.05, 0.2, 0.033, 0.4, 0.016] {
+        for dt in [
+            0.004, 0.1, 0.017, 0.05, 0.2, 0.033, 0.4, 0.016, 0.12, 0.008, 0.25, 0.031,
+        ] {
             reel.tick(dt);
         }
 
