@@ -31,7 +31,7 @@ pub fn draw(
         Color::new(0.0, 0.0, 0.0, 0.78),
     );
 
-    let panel = Rect::new(340.0, 140.0, 600.0, 400.0);
+    let panel = Rect::new(340.0, 140.0, 600.0, 456.0);
     draw_surface(
         panel,
         &SurfaceStyle::new(palette::STONE)
@@ -58,49 +58,33 @@ pub fn draw(
 
     let mut y = panel.y + 66.0;
 
-    // Volume gets a pair of steppers; everything else is a single cycling
-    // button, which keeps the panel to one column and one interaction verb.
+    // Two volume rows rather than one: the music plays constantly and the
+    // effects do not, so a player who wants one quiet rarely wants both quiet
+    // (§5.31).
     draw_row_label(panel, y, "Sound", "master volume for every effect");
-    let volume = (prefs.shared.master_volume * 100.0).round() as i32;
-    if virtual_button(
-        Rect::new(panel.right() - 212.0, y + 6.0, 42.0, 36.0),
-        "-",
-        volume > 0,
-        ButtonTone::Secondary,
+    volume_stepper(
+        panel,
+        y,
+        prefs.shared.master_volume,
+        UiAction::VolumeDown,
+        UiAction::VolumeUp,
         mouse,
+        actions,
         nav,
-    ) {
-        actions.push(UiAction::VolumeDown);
-    }
-    draw_text_centered_in_box_ex(
-        &if volume == 0 {
-            "Muted".to_owned()
-        } else {
-            format!("{}%", volume)
-        },
-        panel.right() - 166.0,
-        y + 6.0,
-        100.0,
-        36.0,
-        TextStyle::new(
-            20.0,
-            if volume == 0 {
-                palette::TEXT_DIM
-            } else {
-                palette::GOLD_BRIGHT
-            },
-        ),
     );
-    if virtual_button(
-        Rect::new(panel.right() - 62.0, y + 6.0, 42.0, 36.0),
-        "+",
-        volume < 100,
-        ButtonTone::Secondary,
+    y += ROW_HEIGHT;
+
+    draw_row_label(panel, y, "Music", "the four-track loop behind the reels");
+    volume_stepper(
+        panel,
+        y,
+        prefs.shared.music_volume,
+        UiAction::MusicVolumeDown,
+        UiAction::MusicVolumeUp,
         mouse,
+        actions,
         nav,
-    ) {
-        actions.push(UiAction::VolumeUp);
-    }
+    );
     y += ROW_HEIGHT;
 
     draw_row_label(panel, y, "Spin Speed", "how long the reels take to land");
@@ -158,6 +142,61 @@ pub fn draw(
         y + 18.0,
         TextStyle::new(15.0, palette::TEXT_DIM).params(),
     );
+}
+
+/// A minus/value/plus trio. Shared by the two volume rows so they cannot drift
+/// apart in layout or in what "Muted" means.
+#[allow(clippy::too_many_arguments)]
+fn volume_stepper(
+    panel: Rect,
+    y: f32,
+    value: f32,
+    down: UiAction,
+    up: UiAction,
+    mouse: Vec2,
+    actions: &mut Vec<UiAction>,
+    nav: &mut Nav,
+) {
+    let percent = (value * 100.0).round() as i32;
+    if virtual_button(
+        Rect::new(panel.right() - 212.0, y + 6.0, 42.0, 36.0),
+        "-",
+        percent > 0,
+        ButtonTone::Secondary,
+        mouse,
+        nav,
+    ) {
+        actions.push(down);
+    }
+    draw_text_centered_in_box_ex(
+        &if percent == 0 {
+            "Muted".to_owned()
+        } else {
+            format!("{}%", percent)
+        },
+        panel.right() - 166.0,
+        y + 6.0,
+        100.0,
+        36.0,
+        TextStyle::new(
+            20.0,
+            if percent == 0 {
+                palette::TEXT_DIM
+            } else {
+                palette::GOLD_BRIGHT
+            },
+        ),
+    );
+    if virtual_button(
+        Rect::new(panel.right() - 62.0, y + 6.0, 42.0, 36.0),
+        "+",
+        percent < 100,
+        ButtonTone::Secondary,
+        mouse,
+        nav,
+    ) {
+        actions.push(up);
+    }
 }
 
 fn draw_row_label(panel: Rect, y: f32, label: &str, hint: &str) {

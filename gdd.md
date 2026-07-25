@@ -1416,6 +1416,62 @@ player asked for and the tighten-now rule reconstructs the rest.
 `game/outcomes.rs`, on the seam `actions.rs` already draws: that module decides
 what happened, this one decides what the game does about it.
 
+### 5.31 Music (post-v1)
+
+§7.1 shipped the effects generated in code and left the room silent between
+them. This fills it: four tracks, four bars of i–VI–III–VII in D minor, written
+in Rust and rendered by the same synth the blips come from.
+
+**Vertical remixing.** All four tracks are the same length, started together on
+the first frame and **left running for the whole session**. Nothing is ever
+started or stopped in response to gameplay — only the four volumes move. That
+buys two things a start/stop approach cannot: it **cannot glitch**, because a
+track begun when free spins trigger would enter wherever the bar happened to be
+and would need scheduling against the beat to avoid sounding like a mistake; and
+every transition is a **fade**, so the arrangement thickens and thins rather than
+cutting. Base is bass and pad, free spins bring the arpeggio, the Wrath adds the
+drum and pushes everything else down. The mood is *derived* from session state
+each frame rather than set at trigger points, so a state the music should react
+to cannot be added without that line seeing it.
+
+**`macroquad-toolkit::score`** is the new layer between notes and tones. `synth`
+speaks frequencies and envelopes, which is right for a blip and wrong for eight
+bars of anything: writing a bass line as hertz values and second offsets makes
+every edit arithmetic and a wrong note indistinguishable from a typo. `score`
+adds a scale, a tempo, and notes placed on beats by degree, and `lay` turns them
+into the `Voice` list the synth already rendered. Nothing in `synth` changed.
+
+**Written by someone who has never heard it**, like the effects. That rules out
+mixing by ear and puts the weight on what can be measured — and the three faults
+that matter are all inaudible until they are not:
+
+- **Phase drift.** Every track must render to exactly `Timing::samples()`. The
+  synth sizes its buffer from the last voice that sounds, so a track whose final
+  bar is empty renders short; one sample of drift per loop is inaudible on the
+  first pass and a disaster on the fiftieth.
+- **The seam.** A loop whose last sample is nowhere near its first steps
+  discontinuously every wrap — a click once per repeat, easy to miss once and
+  impossible to ignore after five minutes.
+- **The summed clip.** Four tracks each peaking at a comfortable 0.6 sum to 2.4.
+  It is the one arrangement nobody auditions, because it only happens in the
+  game, so `mixed_peak` checks every mood at its real gains.
+
+Tests also hold every written note in key, since a mistyped degree is
+indistinguishable from a deliberate one, and prove the three moods are actually
+different arrangements rather than three names for the same mix.
+
+**The waveform inspector (§5.19) earned its keep again.** The music went into it
+for the same reason the effects did, and the first capture showed the arpeggio
+peaking at **0.04** and the drum at **0.07** against the bass's 0.19 — the two
+tracks that carry every transition, written so quiet they would never have been
+heard under the effects at all. Both were levelled and a test now holds every
+track within a factor of three of the loudest. Each row also lists **every**
+mood's gain, not just the current one, so the whole arrangement is readable at a
+glance rather than one mix at a time.
+
+Music gets its own volume row, separate from the effects: it plays constantly and
+they do not, so a player who wants one quiet rarely wants both quiet.
+
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
 - Winning lines: pulse highlight (`blink`/`pulse`), floating win amounts
@@ -2016,6 +2072,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
+| Music that is inaudible or clips | Tracks are levelled against each other by test, and every mood's summed peak is checked at its real gains (§5.31). The panel found the arpeggio at a fifth of the bass. |
 | A session you lose track of | Three figures at a chosen interval, and caps that tighten now but loosen only next session (§5.30). A limit you can lift in the moment is a suggestion. |
 | Rules that describe a different game | The panel is generated from the cabinet's own config, and a test asserts every mechanic a machine has is explained (§5.29). Hand-written prose drifted silently across four new cabinets. |
 | A new machine shipping at the wrong RTP | The sim iterates `MACHINES`; a cabinet cannot be added without being measured (§5.8). |
@@ -2050,7 +2107,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus twenty-five post-v1 systems
+## 15. Current State — v1 shipped, plus twenty-six post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
@@ -2061,11 +2118,11 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27), hints (§5.28), generated rules (§5.29) and session limits (§5.30). The game is
+navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30) and music (§5.31). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-359 tests pass here and 169 in `macroquad-toolkit`; `cargo fmt --check`,
+372 tests pass here and 181 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
 release build are clean. Every `.rs` file is under the 800-line limit, `data.rs`
 (741) and `ui/reels.rs` (734) the largest — `state/spin.rs` dropped from 615 to

@@ -15,8 +15,16 @@
 //! So this draws each one. It is a developer instrument rather than a player
 //! screen, reached from the settings panel and photographed by the capture
 //! harness.
+//!
+//! §5.31 added the music, written by the same deaf author, and it goes here for
+//! the same reason. What the plots show that a test cannot is the *shape*: four
+//! tracks side by side reveal at a glance which one is carrying the loop and
+//! whether the drum is a pulse or a wash. The live level beside each is the mix
+//! the game is asking for right now, which is the only way to see a mood change
+//! actually happening.
 
 use crate::audio::{config, voices_for, Sfx};
+use crate::music::{self, Track};
 use crate::ui::nav::Nav;
 use crate::ui::{palette, virtual_button, UiAction, LOGICAL_HEIGHT, LOGICAL_WIDTH};
 use macroquad::prelude::*;
@@ -29,7 +37,13 @@ use macroquad_toolkit::ui::{
 /// effect, so the noise drawn here is noise the player would actually hear.
 const PLOT_SEED: u64 = 0xA11CE;
 
-pub fn draw(mouse: Vec2, actions: &mut Vec<UiAction>, nav: &mut Nav) {
+pub fn draw(
+    levels: [f32; Track::ALL.len()],
+    mood: music::Mood,
+    mouse: Vec2,
+    actions: &mut Vec<UiAction>,
+    nav: &mut Nav,
+) {
     draw_rectangle(
         0.0,
         0.0,
@@ -53,25 +67,72 @@ pub fn draw(mouse: Vec2, actions: &mut Vec<UiAction>, nav: &mut Nav) {
         TextStyle::new(20.0, palette::GOLD_BRIGHT).params(),
     );
     draw_text_right(
-        "peak · length · shape",
+        &format!("mood: {:?}   ·   peak · length · shape", mood),
         panel.right() - 130.0,
         panel.y + 29.0,
         TextStyle::new(14.0, palette::TEXT_DIM),
     );
 
     let config = config();
-    let rows = Sfx::ALL.len();
+    let rows = Sfx::ALL.len() + Track::ALL.len();
     let row_height = (panel.h - 76.0) / rows as f32;
-
-    for (index, sfx) in Sfx::ALL.iter().enumerate() {
-        let row = Rect::new(
+    let row_at = |index: usize| {
+        Rect::new(
             panel.x + 20.0,
             panel.y + 56.0 + index as f32 * row_height,
             panel.w - 40.0,
             row_height - 6.0,
-        );
+        )
+    };
+
+    for (index, sfx) in Sfx::ALL.iter().enumerate() {
         let wave = render_waveform(&voices_for(*sfx), &config, PLOT_SEED);
-        draw_row(*sfx, &wave, config.sample_rate, row);
+        draw_row(
+            &format!("{:?}", sfx),
+            &format!(
+                "peak {:.2}   ·   {:.2}s",
+                peak_of(&wave),
+                seconds_of(&wave, config.sample_rate)
+            ),
+            &wave,
+            row_at(index),
+            LONGEST_SECONDS * config.sample_rate as f32,
+        );
+    }
+
+    // The music below the effects, on the same scales, so the two can be
+    // compared — the loop has to sit under them without fighting them (§5.31).
+    for (index, track) in Track::ALL.iter().enumerate() {
+        let wave = music::waveform(*track);
+        let level = levels[index];
+        draw_row(
+            &format!("{} (music)", track.label()),
+            &format!(
+                "peak {:.2}   ·   {:.1}s   ·   now {:.0}%   ·   {}",
+                peak_of(&wave),
+                seconds_of(&wave, config.sample_rate),
+                level * 100.0,
+                // Every mood's target for this track, so the whole arrangement
+                // is readable at once rather than one mix at a time — which is
+                // what an author who cannot hear it needs (§5.31).
+                music::Mood::ALL
+                    .iter()
+                    .map(|mood| {
+                        // Initials: the full names ran past the plot and the
+                        // last mood was cut off, which is the one place this
+                        // line had to be complete.
+                        let initial = format!("{:?}", mood).chars().next().unwrap_or('?');
+                        format!("{}{:.0}", initial, mood.gain(*track) * 100.0)
+                    })
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            ),
+            &wave,
+            row_at(Sfx::ALL.len() + index),
+            // Every track is exactly one loop, so one loop is the right width
+            // and the four are directly comparable (§5.31).
+            wave.len() as f32,
+        );
     }
 
     if virtual_button(
@@ -86,18 +147,29 @@ pub fn draw(mouse: Vec2, actions: &mut Vec<UiAction>, nav: &mut Nav) {
     }
 }
 
-fn draw_row(sfx: Sfx, wave: &[f32], sample_rate: u32, row: Rect) {
-    let seconds = wave.len() as f32 / sample_rate as f32;
-    let peak = wave.iter().fold(0.0f32, |peak, s| peak.max(s.abs()));
+fn peak_of(wave: &[f32]) -> f32 {
+    wave.iter().fold(0.0f32, |peak, s| peak.max(s.abs()))
+}
 
+fn seconds_of(wave: &[f32], sample_rate: u32) -> f32 {
+    wave.len() as f32 / sample_rate as f32
+}
+
+/// `span` is the number of samples the plot's full width represents.
+///
+/// Passed in rather than derived so a family of sounds shares one scale and is
+/// therefore comparable — two effects that look alike really are alike. The
+/// music has its own span because an eleven-second loop drawn on the effects'
+/// sub-second scale would show its first bar and nothing else.
+fn draw_row(name: &str, detail: &str, wave: &[f32], row: Rect, span: f32) {
     draw_ui_text_ex(
-        &format!("{:?}", sfx),
+        name,
         row.x,
         row.y + 14.0,
         TextStyle::new(14.0, palette::GOLD).params(),
     );
     draw_ui_text_ex(
-        &format!("peak {:.2}   ·   {:.2}s", peak, seconds),
+        detail,
         row.x,
         row.y + 30.0,
         TextStyle::new(12.0, palette::TEXT_DIM).params(),
@@ -106,7 +178,9 @@ fn draw_row(sfx: Sfx, wave: &[f32], sample_rate: u32, row: Rect) {
     // Every plot is drawn on the same time and amplitude scale, so the effects
     // can be compared against each other rather than each filling its own box.
     // Two sounds that look alike here really are alike.
-    let plot = Rect::new(row.x + 150.0, row.y, row.w - 150.0, row.h);
+    // Wide enough for the music rows, which carry every mood's gain
+    // alongside the current one (§5.31).
+    let plot = Rect::new(row.x + 268.0, row.y, row.w - 268.0, row.h);
     draw_surface(
         plot,
         &SurfaceStyle::new(Color::new(0.05, 0.045, 0.05, 1.0)).with_border(1.0, palette::GOLD_DIM),
@@ -126,7 +200,7 @@ fn draw_row(sfx: Sfx, wave: &[f32], sample_rate: u32, row: Rect) {
     // is how an audio editor draws it — a per-pixel sample would alias into a
     // meaningless scribble at this width.
     let columns = plot.w as usize;
-    let longest = LONGEST_SECONDS * sample_rate as f32;
+    let longest = span;
     for column in 0..columns {
         let from = (column as f32 / columns as f32 * longest) as usize;
         let to = ((column + 1) as f32 / columns as f32 * longest) as usize;

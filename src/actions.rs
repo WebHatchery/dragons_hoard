@@ -138,6 +138,14 @@ pub fn apply(
             session.preferences.adjust_volume(-0.1);
             ActionOutcome::PreferenceChanged
         }
+        UiAction::MusicVolumeUp => {
+            session.preferences.adjust_music_volume(0.1);
+            ActionOutcome::PreferenceChanged
+        }
+        UiAction::MusicVolumeDown => {
+            session.preferences.adjust_music_volume(-0.1);
+            ActionOutcome::PreferenceChanged
+        }
         UiAction::CycleSpinSpeed => {
             session.preferences.cycle_spin_speed();
             ActionOutcome::PreferenceChanged

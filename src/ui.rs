@@ -72,6 +72,8 @@ pub enum UiAction {
     ToggleLedger,
     /// Open or close the rules panel (§5.29).
     ToggleRules,
+    MusicVolumeUp,
+    MusicVolumeDown,
     /// Open or close the session limits panel (§5.30).
     ToggleLimits,
     /// Step a cap to the next offering (§5.30).
@@ -130,6 +132,9 @@ pub struct UiContext<'a> {
     /// A reality check is waiting to be read (§5.30). Holds the game.
     pub reality_check: bool,
     pub show_waveforms: bool,
+    /// Live mix, for the waveform inspector (§5.31).
+    pub music_levels: [f32; crate::music::Track::ALL.len()],
+    pub music_mood: crate::music::Mood,
     pub show_vision: bool,
     /// The hint on offer, if any (§5.28).
     pub hint: Option<&'a crate::state::hints::HintDef>,
@@ -192,7 +197,7 @@ pub fn draw_game_ui(ctx: UiContext<'_>, nav: &mut Nav) -> Vec<UiAction> {
     }
 
     if ctx.show_waveforms {
-        waveform::draw(mouse, &mut actions, nav);
+        waveform::draw(ctx.music_levels, ctx.music_mood, mouse, &mut actions, nav);
     }
 
     if ctx.show_ledger {

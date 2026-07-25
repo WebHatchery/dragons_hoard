@@ -136,6 +136,17 @@ impl Preferences {
         self.shared.effective_sfx_volume()
     }
 
+    /// Music level (§5.31). Separate from the effects because the two want
+    /// different answers: the music plays constantly and the effects do not, so
+    /// a player who wants one quiet rarely wants the other quiet too.
+    pub fn music_volume(&self) -> f32 {
+        self.shared.effective_music_volume()
+    }
+
+    pub fn adjust_music_volume(&mut self, delta: f32) {
+        self.shared.music_volume = (self.shared.music_volume + delta).clamp(0.0, 1.0);
+    }
+
     pub fn autospin_spins(&self, config: &GameConfig) -> u32 {
         config
             .autospin_choices

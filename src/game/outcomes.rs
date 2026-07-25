@@ -176,6 +176,8 @@ impl Game {
                 // Apply immediately so the change is audible/visible while the
                 // panel is still open, then persist it.
                 self.sound.set_volume(self.session.preferences.sfx_volume());
+                self.music
+                    .set_volume(self.session.preferences.music_volume());
                 self.sound.play(Sfx::Click);
                 if !self.session.preferences.particles {
                     self.particles.clear();

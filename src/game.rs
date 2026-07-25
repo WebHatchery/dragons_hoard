@@ -32,6 +32,8 @@ pub struct Game {
     particles: ParticleSystem,
     floating: FloatingTextLayer,
     sound: SoundBank,
+    /// The four-track loop behind the reels (§5.31).
+    music: crate::music::Music,
     /// Monotonic in-game seconds, fed to the UI so pulsing highlights stay
     /// deterministic under the fixed-timestep capture harness.
     ui_time: f32,
@@ -96,6 +98,12 @@ impl Game {
 
         // The screenshot harness runs headless; opening an audio device there
         // buys nothing and can fail on a machine with no sound card.
+        let music = if capture::capture_requested("DRAGONS_HOARD") {
+            crate::music::Music::silent()
+        } else {
+            crate::music::Music::load(data.config.sfx_volume).await
+        };
+
         let sound = if capture::capture_requested("DRAGONS_HOARD") {
             SoundBank::muted()
         } else {
@@ -120,6 +128,8 @@ impl Game {
 
         let mut sound = sound;
         sound.set_volume(session.preferences.sfx_volume());
+        let mut music = music;
+        music.set_volume(session.preferences.music_volume());
 
         let ledger = crate::state::ledger::Ledger::load(&data.config);
         let hints = crate::state::hints::HintBook::load(&data.config)
@@ -143,6 +153,7 @@ impl Game {
             particles: ParticleSystem::with_capacity(320),
             floating: FloatingTextLayer::new(),
             sound,
+            music,
             ui_time: 0.0,
             show_paytable: false,
             show_settings: false,
@@ -197,6 +208,19 @@ impl Game {
             }
         }
 
+        // The mood is derived rather than set, so a state the music should
+        // react to cannot be added without this line seeing it (§5.31).
+        self.music.set_mood(
+            if self.session.holdspin.is_some() || self.session.bonus.is_some() {
+                crate::music::Mood::Held
+            } else if self.session.in_free_spins() {
+                crate::music::Mood::Feature
+            } else {
+                crate::music::Mood::Base
+            },
+        );
+        self.music.update(dt);
+
         let spin_events = self.session.update_spin(&self.data, dt);
         for event in spin_events {
             self.handle_spin_event(event);
@@ -246,6 +270,8 @@ impl Game {
                 show_limits: self.show_limits,
                 reality_check: self.reality_check,
                 show_waveforms: self.show_waveforms,
+                music_levels: self.music.levels(),
+                music_mood: self.music.mood(),
                 show_vision: self.show_vision,
                 // Not while a panel is up (§5.28). A hint offers something to
                 // do next, and behind a modal there is nothing to do next — it

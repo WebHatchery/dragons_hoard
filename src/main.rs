@@ -8,6 +8,7 @@ mod audio;
 mod data;
 mod engine;
 mod game;
+mod music;
 mod state;
 mod ui;
 
