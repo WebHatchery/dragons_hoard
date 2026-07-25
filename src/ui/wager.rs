@@ -235,7 +235,11 @@ fn draw_spin_button(
         actions.push(UiAction::ToggleRules);
     }
 
-    let label = if ctx.session.phase.is_busy() {
+    // A bound cap owns the button's label as well as its state (§5.30): a
+    // greyed-out SPIN says the game is busy, which is the wrong answer.
+    let label = if ctx.limits.breach().is_some() {
+        "SESSION ENDED"
+    } else if ctx.session.phase.is_busy() {
         "SPINNING"
     } else if ctx.session.in_free_spins() {
         "FREE SPIN"
@@ -245,7 +249,7 @@ fn draw_spin_button(
     if virtual_button(
         Rect::new(content.x, spin_y, content.w, 70.0),
         label,
-        ctx.session.can_spin(ctx.data),
+        ctx.session.can_spin(ctx.data) && ctx.limits.breach().is_none(),
         ButtonTone::Positive,
         mouse,
         nav,

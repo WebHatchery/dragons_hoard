@@ -98,6 +98,11 @@ pub static SHORTCUTS: &[Shortcut] = &[
         action: UiAction::ToggleSettings,
     },
     Shortcut {
+        keys: &[KeyCode::T],
+        label: Some("T limits"),
+        action: UiAction::ToggleLimits,
+    },
+    Shortcut {
         keys: &[KeyCode::S],
         label: None,
         action: UiAction::Save,
@@ -215,7 +220,9 @@ mod tests {
         // Every overlay a player would want and could not otherwise find. The
         // development panels are deliberately absent.
         let line = footer_line();
-        for expected in ["rules", "paytable", "ledger", "machines", "buy", "gamble"] {
+        for expected in [
+            "rules", "paytable", "ledger", "machines", "buy", "gamble", "limits",
+        ] {
             assert!(line.contains(expected), "{} unlisted", expected);
         }
         assert!(!line.contains("waveform"));

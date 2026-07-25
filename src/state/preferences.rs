@@ -73,6 +73,13 @@ pub struct Preferences {
     /// pair; separate flags because shake is the one that causes trouble for
     /// motion-sensitive players, and some want to keep the sparkle.
     pub particles: bool,
+    /// Session caps and the reality-check interval (§5.30). Kept here rather
+    /// than in the save so they survive a New Game — a limit that a fresh
+    /// bankroll cleared would be no limit at all.
+    #[serde(default)]
+    pub limits: crate::state::limits::Limits,
+    #[serde(default)]
+    pub reality_check_minutes: Option<u32>,
 }
 
 impl Default for Preferences {
@@ -88,6 +95,8 @@ impl Default for Preferences {
             autospin_choice: usize::MAX,
             machine_id: String::new(),
             particles: true,
+            limits: crate::state::limits::Limits::default(),
+            reality_check_minutes: None,
         }
     }
 }

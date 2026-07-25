@@ -178,6 +178,31 @@ impl Game {
             // cascades and Frost refines, and neither used to be mentioned
             // anywhere in the game.
             "rules" => self.show_rules = true,
+            "limits" => {
+                // One cap tightened and one loosened, so the panel shows both
+                // states it can be in at once (§5.30).
+                self.limits
+                    .request(crate::state::limits::Cap::Loss, Some(5_000));
+                self.limits
+                    .request(crate::state::limits::Cap::Spins, Some(100));
+                self.limits
+                    .request(crate::state::limits::Cap::Spins, Some(500));
+                self.show_limits = true;
+            }
+            "reality" => {
+                // A session with something in it to report: down on the day,
+                // which is where a real one usually is.
+                for _ in 0..180 {
+                    self.session.balance = 1_000_000;
+                    self.session.celebrations.clear();
+                    if self.session.spin(&self.data).is_err() {
+                        break;
+                    }
+                    self.drain_finished_rounds();
+                }
+                self.limits.clock.tick(23.0 * 60.0 + 40.0);
+                self.reality_check = true;
+            }
             "rules_avalanche" => {
                 self.data =
                     GameData::load_machine(crate::data::machine_by_id("avalanche")).unwrap();

@@ -9,9 +9,11 @@ pub mod hint;
 pub mod holdspin;
 pub mod ledger;
 pub mod legibility;
+pub mod limits;
 pub mod machines;
 pub mod nav;
 pub mod paytable;
+pub mod reality;
 pub mod reels;
 pub mod rules;
 pub mod settings;
@@ -46,6 +48,8 @@ pub mod palette {
     pub const GOLD_BRIGHT: Color = Color::new(1.0, 0.88, 0.52, 1.0);
     pub const GOLD_DIM: Color = Color::new(0.52, 0.41, 0.20, 0.85);
     pub const EMBER: Color = Color::new(0.93, 0.45, 0.18, 1.0);
+    /// The other direction. Used only where a figure is up rather than down.
+    pub const JADE: Color = Color::new(0.42, 0.82, 0.52, 1.0);
     pub const TEXT_BRIGHT: Color = Color::new(0.96, 0.93, 0.88, 1.0);
     pub const TEXT: Color = Color::new(0.84, 0.80, 0.74, 1.0);
     pub const TEXT_DIM: Color = Color::new(0.62, 0.57, 0.52, 1.0);
@@ -68,6 +72,13 @@ pub enum UiAction {
     ToggleLedger,
     /// Open or close the rules panel (§5.29).
     ToggleRules,
+    /// Open or close the session limits panel (§5.30).
+    ToggleLimits,
+    /// Step a cap to the next offering (§5.30).
+    CycleLimit(crate::state::limits::Cap),
+    CycleRealityCheck,
+    /// The player has read the reality check (§5.30).
+    AcknowledgeRealityCheck,
     /// Put the current hint away for good (§5.28).
     DismissHint,
     /// Open or close the waveform inspector (§5.19).
@@ -113,6 +124,11 @@ pub struct UiContext<'a> {
     pub ledger: &'a crate::state::ledger::Ledger,
     pub show_ledger: bool,
     pub show_rules: bool,
+    pub limits: &'a crate::state::limits::LimitState,
+    pub limit_choices: &'a crate::state::limits::LimitChoices,
+    pub show_limits: bool,
+    /// A reality check is waiting to be read (§5.30). Holds the game.
+    pub reality_check: bool,
     pub show_waveforms: bool,
     pub show_vision: bool,
     /// The hint on offer, if any (§5.28).
@@ -140,6 +156,9 @@ pub fn draw_game_ui(ctx: UiContext<'_>, nav: &mut Nav) -> Vec<UiAction> {
     }
     if ctx.show_rules {
         rules::draw(&ctx, mouse, &mut actions, nav);
+    }
+    if ctx.show_limits {
+        limits::draw(ctx.limits, ctx.limit_choices, mouse, &mut actions, nav);
     }
     if ctx.show_achievements {
         achievements::draw(ctx.achievements, mouse, &mut actions, nav);
@@ -214,6 +233,13 @@ pub fn draw_game_ui(ctx: UiContext<'_>, nav: &mut Nav) -> Vec<UiAction> {
         if is_mouse_button_released(MouseButton::Left) {
             actions.push(UiAction::DismissCelebration);
         }
+    }
+
+    // Over everything, card included. This one is meant to interrupt (§5.30),
+    // and a celebration raised on the spin that tripped it would otherwise sit
+    // on top of the thing asking the player to stop and look.
+    if ctx.reality_check {
+        reality::draw(&ctx.limits.clock, mouse, &mut actions, nav);
     }
 
     // Under the overlays but over the footer: an offer, not an interruption.

@@ -1364,6 +1364,58 @@ next.
 The paytable keeps the symbol table and points at `R`. `game.rs` reached 801
 lines and the save/load block moved to `game/persistence.rs`.
 
+### 5.30 Session limits and the reality check (post-v1)
+
+Twenty-five systems have gone into being honest about the maths. The jackpots
+are solved in closed form (§5.7), the buy tiers priced at the machine's own
+return (§5.13), the gamble proved neutral (§5.16), the ledger set against the
+profile (§5.18), the rules generated from the config (§5.29).
+
+**All of it describes the machine. None of it describes the session.** How long
+this has been going on, what has gone in, and what has come back are the numbers
+a player actually loses track of — and a slot machine is specifically good at
+making them hard to hold on to, because the balance is one number that moves in
+both directions and it is the only one on screen.
+
+**The reality check** states three figures at an interval the player chooses:
+spins, staked, returned, and the net between them. It holds the game, because a
+notification that can be played through is one that will be played through, and
+it stops an unattended autospin run — which is exactly the state it exists to
+interrupt. It does not congratulate, warn or advise. The one coloured figure is
+the net, and it is coloured by fact rather than sentiment. The one editorial line
+is that a few hundred spins cannot measure a return, which is what §5.17 learned
+about twenty thousand, said where it is most likely to be misread.
+
+It also states plainly that **every credit is play money**. A game that borrows
+the shape of a slot machine this closely should be unambiguous about the one way
+it differs, and burying that in an about box would be the dishonest choice.
+
+**Three caps** — time, net loss, paid spins — all off by default, because
+capping play by default would be making a decision that is not the game's to
+make. A cap refuses the spin before the session ever sees it, so nothing
+downstream knows limits exist; everything else stays open, and a player who has
+stopped playing can still read their ledger and their figures.
+
+**The whole system is one asymmetry.** A limit you can lift the moment it binds
+is a suggestion; a limit you can never lift is a trap, and this is play money.
+So **tightening takes effect immediately** — deciding you have had enough should
+never involve waiting — and **loosening takes effect at the next session**. That
+one rule does all the work: it moves the decision to raise a limit out of the
+moment that made you want to raise it. The panel shows both values at once when
+they differ, because hiding it would make the button feel broken.
+
+A breach is sticky. Winning back does not lift it — "play until you are even" is
+the exact thought the cap was set to interrupt. Only a new game clears one, and a
+new game is also when filed loosenings land.
+
+Caps live beside preferences rather than in the save, so a fresh bankroll does
+not clear them; it is the *pending* set that persists, since that is what the
+player asked for and the tighten-now rule reconstructs the rest.
+
+`game.rs` reached 856 lines and the outcome dispatch moved to
+`game/outcomes.rs`, on the seam `actions.rs` already draws: that module decides
+what happened, this one decides what the game does about it.
+
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
 - Winning lines: pulse highlight (`blink`/`pulse`), floating win amounts
@@ -1964,6 +2016,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
+| A session you lose track of | Three figures at a chosen interval, and caps that tighten now but loosen only next session (§5.30). A limit you can lift in the moment is a suggestion. |
 | Rules that describe a different game | The panel is generated from the cabinet's own config, and a test asserts every mechanic a machine has is explained (§5.29). Hand-written prose drifted silently across four new cabinets. |
 | A new machine shipping at the wrong RTP | The sim iterates `MACHINES`; a cabinet cannot be added without being measured (§5.8). |
 | Two machines sharing a save slot | Slots are `<machine>_<slot>`; a test asserts they are distinct. |
@@ -1997,7 +2050,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus twenty-four post-v1 systems
+## 15. Current State — v1 shipped, plus twenty-five post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
@@ -2008,11 +2061,11 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27), hints (§5.28) and generated rules (§5.29). The game is
+navigation (§5.27), hints (§5.28), generated rules (§5.29) and session limits (§5.30). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-329 tests pass here and 169 in `macroquad-toolkit`; `cargo fmt --check`,
+359 tests pass here and 169 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
 release build are clean. Every `.rs` file is under the 800-line limit, `data.rs`
 (741) and `ui/reels.rs` (734) the largest — `state/spin.rs` dropped from 615 to

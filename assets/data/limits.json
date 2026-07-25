@@ -1,0 +1,7 @@
+{
+  "reality_check_minutes": [0, 5, 15, 30, 60],
+  "default_reality_check": 2,
+  "time_minutes": [0, 15, 30, 60, 120],
+  "losses": [0, 2000, 5000, 10000, 25000],
+  "spins": [0, 50, 100, 250, 500]
+}

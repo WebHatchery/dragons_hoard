@@ -20,6 +20,12 @@ pub enum AutospinStop {
     BigWin,
     OutOfCredits,
     Cancelled,
+    /// A reality check came due mid-run (§5.30). An unattended run is exactly
+    /// the state the check exists to interrupt, so it does not spin on behind
+    /// the panel.
+    RealityCheck,
+    /// A session cap bound mid-run (§5.30).
+    LimitReached,
 }
 
 impl AutospinStop {
@@ -33,6 +39,8 @@ impl AutospinStop {
             AutospinStop::BigWin => "Autospin stopped — big win",
             AutospinStop::OutOfCredits => "Autospin stopped — out of credits",
             AutospinStop::Cancelled => "Autospin cancelled",
+            AutospinStop::RealityCheck => "Autospin paused for a reality check",
+            AutospinStop::LimitReached => "Autospin stopped — session limit reached",
         }
     }
 }

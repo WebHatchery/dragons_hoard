@@ -13,6 +13,7 @@ pub mod holdspin;
 pub mod jackpot;
 pub mod ledger;
 pub mod lifecycle;
+pub mod limits;
 pub mod preferences;
 pub mod profile;
 pub mod rules;

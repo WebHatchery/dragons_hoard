@@ -136,7 +136,21 @@ pub fn draw(
     if toggle_button(panel, y, prefs.particles, mouse, nav) {
         actions.push(UiAction::ToggleParticles);
     }
-    y += ROW_HEIGHT + 8.0;
+    y += ROW_HEIGHT;
+
+    // Limits get their own panel rather than four more rows here: they are the
+    // one group where a row can be showing two values at once (§5.30).
+    if virtual_button(
+        Rect::new(panel.x + 20.0, y, panel.w - 40.0, 38.0),
+        "Session Limits — time, loss and spin caps",
+        true,
+        ButtonTone::Secondary,
+        mouse,
+        nav,
+    ) {
+        actions.push(UiAction::ToggleLimits);
+    }
+    y += 46.0;
 
     draw_ui_text_ex(
         "Settings are kept separately from your save — a new game keeps them.",
