@@ -295,14 +295,23 @@ impl Game {
             // ambiguous, they are in different rooms (§5.45).
             "touch_audit" => {
                 macroquad_toolkit::ui::begin_target_audit();
+                // Collisions are a one-screen question too (§5.47).
+                macroquad_toolkit::ui::begin_audit();
+                macroquad_toolkit::ui::begin_collision_audit();
             }
             "touch_audit_settings" => {
                 self.show_settings = true;
                 macroquad_toolkit::ui::begin_target_audit();
+                // Collisions are a one-screen question too (§5.47).
+                macroquad_toolkit::ui::begin_audit();
+                macroquad_toolkit::ui::begin_collision_audit();
             }
             "touch_audit_buy" => {
                 self.show_featurebuy = true;
                 macroquad_toolkit::ui::begin_target_audit();
+                // Collisions are a one-screen question too (§5.47).
+                macroquad_toolkit::ui::begin_audit();
+                macroquad_toolkit::ui::begin_collision_audit();
             }
             "rules" => self.show_rules = true,
             "limits" => {

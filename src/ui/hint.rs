@@ -12,7 +12,7 @@ use crate::ui::nav::{self, Nav};
 use crate::ui::{logical_width, palette, virtual_button, UiAction};
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::Pointer;
-use macroquad_toolkit::ui::{draw_surface, draw_ui_text_ex, ButtonTone, SurfaceStyle, TextStyle};
+use macroquad_toolkit::ui::{draw_surface, draw_text_block, ButtonTone, SurfaceStyle};
 
 pub fn draw(hint: &HintDef, pointer: Pointer, actions: &mut Vec<UiAction>, nav: &mut Nav) {
     // Sits on the footer's shortcut line — the small grey text that lists every
@@ -26,14 +26,23 @@ pub fn draw(hint: &HintDef, pointer: Pointer, actions: &mut Vec<UiAction>, nav: 
             .with_left_accent(3.0, palette::ember()),
     );
 
-    draw_ui_text_ex(
+    let dismiss = Rect::new(bar.right() - 88.0, bar.y + 3.0, 80.0, 24.0);
+
+    // Fitted to the space before the button rather than set at 14px and run
+    // under it. On a narrow screen (§5.46) the bar shrinks and the hint does
+    // not — which the collision check reported at 446px² (§5.47), and which no
+    // amount of looking at a 16:9 capture would ever have shown.
+    draw_text_block(
         &hint.text,
         bar.x + 16.0,
-        bar.y + 20.0,
-        TextStyle::new(14.0, palette::text_bright()).params(),
+        bar.y + 4.0,
+        (dismiss.x - 12.0) - (bar.x + 16.0),
+        24.0,
+        14.0,
+        0.0,
+        palette::text_bright(),
     );
 
-    let dismiss = Rect::new(bar.right() - 88.0, bar.y + 3.0, 80.0, 24.0);
     if virtual_button(dismiss, "Got it", true, ButtonTone::Secondary, pointer, nav) {
         actions.push(UiAction::DismissHint);
     }

@@ -2200,6 +2200,51 @@ decision rather than a fix: the cabinet's name is also on the "How X plays"
 button and at the top of the rules panel, so the header is the one place it can
 be spent. Sibling collision remains unmeasured.
 
+### 5.47 Collision — the other half of the layout audit (post-v1)
+
+§5.46 ended on a debt it had just exposed. The layout audit checks text against
+its **region's edge** and nothing else, so a title drawn straight through a
+button was reported clean — correctly, by its own rule. Overflow past a boundary
+and collision with a sibling are different questions, and only the first was
+being asked.
+
+Now both are. Every string records its footprint, every control records its own,
+and anything landing on something it does not belong to is a finding.
+
+**Three exclusions, and each one is a real distinction rather than a silencer.**
+
+- Text lying **wholly inside** a control is that control's label. Text that only
+  *partly* covers one is a collision — which is exactly the shape the header
+  fault took.
+- A `Decorative` stroke does not collide with the label it exists to make
+  readable. The hoard meter draws its text four times in near-black behind
+  itself; reporting that is reporting the fix as the fault, the same call §5.40
+  made for contrast.
+- **A panel hides what is under it.** A region that names its surface has painted
+  one, so whatever was already recorded inside it is gone.
+
+That last one is the whole of the first real run. Five findings, and every one
+was an overlay's text "colliding" with the wager panel behind an opaque
+surface — a panel the player cannot see at all. **Three iterations running, a new
+detector's first output has described the detector rather than the game** (§5.39's
+eleven, §5.40's seventeen-of-which-two, and now five of five). It is beginning to
+look less like a coincidence than like the normal cost of measuring something new.
+
+**And collisions are a one-screen question**, exactly as touch overlaps are
+(§5.45). Run against the audit scene that opens twelve overlays at once it
+reported nine, all between panels that are never open together. They are recorded
+only when asked for, and the per-screen scenes are what ask.
+
+**Then a probe found something real.** Restoring the header title at 1000 logical
+pixels to check the detector still fired reported a *different* fault instead:
+the footer hint running **446px² under the "Got it" button**. That is the second
+thing visible in the narrow capture from §5.46 and the one that had not been
+fixed, and no amount of looking at a 16:9 screenshot would ever have shown it.
+The hint is fitted to the space before the button now.
+
+Seven tests hold the rules, because every exclusion above is a place where a
+future change could quietly switch the check off.
+
 
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
@@ -2801,6 +2846,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
+| Text drawn straight through a button | Every string and control records its footprint and collisions are reported, with labels, strokes and occluded panels excluded (§5.47). Overflow and collision are different questions. |
 | Bars on every screen that is not 16:9 | The logical width follows the window between 4:3 and 21:9, with the height fixed and overlays centred per frame (§5.46). Extra width goes to the reels. |
 | A control that is dead on a phone | Mouse and touch became one `Pointer` at the single seam every control already passed through (§5.45), and hit areas grow to the 44px standard while the drawn size stays. |
 | Six cabinets that sound like one cabinet | Eight shared stems rendered once, with a per-cabinet mix (§5.44). Async loading rules out re-rendering on a machine switch, so cabinets differ in instrumentation rather than in key. |
@@ -2851,7 +2897,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus forty-one post-v1 systems
+## 15. Current State — v1 shipped, plus forty-two post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
@@ -2862,11 +2908,11 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) and a responsive frame (§5.46). The game is
+navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) and a collision check (§5.47). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-448 tests pass here and 259 in `macroquad-toolkit`; `cargo fmt --check`,
+448 tests pass here and 266 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
 release build are clean. Every `.rs` file is under the 800-line limit, `data.rs`
 (792) and `ui/reels.rs` (734) the largest — `state/spin.rs` dropped from 615 to

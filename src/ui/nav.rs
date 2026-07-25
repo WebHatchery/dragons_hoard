@@ -116,6 +116,8 @@ impl Nav {
         // the only place that knows a control exists, so it is where the
         // hit-target audit measures.
         macroquad_toolkit::ui::note_target(&format!("{}x{}", rect.w, rect.h), rect);
+        // And its footprint, so text drawn across it is caught (§5.47).
+        macroquad_toolkit::ui::note_control(&format!("control {}x{}", rect.w, rect.h), rect);
 
         let focused = self.engaged && slot == self.index;
         // Hit-tested against the grown area, drawn at the size it was given
