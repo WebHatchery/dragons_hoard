@@ -17,6 +17,7 @@ use crate::ui::naming;
 use crate::ui::nav::Nav;
 use crate::ui::{palette, virtual_button, UiAction, LOGICAL_HEIGHT, LOGICAL_WIDTH};
 use macroquad::prelude::*;
+use macroquad_toolkit::ui::Pointer;
 use macroquad_toolkit::ui::{
     draw_surface, draw_text_block, draw_text_right, draw_ui_text_ex, ButtonTone, RectExt, Region,
     SurfaceStyle, TextStyle,
@@ -28,7 +29,7 @@ pub fn draw(
     data: &GameData,
     session: &GameSession,
     profiles: &ProfileBook,
-    mouse: Vec2,
+    pointer: Pointer,
     actions: &mut Vec<UiAction>,
     nav: &mut Nav,
 ) {
@@ -118,7 +119,7 @@ pub fn draw(
                 &format!("Buy {}", naming::credits(price)),
                 true,
                 ButtonTone::Primary,
-                mouse,
+                pointer,
                 nav,
             ) {
                 actions.push(UiAction::BuyFeature(index));
@@ -158,7 +159,7 @@ pub fn draw(
         "Close",
         true,
         ButtonTone::Danger,
-        mouse,
+        pointer,
         nav,
     ) {
         actions.push(UiAction::ToggleFeatureBuy);
@@ -166,7 +167,8 @@ pub fn draw(
 
     // Clicking outside the panel closes it, which is what every other overlay
     // in the game does.
-    if is_mouse_button_released(MouseButton::Left) && !panel.inset(-4.0).contains(mouse) {
+    if is_mouse_button_released(MouseButton::Left) && !panel.inset(-4.0).contains(pointer.position)
+    {
         actions.push(UiAction::ToggleFeatureBuy);
     }
 }

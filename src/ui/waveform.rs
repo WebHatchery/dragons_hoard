@@ -29,6 +29,7 @@ use crate::ui::nav::Nav;
 use crate::ui::{palette, virtual_button, UiAction, LOGICAL_HEIGHT, LOGICAL_WIDTH};
 use macroquad::prelude::*;
 use macroquad_toolkit::synth::render_waveform;
+use macroquad_toolkit::ui::Pointer;
 use macroquad_toolkit::ui::{
     draw_surface, draw_text_right, draw_ui_text_ex, ButtonTone, Region, SurfaceStyle, TextStyle,
 };
@@ -41,7 +42,7 @@ pub fn draw(
     levels: [f32; Track::ALL.len()],
     mood: music::Mood,
     arrangement: music::Arrangement,
-    mouse: Vec2,
+    pointer: Pointer,
     actions: &mut Vec<UiAction>,
     nav: &mut Nav,
 ) {
@@ -146,7 +147,7 @@ pub fn draw(
         "Close",
         true,
         ButtonTone::Danger,
-        mouse,
+        pointer,
         nav,
     ) {
         actions.push(UiAction::ToggleWaveforms);

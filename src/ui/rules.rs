@@ -29,6 +29,7 @@ use crate::state::rules::{self, Rule};
 use crate::ui::nav::Nav;
 use crate::ui::{palette, virtual_button, UiAction, UiContext, LOGICAL_HEIGHT, LOGICAL_WIDTH};
 use macroquad::prelude::*;
+use macroquad_toolkit::ui::Pointer;
 use macroquad_toolkit::ui::{
     draw_surface, draw_ui_text_ex, wrap_text, ButtonTone, Region, SurfaceStyle, TextStyle,
 };
@@ -44,7 +45,7 @@ const MIN_BODY: f32 = 11.0;
 /// How many lines a body of text wraps to at a given width and size.
 type Measure<'a> = &'a dyn Fn(&str, f32, f32) -> usize;
 
-pub fn draw(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>, nav: &mut Nav) {
+pub fn draw(ctx: &UiContext<'_>, pointer: Pointer, actions: &mut Vec<UiAction>, nav: &mut Nav) {
     draw_rectangle(
         0.0,
         0.0,
@@ -105,7 +106,7 @@ pub fn draw(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>, nav: 
         "Close",
         true,
         ButtonTone::Danger,
-        mouse,
+        pointer,
         nav,
     ) {
         actions.push(UiAction::ToggleRules);

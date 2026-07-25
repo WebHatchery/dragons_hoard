@@ -12,6 +12,7 @@ use crate::state::profile::{MachineProfile, ProfileBook};
 use crate::ui::nav::Nav;
 use crate::ui::{palette, virtual_button, UiAction, LOGICAL_HEIGHT, LOGICAL_WIDTH};
 use macroquad::prelude::*;
+use macroquad_toolkit::ui::Pointer;
 use macroquad_toolkit::ui::{
     draw_surface, draw_text_block, draw_text_right, draw_ui_text_ex, ButtonTone, Region,
     SurfaceStyle, TextStyle,
@@ -21,7 +22,7 @@ pub fn draw(
     data: &GameData,
     ledger: &Ledger,
     profiles: &ProfileBook,
-    mouse: Vec2,
+    pointer: Pointer,
     actions: &mut Vec<UiAction>,
     nav: &mut Nav,
 ) {
@@ -101,7 +102,7 @@ pub fn draw(
         "Close",
         true,
         ButtonTone::Danger,
-        mouse,
+        pointer,
         nav,
     ) {
         actions.push(UiAction::ToggleLedger);

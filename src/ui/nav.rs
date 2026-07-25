@@ -25,6 +25,7 @@
 //! something else appeared would be worse than starting again.
 
 use macroquad::prelude::*;
+use macroquad_toolkit::ui::Pointer;
 
 /// What a control learned about itself this frame.
 #[derive(Debug, Clone, Copy, Default)]
@@ -90,9 +91,10 @@ impl Nav {
             let count = self.previous as i32;
             self.index = (self.index as i32 + self.step).rem_euclid(count) as usize;
         }
-        // Any mouse movement hands control back, so the ring does not linger
-        // somewhere the player has stopped looking.
-        if mouse_delta_position() != Vec2::ZERO {
+        // Any pointer movement hands control back, so the ring does not linger
+        // somewhere the player has stopped looking. A touch does the same, and
+        // more emphatically: a finger has arrived somewhere specific.
+        if mouse_delta_position() != Vec2::ZERO || !touches().is_empty() {
             self.engaged = false;
         }
     }
@@ -102,15 +104,25 @@ impl Nav {
     /// `enabled` controls are the only ones focus lands on — stepping onto a
     /// greyed-out button and pressing Enter to no effect reads as a broken key,
     /// not a disabled control.
-    pub fn control(&mut self, rect: Rect, enabled: bool, mouse: Vec2) -> Hit {
+    pub fn control(&mut self, rect: Rect, enabled: bool, pointer: Pointer) -> Hit {
         if !enabled {
             return Hit::default();
         }
         let slot = self.seen;
         self.seen += 1;
 
+        // Every control in the game passes through here, which is why touch
+        // could be added in one place rather than a hundred (§5.45). It is also
+        // the only place that knows a control exists, so it is where the
+        // hit-target audit measures.
+        macroquad_toolkit::ui::note_target(&format!("{}x{}", rect.w, rect.h), rect);
+
         let focused = self.engaged && slot == self.index;
-        let clicked = rect.contains(mouse) && is_mouse_button_released(MouseButton::Left);
+        // Hit-tested against the grown area, drawn at the size it was given
+        // (§5.45). A small precise control with a generous invisible margin is
+        // the usual answer: visual weight is a design decision and target size
+        // is an accessibility one, and they need not be the same number.
+        let clicked = pointer.released_on(macroquad_toolkit::ui::touch_area(rect));
 
         Hit {
             focused,
@@ -171,6 +183,15 @@ pub fn focus_ring(rect: Rect) {
 mod tests {
     use super::*;
 
+    /// A pointer nowhere near anything, so a test measures focus rather than
+    /// hit-testing.
+    fn away() -> Pointer {
+        Pointer {
+            position: Vec2::new(-100.0, -100.0),
+            ..Pointer::default()
+        }
+    }
+
     /// Step the nav without touching the keyboard, which a test has no access
     /// to — `begin` reads real input, so these drive the state directly.
     fn frame(nav: &mut Nav, controls: usize, step: i32, activate: bool) -> Vec<Hit> {
@@ -188,13 +209,7 @@ mod tests {
         }
 
         let hits = (0..controls)
-            .map(|i| {
-                nav.control(
-                    Rect::new(i as f32 * 10.0, 0.0, 5.0, 5.0),
-                    true,
-                    Vec2::new(-100.0, -100.0),
-                )
-            })
+            .map(|i| nav.control(Rect::new(i as f32 * 10.0, 0.0, 5.0, 5.0), true, away()))
             .collect();
         nav.finish();
         hits
@@ -252,7 +267,7 @@ mod tests {
             ..Nav::default()
         };
 
-        let away = Vec2::new(-100.0, -100.0);
+        let away = away();
         let disabled = nav.control(Rect::new(0.0, 0.0, 5.0, 5.0), false, away);
         let enabled = nav.control(Rect::new(10.0, 0.0, 5.0, 5.0), true, away);
         nav.finish();

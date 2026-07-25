@@ -8,6 +8,7 @@ use crate::state::bonus::{BonusCell, BonusRound};
 use crate::ui::nav::{self, Nav};
 use crate::ui::{palette, symbols, UiAction, LOGICAL_HEIGHT, LOGICAL_WIDTH};
 use macroquad::prelude::*;
+use macroquad_toolkit::ui::Pointer;
 use macroquad_toolkit::ui::{
     draw_surface, draw_text_centered_in_box_ex, draw_ui_text_ex, RectExt, SurfaceStyle, TextStyle,
 };
@@ -19,7 +20,7 @@ const GAP: f32 = 14.0;
 pub fn draw(
     round: &BonusRound,
     chest: Option<&crate::data::SymbolDef>,
-    mouse: Vec2,
+    pointer: Pointer,
     ui_time: f32,
     actions: &mut Vec<UiAction>,
     nav: &mut Nav,
@@ -79,7 +80,7 @@ pub fn draw(
             CELL,
             CELL,
         );
-        if draw_cell(round, chest, index, cell, mouse, ui_time, nav) {
+        if draw_cell(round, chest, index, cell, pointer, ui_time, nav) {
             actions.push(UiAction::PickBonus(index));
         }
     }
@@ -104,7 +105,7 @@ fn draw_cell(
     chest: Option<&crate::data::SymbolDef>,
     index: usize,
     cell: Rect,
-    mouse: Vec2,
+    pointer: Pointer,
     ui_time: f32,
     nav: &mut Nav,
 ) -> bool {
@@ -152,8 +153,9 @@ fn draw_cell(
         None => {
             // Closed. A hover lift is the only affordance; the contents are not
             // available to this function at all.
-            let hit = nav.control(cell, !round.is_finished(), mouse);
-            let hovered = !round.is_finished() && cell.contains_point(mouse);
+            let hit = nav.control(cell, !round.is_finished(), pointer);
+            let hovered =
+                !round.is_finished() && pointer.hovering_over(cell) || pointer.pressing(cell);
             let glow = 0.5 + 0.5 * (ui_time * 2.2 + index as f32 * 0.6).sin();
             draw_surface(
                 cell,
@@ -177,7 +179,7 @@ fn draw_cell(
             }
             // Through the nav (§5.27), not a raw hit test. An open board holds
             // the game, so a chest that could only be clicked was a soft-lock
-            // for anyone without a mouse.
+            // for anyone without a pointer.
             if hit.focused {
                 nav::focus_ring(cell);
             }

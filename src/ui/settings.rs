@@ -9,6 +9,7 @@ use crate::state::preferences::Preferences;
 use crate::ui::nav::Nav;
 use crate::ui::{palette, virtual_button, UiAction, LOGICAL_HEIGHT, LOGICAL_WIDTH};
 use macroquad::prelude::*;
+use macroquad_toolkit::ui::Pointer;
 use macroquad_toolkit::ui::{
     draw_surface, draw_text_block, draw_text_centered_in_box_ex, draw_ui_text_ex, ButtonTone,
     Region, SurfaceStyle, TextStyle,
@@ -19,7 +20,7 @@ const ROW_HEIGHT: f32 = 52.0;
 pub fn draw(
     config: &GameConfig,
     prefs: &Preferences,
-    mouse: Vec2,
+    pointer: Pointer,
     actions: &mut Vec<UiAction>,
     nav: &mut Nav,
 ) {
@@ -52,7 +53,7 @@ pub fn draw(
         "Close",
         true,
         ButtonTone::Danger,
-        mouse,
+        pointer,
         nav,
     ) {
         actions.push(UiAction::ToggleSettings);
@@ -70,7 +71,7 @@ pub fn draw(
         prefs.shared.master_volume,
         UiAction::VolumeDown,
         UiAction::VolumeUp,
-        mouse,
+        pointer,
         actions,
         nav,
     );
@@ -83,7 +84,7 @@ pub fn draw(
         prefs.shared.music_volume,
         UiAction::MusicVolumeDown,
         UiAction::MusicVolumeUp,
-        mouse,
+        pointer,
         actions,
         nav,
     );
@@ -99,7 +100,7 @@ pub fn draw(
         panel,
         y,
         &format!("{}%", (prefs.text_scale() * 100.0).round()),
-        mouse,
+        pointer,
         nav,
     ) {
         actions.push(UiAction::CycleTextScale);
@@ -107,7 +108,7 @@ pub fn draw(
     y += ROW_HEIGHT;
 
     draw_row_label(panel, y, "Spin Speed", "how long the reels take to land");
-    if cycle_button(panel, y, prefs.spin_speed.label(), mouse, nav) {
+    if cycle_button(panel, y, prefs.spin_speed.label(), pointer, nav) {
         actions.push(UiAction::CycleSpinSpeed);
     }
     y += ROW_HEIGHT;
@@ -122,7 +123,7 @@ pub fn draw(
         panel,
         y,
         &prefs.autospin_spins(config).to_string(),
-        mouse,
+        pointer,
         nav,
     ) {
         actions.push(UiAction::CycleAutospinLength);
@@ -130,13 +131,13 @@ pub fn draw(
     y += ROW_HEIGHT;
 
     draw_row_label(panel, y, "Screen Shake", "camera kick on big wins");
-    if toggle_button(panel, y, prefs.shared.screen_shake, mouse, nav) {
+    if toggle_button(panel, y, prefs.shared.screen_shake, pointer, nav) {
         actions.push(UiAction::ToggleShake);
     }
     y += ROW_HEIGHT;
 
     draw_row_label(panel, y, "Particles", "bursts on wins and features");
-    if toggle_button(panel, y, prefs.particles, mouse, nav) {
+    if toggle_button(panel, y, prefs.particles, pointer, nav) {
         actions.push(UiAction::ToggleParticles);
     }
     y += ROW_HEIGHT;
@@ -148,7 +149,7 @@ pub fn draw(
         "Session Limits — time, loss and spin caps",
         true,
         ButtonTone::Secondary,
-        mouse,
+        pointer,
         nav,
     ) {
         actions.push(UiAction::ToggleLimits);
@@ -176,7 +177,7 @@ fn volume_stepper(
     value: f32,
     down: UiAction,
     up: UiAction,
-    mouse: Vec2,
+    pointer: Pointer,
     actions: &mut Vec<UiAction>,
     nav: &mut Nav,
 ) {
@@ -186,7 +187,7 @@ fn volume_stepper(
         "-",
         percent > 0,
         ButtonTone::Secondary,
-        mouse,
+        pointer,
         nav,
     ) {
         actions.push(down);
@@ -215,7 +216,7 @@ fn volume_stepper(
         "+",
         percent < 100,
         ButtonTone::Secondary,
-        mouse,
+        pointer,
         nav,
     ) {
         actions.push(up);
@@ -237,18 +238,18 @@ fn draw_row_label(panel: Rect, y: f32, label: &str, hint: &str) {
     );
 }
 
-fn cycle_button(panel: Rect, y: f32, value: &str, mouse: Vec2, nav: &mut Nav) -> bool {
+fn cycle_button(panel: Rect, y: f32, value: &str, pointer: Pointer, nav: &mut Nav) -> bool {
     virtual_button(
         Rect::new(panel.right() - 212.0, y + 6.0, 192.0, 36.0),
         value,
         true,
         ButtonTone::Primary,
-        mouse,
+        pointer,
         nav,
     )
 }
 
-fn toggle_button(panel: Rect, y: f32, on: bool, mouse: Vec2, nav: &mut Nav) -> bool {
+fn toggle_button(panel: Rect, y: f32, on: bool, pointer: Pointer, nav: &mut Nav) -> bool {
     virtual_button(
         Rect::new(panel.right() - 212.0, y + 6.0, 192.0, 36.0),
         if on { "On" } else { "Off" },
@@ -258,7 +259,7 @@ fn toggle_button(panel: Rect, y: f32, on: bool, mouse: Vec2, nav: &mut Nav) -> b
         } else {
             ButtonTone::Secondary
         },
-        mouse,
+        pointer,
         nav,
     )
 }

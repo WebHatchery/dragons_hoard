@@ -10,6 +10,7 @@ use crate::state::profile::{MachineProfile, ProfileBook};
 use crate::ui::nav::Nav;
 use crate::ui::{palette, virtual_button, UiAction, LOGICAL_HEIGHT, LOGICAL_WIDTH};
 use macroquad::prelude::*;
+use macroquad_toolkit::ui::Pointer;
 use macroquad_toolkit::ui::{
     draw_surface, draw_text_block, draw_text_centered_in_box_ex, draw_text_right, draw_ui_text_ex,
     ButtonTone, Region, SurfaceStyle, TextStyle,
@@ -20,7 +21,7 @@ const ROW_HEIGHT: f32 = 140.0;
 pub fn draw(
     data: &GameData,
     profiles: &ProfileBook,
-    mouse: Vec2,
+    pointer: Pointer,
     actions: &mut Vec<UiAction>,
     nav: &mut Nav,
 ) {
@@ -54,7 +55,7 @@ pub fn draw(
         "Close",
         true,
         ButtonTone::Danger,
-        mouse,
+        pointer,
         nav,
     ) {
         actions.push(UiAction::ToggleMachines);
@@ -67,7 +68,7 @@ pub fn draw(
             panel.w - 40.0,
             ROW_HEIGHT - 12.0,
         );
-        draw_row(data, profiles, machine, row, mouse, actions, nav);
+        draw_row(data, profiles, machine, row, pointer, actions, nav);
     }
 
     // Wrapped rather than set on one line: at 130% text it ran 234px past the
@@ -90,7 +91,7 @@ fn draw_row(
     profiles: &ProfileBook,
     machine: &'static MachineDef,
     row: Rect,
-    mouse: Vec2,
+    pointer: Pointer,
     actions: &mut Vec<UiAction>,
     nav: &mut Nav,
 ) {
@@ -156,7 +157,7 @@ fn draw_row(
         "Play",
         true,
         ButtonTone::Positive,
-        mouse,
+        pointer,
         nav,
     ) {
         actions.push(UiAction::SelectMachine(

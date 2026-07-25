@@ -4,12 +4,11 @@
 //! *form* rather than a display — every control here changes something, which is
 //! also why it holds most of the game's focusable controls (§5.27).
 
-use super::{
-    palette, virtual_button, ButtonTone, Color, Rect, TextStyle, UiAction, UiContext, Vec2,
-};
+use super::{palette, virtual_button, ButtonTone, Color, Rect, TextStyle, UiAction, UiContext};
 use crate::ui::naming;
 use crate::ui::nav::Nav;
 use macroquad::prelude::*;
+use macroquad_toolkit::ui::Pointer;
 use macroquad_toolkit::ui::{
     draw_surface, draw_text_block, draw_text_centered_in_box_ex, draw_text_right, draw_ui_text_ex,
     RectExt, Region, SurfaceStyle,
@@ -17,7 +16,7 @@ use macroquad_toolkit::ui::{
 
 pub fn draw_control_panel(
     ctx: &UiContext<'_>,
-    mouse: Vec2,
+    pointer: Pointer,
     actions: &mut Vec<UiAction>,
     nav: &mut Nav,
 ) {
@@ -48,11 +47,11 @@ pub fn draw_control_panel(
     let content = rect.inset(18.0);
     let mut y = content.y + 44.0;
     y = draw_win_readout(ctx, content, y);
-    y = draw_bet_controls(ctx, content, y, mouse, actions, nav);
+    y = draw_bet_controls(ctx, content, y, pointer, actions, nav);
     draw_feature_banner(ctx, content, y);
 
-    let buttons_top = draw_session_buttons(ctx, content, mouse, actions, nav);
-    draw_spin_button(ctx, content, buttons_top, mouse, actions, nav);
+    let buttons_top = draw_session_buttons(ctx, content, pointer, actions, nav);
+    draw_spin_button(ctx, content, buttons_top, pointer, actions, nav);
 }
 
 fn draw_win_readout(ctx: &UiContext<'_>, content: Rect, y: f32) -> f32 {
@@ -88,7 +87,7 @@ fn draw_bet_controls(
     ctx: &UiContext<'_>,
     content: Rect,
     y: f32,
-    mouse: Vec2,
+    pointer: Pointer,
     actions: &mut Vec<UiAction>,
     nav: &mut Nav,
 ) -> f32 {
@@ -108,7 +107,7 @@ fn draw_bet_controls(
         "-",
         enabled,
         ButtonTone::Secondary,
-        mouse,
+        pointer,
         nav,
     ) {
         actions.push(UiAction::BetDown);
@@ -126,7 +125,7 @@ fn draw_bet_controls(
         "+",
         enabled,
         ButtonTone::Secondary,
-        mouse,
+        pointer,
         nav,
     ) {
         actions.push(UiAction::BetUp);
@@ -224,7 +223,7 @@ fn draw_spin_button(
     ctx: &UiContext<'_>,
     content: Rect,
     below: f32,
-    mouse: Vec2,
+    pointer: Pointer,
     actions: &mut Vec<UiAction>,
     nav: &mut Nav,
 ) {
@@ -239,7 +238,7 @@ fn draw_spin_button(
         &format!("How {} plays", ctx.data.config.display_name),
         true,
         ButtonTone::Secondary,
-        mouse,
+        pointer,
         nav,
     ) {
         actions.push(UiAction::ToggleRules);
@@ -261,7 +260,7 @@ fn draw_spin_button(
         label,
         ctx.session.can_spin(ctx.data) && ctx.limits.breach().is_none(),
         ButtonTone::Positive,
-        mouse,
+        pointer,
         nav,
     ) {
         actions.push(UiAction::Spin);
@@ -273,7 +272,7 @@ fn draw_spin_button(
         "Max Bet",
         !ctx.session.bet_locked(),
         ButtonTone::Primary,
-        mouse,
+        pointer,
         nav,
     ) {
         actions.push(UiAction::MaxBet);
@@ -297,7 +296,7 @@ fn draw_spin_button(
         // Stopping is always allowed; starting needs a settled, affordable game.
         running > 0 || (ctx.session.can_spin(ctx.data) && !ctx.session.in_free_spins()),
         auto_tone,
-        mouse,
+        pointer,
         nav,
     ) {
         actions.push(UiAction::ToggleAutospin);
@@ -308,7 +307,7 @@ fn draw_spin_button(
         "Paytable",
         true,
         ButtonTone::Secondary,
-        mouse,
+        pointer,
         nav,
     ) {
         actions.push(UiAction::TogglePaytable);
@@ -320,7 +319,7 @@ fn draw_spin_button(
 fn draw_session_buttons(
     ctx: &UiContext<'_>,
     content: Rect,
-    mouse: Vec2,
+    pointer: Pointer,
     actions: &mut Vec<UiAction>,
     nav: &mut Nav,
 ) -> f32 {
@@ -337,7 +336,7 @@ fn draw_session_buttons(
         "Save",
         storage_ready,
         ButtonTone::Positive,
-        mouse,
+        pointer,
         nav,
     ) {
         actions.push(UiAction::Save);
@@ -347,7 +346,7 @@ fn draw_session_buttons(
         "Load",
         storage_ready && ctx.save_exists,
         ButtonTone::Primary,
-        mouse,
+        pointer,
         nav,
     ) {
         actions.push(UiAction::Load);
@@ -357,7 +356,7 @@ fn draw_session_buttons(
         "New Game",
         ctx.session.phase.is_idle(),
         ButtonTone::Secondary,
-        mouse,
+        pointer,
         nav,
     ) {
         actions.push(UiAction::NewGame);
@@ -367,7 +366,7 @@ fn draw_session_buttons(
         "Delete Save",
         ctx.session.phase.is_idle() && ctx.save_exists,
         ButtonTone::Danger,
-        mouse,
+        pointer,
         nav,
     ) {
         actions.push(UiAction::DeleteSave);

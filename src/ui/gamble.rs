@@ -14,6 +14,7 @@ use crate::ui::naming;
 use crate::ui::nav::{self, Nav};
 use crate::ui::{palette, virtual_button, UiAction, LOGICAL_HEIGHT, LOGICAL_WIDTH};
 use macroquad::prelude::*;
+use macroquad_toolkit::ui::Pointer;
 use macroquad_toolkit::ui::{
     draw_surface, draw_text_centered_in_box_ex, draw_ui_text_ex, ButtonTone, Region, SurfaceStyle,
     TextStyle,
@@ -26,7 +27,7 @@ pub fn draw(
     data: &GameData,
     session: &GameSession,
     round: &GambleRound,
-    mouse: Vec2,
+    pointer: Pointer,
     actions: &mut Vec<UiAction>,
     nav: &mut Nav,
 ) {
@@ -107,7 +108,7 @@ pub fn draw(
         Scale::Ember,
         EMBER_FILL,
         can_flip,
-        mouse,
+        pointer,
         actions,
         nav,
     );
@@ -116,7 +117,7 @@ pub fn draw(
         Scale::Ash,
         ASH_FILL,
         can_flip,
-        mouse,
+        pointer,
         actions,
         nav,
     );
@@ -131,7 +132,7 @@ pub fn draw(
             &format!("Half on Ember ({})", round.stake() / 2),
             true,
             ButtonTone::Secondary,
-            mouse,
+            pointer,
             nav,
         ) {
             actions.push(UiAction::GambleHalf(Scale::Ember));
@@ -141,7 +142,7 @@ pub fn draw(
             &format!("Half on Ash ({})", round.stake() / 2),
             true,
             ButtonTone::Secondary,
-            mouse,
+            pointer,
             nav,
         ) {
             actions.push(UiAction::GambleHalf(Scale::Ash));
@@ -159,7 +160,7 @@ pub fn draw(
         &format!("Take {}", round.standing()),
         true,
         ButtonTone::Primary,
-        mouse,
+        pointer,
         nav,
     ) {
         actions.push(UiAction::TakeGamble);
@@ -242,14 +243,14 @@ fn draw_colour_button(
     scale: Scale,
     fill: Color,
     enabled: bool,
-    mouse: Vec2,
+    pointer: Pointer,
     actions: &mut Vec<UiAction>,
     nav: &mut Nav,
 ) {
     // Registered with the nav (§5.27) so the colours can be chosen without a
-    // mouse; the whole panel was otherwise unreachable from the keyboard.
-    let hit = nav.control(rect, enabled, mouse);
-    let hovered = enabled && rect.contains(mouse);
+    // pointer; the whole panel was otherwise unreachable from the keyboard.
+    let hit = nav.control(rect, enabled, pointer);
+    let hovered = enabled && pointer.hovering_over(rect) || pointer.pressing(rect);
     draw_surface(
         rect,
         &SurfaceStyle::new(if enabled {

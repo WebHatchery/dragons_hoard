@@ -326,6 +326,27 @@ impl Game {
         // The layout audit (§5.37) runs while the game is genuinely drawing,
         // because measuring text needs the real font. One frame is enough: the
         // panels redraw identically, and the recorder de-duplicates anyway.
+        // Touch targets are their own audit and their own scenes (§5.45):
+        // sizes want every panel, overlaps want one screen at a time.
+        if let Some((width, worst)) =
+            macroquad_toolkit::ui::smallest_touchable_width(ui::LOGICAL_WIDTH)
+        {
+            println!(
+                "touch targets: need a {:.0}px-wide window; worst is {}",
+                width, worst
+            );
+            for (side, label) in macroquad_toolkit::ui::undersized_targets() {
+                println!("touch targets: drawn {}px — {}", side, label);
+            }
+            for (a, b, area) in macroquad_toolkit::ui::overlapping_targets() {
+                println!(
+                    "touch targets: {} and {} overlap by {:.0}px² once grown",
+                    a, b, area
+                );
+            }
+            macroquad_toolkit::ui::end_target_audit();
+        }
+
         if macroquad_toolkit::ui::auditing() {
             let findings = macroquad_toolkit::ui::take_audit();
             if findings.is_empty() {

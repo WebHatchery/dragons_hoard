@@ -9,6 +9,7 @@ use crate::state::limits::{Cap, LimitChoices, LimitState};
 use crate::ui::nav::Nav;
 use crate::ui::{palette, virtual_button, UiAction, LOGICAL_HEIGHT, LOGICAL_WIDTH};
 use macroquad::prelude::*;
+use macroquad_toolkit::ui::Pointer;
 use macroquad_toolkit::ui::{
     draw_surface, draw_text_block, draw_ui_text_ex, ButtonTone, Region, SurfaceStyle, TextStyle,
 };
@@ -18,7 +19,7 @@ const ROW_HEIGHT: f32 = 62.0;
 pub fn draw(
     state: &LimitState,
     choices: &LimitChoices,
-    mouse: Vec2,
+    pointer: Pointer,
     actions: &mut Vec<UiAction>,
     nav: &mut Nav,
 ) {
@@ -52,7 +53,7 @@ pub fn draw(
         "Close",
         true,
         ButtonTone::Danger,
-        mouse,
+        pointer,
         nav,
     ) {
         actions.push(UiAction::ToggleLimits);
@@ -67,7 +68,7 @@ pub fn draw(
         "how often the game states the session figures",
         &minutes_label(state.reality_check_minutes),
         None,
-        mouse,
+        pointer,
         actions,
         nav,
         UiAction::CycleRealityCheck,
@@ -104,7 +105,7 @@ pub fn draw(
             hint,
             &cap_label(cap, state.in_force(cap)),
             deferred.as_deref(),
-            mouse,
+            pointer,
             actions,
             nav,
             action,
@@ -138,7 +139,7 @@ fn row(
     hint: &str,
     value: &str,
     deferred: Option<&str>,
-    mouse: Vec2,
+    pointer: Pointer,
     actions: &mut Vec<UiAction>,
     nav: &mut Nav,
     action: UiAction,
@@ -173,7 +174,7 @@ fn row(
         } else {
             ButtonTone::Primary
         },
-        mouse,
+        pointer,
         nav,
     ) {
         actions.push(action);

@@ -288,6 +288,22 @@ impl Game {
                 }
                 macroquad_toolkit::ui::begin_audit();
             }
+            // Touch targets are measured on **one** screen at a time. The
+            // layout audit opens every overlay at once, which is right for
+            // finding every control's size and wrong for finding overlaps: two
+            // controls in two panels that are never open together are not
+            // ambiguous, they are in different rooms (§5.45).
+            "touch_audit" => {
+                macroquad_toolkit::ui::begin_target_audit();
+            }
+            "touch_audit_settings" => {
+                self.show_settings = true;
+                macroquad_toolkit::ui::begin_target_audit();
+            }
+            "touch_audit_buy" => {
+                self.show_featurebuy = true;
+                macroquad_toolkit::ui::begin_target_audit();
+            }
             "rules" => self.show_rules = true,
             "limits" => {
                 // One cap tightened and one loosened, so the panel shows both

@@ -19,12 +19,13 @@ use crate::ui::naming;
 use crate::ui::nav::Nav;
 use crate::ui::{palette, virtual_button, UiAction, LOGICAL_HEIGHT, LOGICAL_WIDTH};
 use macroquad::prelude::*;
+use macroquad_toolkit::ui::Pointer;
 use macroquad_toolkit::ui::{
     draw_surface, draw_text_block, draw_text_centered_in_box_ex, draw_ui_text_ex, ButtonTone,
     Region, SurfaceStyle, TextStyle,
 };
 
-pub fn draw(clock: &SessionClock, mouse: Vec2, actions: &mut Vec<UiAction>, nav: &mut Nav) {
+pub fn draw(clock: &SessionClock, pointer: Pointer, actions: &mut Vec<UiAction>, nav: &mut Nav) {
     // Darker than the other overlays. This one is meant to interrupt.
     draw_rectangle(
         0.0,
@@ -135,7 +136,7 @@ pub fn draw(clock: &SessionClock, mouse: Vec2, actions: &mut Vec<UiAction>, nav:
         "Continue playing",
         true,
         ButtonTone::Primary,
-        mouse,
+        pointer,
         nav,
     ) {
         actions.push(UiAction::AcknowledgeRealityCheck);

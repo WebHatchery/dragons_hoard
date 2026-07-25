@@ -11,9 +11,10 @@ use crate::state::hints::HintDef;
 use crate::ui::nav::{self, Nav};
 use crate::ui::{palette, virtual_button, UiAction, LOGICAL_WIDTH};
 use macroquad::prelude::*;
+use macroquad_toolkit::ui::Pointer;
 use macroquad_toolkit::ui::{draw_surface, draw_ui_text_ex, ButtonTone, SurfaceStyle, TextStyle};
 
-pub fn draw(hint: &HintDef, mouse: Vec2, actions: &mut Vec<UiAction>, nav: &mut Nav) {
+pub fn draw(hint: &HintDef, pointer: Pointer, actions: &mut Vec<UiAction>, nav: &mut Nav) {
     // Sits on the footer's shortcut line — the small grey text that lists every
     // key and that nobody reads, which is the whole reason this exists. While a
     // hint is up it takes that space rather than fighting it for room.
@@ -33,7 +34,7 @@ pub fn draw(hint: &HintDef, mouse: Vec2, actions: &mut Vec<UiAction>, nav: &mut 
     );
 
     let dismiss = Rect::new(bar.right() - 88.0, bar.y + 3.0, 80.0, 24.0);
-    if virtual_button(dismiss, "Got it", true, ButtonTone::Secondary, mouse, nav) {
+    if virtual_button(dismiss, "Got it", true, ButtonTone::Secondary, pointer, nav) {
         actions.push(UiAction::DismissHint);
     }
     let _ = nav::focus_ring;

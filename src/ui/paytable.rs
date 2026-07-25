@@ -5,12 +5,13 @@ use crate::ui::{
     palette, symbols, virtual_button, UiAction, UiContext, LOGICAL_HEIGHT, LOGICAL_WIDTH,
 };
 use macroquad::prelude::*;
+use macroquad_toolkit::ui::Pointer;
 use macroquad_toolkit::ui::{
     draw_surface, draw_text_block, draw_text_centered_in_box_ex, draw_text_right, draw_ui_text_ex,
     ButtonTone, Region, SurfaceStyle, TextStyle,
 };
 
-pub fn draw(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>, nav: &mut Nav) {
+pub fn draw(ctx: &UiContext<'_>, pointer: Pointer, actions: &mut Vec<UiAction>, nav: &mut Nav) {
     draw_rectangle(
         0.0,
         0.0,
@@ -114,7 +115,7 @@ pub fn draw(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>, nav: 
         "Close",
         true,
         ButtonTone::Danger,
-        mouse,
+        pointer,
         nav,
     ) {
         actions.push(UiAction::TogglePaytable);

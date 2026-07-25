@@ -24,6 +24,7 @@ use crate::ui::naming;
 use crate::ui::nav::Nav;
 use crate::ui::{palette, virtual_button, UiAction, LOGICAL_HEIGHT, LOGICAL_WIDTH};
 use macroquad::prelude::*;
+use macroquad_toolkit::ui::Pointer;
 use macroquad_toolkit::ui::{
     draw_surface, draw_text_block, draw_text_centered_in_box_ex, draw_text_right, draw_ui_text_ex,
     ButtonTone, Region, SurfaceStyle, TextStyle,
@@ -34,7 +35,7 @@ const PANEL: Rect = Rect::new(160.0, 90.0, 960.0, 540.0);
 pub fn draw(
     history: &History,
     ledger: &Ledger,
-    mouse: Vec2,
+    pointer: Pointer,
     actions: &mut Vec<UiAction>,
     nav: &mut Nav,
 ) {
@@ -74,7 +75,7 @@ pub fn draw(
         "Close",
         true,
         ButtonTone::Danger,
-        mouse,
+        pointer,
         nav,
     ) {
         actions.push(UiAction::ToggleHistory);

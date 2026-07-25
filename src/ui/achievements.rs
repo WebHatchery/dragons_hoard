@@ -7,13 +7,14 @@ use crate::state::achievements::{AchievementBook, ConditionKind};
 use crate::ui::nav::Nav;
 use crate::ui::{palette, virtual_button, UiAction, LOGICAL_HEIGHT, LOGICAL_WIDTH};
 use macroquad::prelude::*;
+use macroquad_toolkit::ui::Pointer;
 use macroquad_toolkit::ui::{
     draw_surface, draw_text_right, draw_ui_text_ex, ButtonTone, Region, SurfaceStyle, TextStyle,
 };
 
 const ROW_HEIGHT: f32 = 44.0;
 
-pub fn draw(book: &AchievementBook, mouse: Vec2, actions: &mut Vec<UiAction>, nav: &mut Nav) {
+pub fn draw(book: &AchievementBook, pointer: Pointer, actions: &mut Vec<UiAction>, nav: &mut Nav) {
     draw_rectangle(
         0.0,
         0.0,
@@ -46,7 +47,7 @@ pub fn draw(book: &AchievementBook, mouse: Vec2, actions: &mut Vec<UiAction>, na
         "Close",
         true,
         ButtonTone::Danger,
-        mouse,
+        pointer,
         nav,
     ) {
         actions.push(UiAction::ToggleAchievements);
