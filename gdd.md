@@ -865,6 +865,62 @@ run adding to the last. The scene now starts from an empty ledger. Nothing else
 would have noticed; the harness is only reproducible because every other scene
 happens to be stateless.
 
+### 5.19 Synthesis promoted, and the sounds finally looked at (post-v1)
+
+Two long-standing entries in §15 closed together, because closing the first made
+the second possible.
+
+**`audio.rs` is now `macroquad_toolkit::synth`.** §7.1 flagged it as a candidate
+for promotion the day it was written: the toolkit's `SoundManager` can only load
+from a file or an asset pack, so any game in the workspace wanting a blip has to
+source a `.wav`. The split was already clean — `Wave`, `Voice`, the envelope and
+glide maths and the WAV container are generic; `Sfx` and `voices_for` are this
+game's sound design — so the move was lifting the first half out. `audio.rs` went
+from 442 lines to 289, and `render_waveform` was added on the way: the summed
+signal before quantising, for a caller that wants to *look* at an effect rather
+than play it.
+
+**The move is proved to have changed nothing.** Lifting a renderer into a shared
+crate is exactly the kind of refactor that can quietly alter every sound in a
+game, and no existing test would have noticed — they all asked whether the bytes
+were *well-formed*, never whether they were the *same* bytes. So the length and
+checksum of all eight effects were recorded first, and they came through
+identical.
+
+**Then the sounds were looked at, for the first time.** They still cannot be
+heard here. But a waveform can be *seen*, and a surprising amount of what §15 had
+been calling unverifiable turns out to be visible: a tail that will smear when an
+effect repeats, an attack so slow the sound arrives late, one effect twice as
+loud as the rest. `ui/waveform.rs` plots all eight on a shared time and amplitude
+axis, so they can be compared rather than each filling its own box.
+
+**It found a real problem in its first frame.** `WinSmall` peaked at **0.14**
+against `ReelStop`'s **0.28** — a win was half the volume of a reel merely
+stopping — and `WinBig` came in at 0.21, also under a reel stop. Nothing in the
+suite could see that; the peak test only ever asked for "above zero and below the
+limiter". Three effects were raised, the baseline test failed exactly as designed,
+and the new figures were adopted deliberately:
+
+| | before | after |
+|---|---|---|
+| WinSmall | 0.14 | **0.26** |
+| WinBig | 0.21 | **0.32** |
+| CoinLock | 0.16 | **0.21** |
+
+The hierarchy now reads Click 0.11 → Scatter 0.20 → CoinLock 0.21 → WinSmall 0.26
+→ ReelStop 0.28 → WinBig 0.32 → Hatch 0.34, which is the order those events
+deserve.
+
+The first version of the panel drew every effect as a thin line down the middle,
+because it plotted against a ±1.0 axis and nothing peaks above a third. The axis
+is ±0.4 now. That is the sort of thing only looking at it can tell you, which is
+rather the point.
+
+**`CoinLock` was the specific worry** — it fires up to fifteen times inside a
+second during a Dragon's Wrath round (§5.12), so any tail smears into a wash. It
+runs 0.16s with a sharp attack and most of that at near-silence, and a test now
+pins it under 0.2s.
+
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
 - Winning lines: pulse highlight (`blink`/`pulse`), floating win amounts
@@ -1232,6 +1288,19 @@ and a Project Roost deployment record. Verified live — see §15.
   in hit frequency (a reskin fails), must not share a save slot (sharing one
   would silently overwrite a balance and hoard), must not share a symbol set,
   and an unknown machine id falls back to the first rather than failing.
+- **Synthesis (`macroquad-toolkit/src/synth.rs`):** the container is a
+  well-formed WAV and its declared sizes match the real payload; synthesis is
+  deterministic; **a different seed changes only the noise**, so one effect can
+  be tuned without disturbing the rest; nothing clips; an envelope opens and
+  decays to silence; a glide is geometric; an effect is as long as its last
+  voice; and an empty effect still renders a file a player would accept.
+- **This game's sound set (`audio.rs`):** every effect's length and checksum is
+  **pinned against a baseline**, so a change to the mix has to be a decision
+  rather than a side effect — it is what proved the move into the toolkit altered
+  nothing, and what caught the three deliberate changes afterwards; the baseline
+  covers every effect, so a new one cannot slip past it; every effect is audible
+  and none clip; every effect decays to silence, since one ending mid-tone would
+  click on every play; and **`CoinLock` is short enough to repeat**.
 - **The Ledger (`state/ledger.rs`, `state/tests/ledger.rs`):** a fresh ledger
   knows nothing; recording accumulates rounds, stake, return, hits, features and
   the best round; each cabinet keeps its own record; **a round with no stake is
@@ -1391,6 +1460,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | A gamble quietly shaved | The scale is asserted fair over 200,000 flips, and a whole simulation that gambles every win is compared against one that gambles none (§5.16). A shaved coin would look like ordinary RTP drift in any single-number band. |
 | Quoting a number a sample cannot support | The live profile shows hit frequency, volatility and a band bar, and deliberately **not** RTP — 20,000 rounds put Dragon's Hoard 5 points out (§5.17). A wrong figure is worse than no figure. |
 | A player reading variance as a rigged machine | The Ledger shows their sample against the measured cabinet *and* the margin of error on it (§5.18). Showing the two bars without the caveat would have been worse than showing neither. |
+| A refactor silently changing every sound | Length and checksum of all eight effects are pinned (§5.19). The move into the toolkit was proved byte-identical; the three later changes were deliberate and re-baselined. |
 | A new machine shipping at the wrong RTP | The sim iterates `MACHINES`; a cabinet cannot be added without being measured (§5.8). |
 | Two machines sharing a save slot | Slots are `<machine>_<slot>`; a test asserts they are distinct. |
 | Jackpots exploitable by bet-switching | Odds are per credit wagered, so the trigger is bet-fair by construction (§5.6) and tested. The bet-ladder sim test excludes jackpots deliberately — they are too high-variance to compare over 20k spins — and their return is checked against its closed form instead. |
@@ -1423,20 +1493,22 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus thirteen post-v1 systems
+## 15. Current State — v1 shipped, plus fourteen post-v1 systems
 
-**All five phases are done, every item in §14 is met**, and thirteen systems have
+**All five phases are done, every item in §14 is met**, and fourteen systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
 machines (§5.8), achievements (§5.9), the Vault Pick (§5.10), the reel-feel pass
 (§5.11), the Dragon's Wrath (§5.12), the Feature Buy (§5.13), ways-to-win
 (§5.14), cascading reels (§5.15), the Dragon's Gamble (§5.16), live machine
-profiles (§5.17) and the Ledger (§5.18). The game is
+profiles (§5.17), the Ledger (§5.18) and the synthesis promotion (§5.19). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-281 tests pass; `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`
-and the `wasm32-unknown-unknown` release build are clean. Every `.rs` file is
-under the 800-line limit, `data.rs` (716) and `ui.rs` (712) the largest.
+278 tests pass here and 148 in `macroquad-toolkit`; `cargo fmt --check`,
+`cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
+release build are clean. Every `.rs` file is under the 800-line limit, `data.rs`
+(716) and `ui.rs` (712) the largest — `audio.rs` dropped from 442 to 289 when its
+synthesis moved to the toolkit.
 
 Measured RTP over 1,000,000 spins: Dragon's Hoard **0.9612** at **0.411** hit
 frequency, Frost Wyrm **0.9450** at **0.258**, Emberfall **0.9596** at **0.622**
@@ -1449,7 +1521,7 @@ Captures in `docs/verification/`: `ui_idle`, `ui_spin`, `ui_win`, `ui_freespins`
 `ui_paytable`, `ui_settings`, `ui_machines`, `ui_frost`, `ui_achievements`,
 `ui_bonus`, `ui_feature_card`, `ui_hatch`, `ui_jackpot`, `ui_autospin`,
 `ui_anticipation`, `ui_wrath`, `ui_featurebuy`, `ui_ways`, `ui_cascade`,
-`ui_gamble`, `ui_ledger`. The catalog card image at the project root is produced by the same
+`ui_gamble`, `ui_ledger`, `ui_waveforms`. The catalog card image at the project root is produced by the same
 harness. `ui_spin` is captured at 20 frames rather than 150 — at the default
 the spin has already finished, so the blur it is meant to show is not there.
 
@@ -1482,12 +1554,11 @@ and both of these were about what is on screen at a moment when the state is
 mid-flight. The capture harness photographs settled frames, so it could not have
 caught them either.
 
-**Not verified: how the sound actually sounds.** The synthesis is covered by unit
-tests — well-formed header, correct rate and bit depth, audible peak, no clipping,
-deterministic output — but those prove the *bytes* are right, not that the effects
-are pleasant or well-balanced against each other. Nobody has listened to them, and
-audio playback under WASM in a browser is untested. Treat the mix in
-`voices_for` as a first draft.
+**Partly verified: how the sound actually sounds.** §5.19 built a waveform panel
+and the mix has now been *looked* at, which caught three effects quieter than a
+reel stop. What that cannot tell you is timbre — whether a triangle wave at
+1568Hz is a pleasant chime or a nasty one — and **nobody has still heard any of
+it**. Audio playback under WASM in a browser also remains untested.
 
 ### Remaining work
 
@@ -1501,7 +1572,7 @@ accruing. That closes the gap this section previously listed.
   not a substitute for hearing it.
 - Work is committed per iteration following `rust_management/docs/COMMIT_STYLE.md`
   — a diegetic subject, a plain parenthetical tag, and a prose body.
-- `audio.rs` is worth promoting into `macroquad-toolkit` (§7.1). So, now, is the
+- `audio.rs` **has** been promoted (§5.19). Still outstanding is the
   blur/bounce/anticipation work in `state/spin.rs` — none of it is specific to a
   slot machine beyond the anticipation trigger, and any game with a spinning or
   scrolling strip would want it.
@@ -1517,7 +1588,5 @@ accruing. That closes the gap this section previously listed.
 - The buy menu is a plain list. A real cabinet would show each feature's
   volatility or a sample of what it pays; the price alone tells a player what it
   costs but not what to expect for it.
-- **The `CoinLock` effect has never been heard either**, and it is the one that
-  most needs to be: in a full round it fires up to fifteen times inside a second,
-  so if it has any tail at all it will smear into a wash. It was written short on
-  that theory alone.
+- **Listen to the effects.** The waveform panel closed the part of this that is
+  visible; timbre is not, and the browser build's audio is still untested.

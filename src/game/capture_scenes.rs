@@ -148,6 +148,7 @@ impl Game {
                 self.show_ledger = true;
                 self.profiles.request(self.data.machine_id(), &self.data);
             }
+            "waveforms" => self.show_waveforms = true,
             "settings" => self.show_settings = true,
             "anticipation" => self.hold_a_near_miss(),
             _ => {}
