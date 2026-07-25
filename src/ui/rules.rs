@@ -82,7 +82,14 @@ pub fn draw(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>, nav: 
             TextStyle::new(body + 3.0, palette::GOLD).params(),
         );
         let mut line_y = slot.y + body + 12.0 + body;
-        for line in wrap_text(&rule.text, column_width, body) {
+        // This panel wraps its own text and then draws it a line at a time, so
+        // it owns the expansion contract that `draw_text_block` handles
+        // internally: expand once, here, and suppress it for the draws below
+        // (§5.39). Without the guard every line came out separately bracketed
+        // and padded, measuring a width no translation would produce.
+        let wrapped = wrap_text(&rule.text, column_width, body);
+        let _once = macroquad_toolkit::ui::PseudoOnce::new();
+        for line in wrapped {
             draw_ui_text_ex(
                 &line,
                 x,

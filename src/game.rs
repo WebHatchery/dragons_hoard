@@ -138,6 +138,14 @@ impl Game {
         // layout audit measures what the player actually sees.
         macroquad_toolkit::ui::set_ui_text_scale(session.preferences.text_scale());
 
+        // DRAGONS_HOARD_PSEUDO stress-tests the layout for translation without
+        // there being any translation (§5.39). Set here rather than in the
+        // audit scene so any capture can be taken under it — the point is as
+        // much to *look* at a pseudolocalised panel as to measure one.
+        if std::env::var("DRAGONS_HOARD_PSEUDO").is_ok() {
+            macroquad_toolkit::ui::pseudo_enable(macroquad_toolkit::ui::Pseudo::default());
+        }
+
         let ledger = crate::state::ledger::Ledger::load(&data.config);
         let hints = crate::state::hints::HintBook::load(&data.config)
             .unwrap_or_else(|err| panic!("hints.json failed to load: {}", err));

@@ -1842,6 +1842,52 @@ The list only goes **up**: the design size is the floor, because anything smalle
 fails the legibility standard §5.25 holds the art to, and it is the default, so a
 player who never opens settings sees exactly what was drawn for them.
 
+### 5.39 Pseudolocalisation (post-v1)
+
+The game has about 130 distinct user-facing strings and every one is a hardcoded
+English literal. Migrating them to a catalogue is a large, mechanical job.
+**Discovering afterwards that half the panels were laid out to the exact width of
+their English copy is a much worse one**, because German runs roughly 35% longer
+and the fix is a redesign rather than a retranslation.
+
+Pseudolocalisation finds that today, without a translator and without migrating
+anything. Every string is transformed on its way to the screen into something
+still readable as English but carrying the properties translated text has:
+
+- **Longer.** Padded 40%, so a panel that only just fits its own copy fails now
+  rather than in the German build.
+- **Accented.** `Settings` becomes `Śéttíñgś`, which instantly shows a font with
+  no glyph for `é` — a missing glyph draws as a box, and finding that after
+  shipping a language is finding it late.
+- **Bracketed.** `[Śéttíñgś···]` marks the whole string, so a label built by
+  **gluing two strings together** appears as `[..][..]`. That is the fault a
+  translator cannot work around: word order is not universal, and a sentence
+  assembled from fragments cannot be reordered.
+
+Anything the brackets do not touch never went through a text helper at all,
+which is its own finding.
+
+**It ships no translations and claims none.** It is a measurement, run with the
+layout audit (§5.37) to produce a list of what would have to change.
+
+**The first run reported eleven overflows, and every one was the tool's own
+fault.** The output showed `[[doubly marked]]` text: the string was expanded
+once for layout and again for each wrapped line, measuring a width no
+translation would ever produce. The fix is a re-entrancy guard — `Pseudo::Once`
+— held across layout *and* drawing, because **the unit that gets expanded is the
+whole block**. `draw_text_block` holds it internally; the rules panel (§5.29)
+wraps its own text and draws it a line at a time, so it holds it explicitly.
+
+With that corrected the audit is **clean at 40% expansion**, and the capture
+shows no tofu anywhere — the shipped font has full accented-Latin coverage. So
+the layout is translation-ready and the font is too; what remains is the words.
+
+That the eleven findings were all artefacts is worth stating plainly. A detector
+whose first output is a long list is as likely to be describing itself as the
+thing it points at, which is the same lesson §5.37 learned from the opposite
+direction when its first clean run had to be disproved before it could be
+believed.
+
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
 - Winning lines: pulse highlight (`blink`/`pulse`), floating win amounts
@@ -2442,6 +2488,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
+| Panels laid out to the width of their English copy | Pseudolocalisation expands every string 40%, accents it and brackets it, and the layout audit measures the result (§5.39). Found the layout translation-ready and the font glyph-complete. |
 | Making text bigger silently breaking panels | The layout audit runs at every offered size, so a text-size setting is a checklist rather than a guess (§5.38). It found three unwrapped footnotes at 130%. |
 | Text that runs past its panel | A `Region` guard bounds each panel and every text draw inside reports what did not fit, measured with the real font in the capture harness (§5.37). Four such defects shipped and were caught by eye. |
 | A test scoped to one machine | The art baseline guard read only the first cabinet, so nine new shapes slipped past the check written to catch them (§5.36). Every art gate walks all six now. |
@@ -2484,7 +2531,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus thirty-three post-v1 systems
+## 15. Current State — v1 shipped, plus thirty-four post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
@@ -2495,11 +2542,11 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) and a text-size setting (§5.38). The game is
+navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) and pseudolocalisation (§5.39). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-427 tests pass here and 216 in `macroquad-toolkit`; `cargo fmt --check`,
+427 tests pass here and 228 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
 release build are clean. Every `.rs` file is under the 800-line limit, `data.rs`
 (748) and `ui/reels.rs` (734) the largest — `state/spin.rs` dropped from 615 to
