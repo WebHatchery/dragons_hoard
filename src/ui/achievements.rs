@@ -4,6 +4,7 @@
 //! achievement you cannot see the shape of is not a goal — it is a surprise.
 
 use crate::state::achievements::{AchievementBook, ConditionKind};
+use crate::ui::nav::Nav;
 use crate::ui::{palette, virtual_button, UiAction, LOGICAL_HEIGHT, LOGICAL_WIDTH};
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::{
@@ -12,7 +13,7 @@ use macroquad_toolkit::ui::{
 
 const ROW_HEIGHT: f32 = 44.0;
 
-pub fn draw(book: &AchievementBook, mouse: Vec2, actions: &mut Vec<UiAction>) {
+pub fn draw(book: &AchievementBook, mouse: Vec2, actions: &mut Vec<UiAction>, nav: &mut Nav) {
     draw_rectangle(
         0.0,
         0.0,
@@ -44,6 +45,7 @@ pub fn draw(book: &AchievementBook, mouse: Vec2, actions: &mut Vec<UiAction>) {
         true,
         ButtonTone::Danger,
         mouse,
+        nav,
     ) {
         actions.push(UiAction::ToggleAchievements);
     }

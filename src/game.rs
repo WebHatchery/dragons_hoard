@@ -48,6 +48,9 @@ pub struct Game {
     show_ledger: bool,
     show_waveforms: bool,
     show_vision: bool,
+    /// Which control the keyboard is on (§5.27). Lives here because the index
+    /// has to persist and the controls do not.
+    nav: ui::nav::Nav,
     /// Measured cabinet profiles (§5.17). Lives here rather than on the session
     /// because it describes the catalog, not one machine's play.
     profiles: crate::state::profile::ProfileBook,
@@ -129,6 +132,7 @@ impl Game {
             show_ledger: false,
             show_waveforms: false,
             show_vision: false,
+            nav: ui::nav::Nav::default(),
             profiles: crate::state::profile::ProfileBook::default(),
             achievements,
             ledger,
@@ -176,25 +180,28 @@ impl Game {
         clear_background(palette::BACKGROUND);
 
         let virtual_ui = begin_virtual_ui_frame(ui::LOGICAL_WIDTH, ui::LOGICAL_HEIGHT);
-        let actions = ui::draw_game_ui(UiContext {
-            data: &self.data,
-            session: &self.session,
-            save_exists: self.save_exists,
-            show_paytable: self.show_paytable,
-            show_settings: self.show_settings,
-            show_machines: self.show_machines,
-            show_achievements: self.show_achievements,
-            show_featurebuy: self.show_featurebuy,
-            ledger: &self.ledger,
-            show_ledger: self.show_ledger,
-            show_waveforms: self.show_waveforms,
-            show_vision: self.show_vision,
-            profiles: &self.profiles,
-            achievements: &self.achievements,
-            shake: self.shake.offset(),
-            ui_time: self.ui_time,
-            ui: &virtual_ui,
-        });
+        let actions = ui::draw_game_ui(
+            UiContext {
+                data: &self.data,
+                session: &self.session,
+                save_exists: self.save_exists,
+                show_paytable: self.show_paytable,
+                show_settings: self.show_settings,
+                show_machines: self.show_machines,
+                show_achievements: self.show_achievements,
+                show_featurebuy: self.show_featurebuy,
+                ledger: &self.ledger,
+                show_ledger: self.show_ledger,
+                show_waveforms: self.show_waveforms,
+                show_vision: self.show_vision,
+                profiles: &self.profiles,
+                achievements: &self.achievements,
+                shake: self.shake.offset(),
+                ui_time: self.ui_time,
+                ui: &virtual_ui,
+            },
+            &mut self.nav,
+        );
 
         // Particles and floating text live in logical space, so they belong
         // inside the virtual frame alongside the UI they annotate.

@@ -9,6 +9,7 @@ pub mod holdspin;
 pub mod ledger;
 pub mod legibility;
 pub mod machines;
+pub mod nav;
 pub mod paytable;
 pub mod reels;
 pub mod settings;
@@ -20,6 +21,7 @@ use crate::data::GameData;
 use crate::state::achievements::AchievementBook;
 use crate::state::featurebuy::cheapest as cheapest_feature;
 use crate::state::GameSession;
+use crate::ui::nav::Nav;
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::{
     draw_badge, draw_surface, draw_text_block, draw_text_centered_in_box_ex, draw_text_right,
@@ -112,23 +114,24 @@ pub struct UiContext<'a> {
     pub ui: &'a VirtualUi,
 }
 
-pub fn draw_game_ui(ctx: UiContext<'_>) -> Vec<UiAction> {
+pub fn draw_game_ui(ctx: UiContext<'_>, nav: &mut Nav) -> Vec<UiAction> {
+    nav.begin();
     let mut actions = Vec::new();
     let mouse = ctx.ui.mouse_position();
 
-    draw_header(&ctx, mouse, &mut actions);
+    draw_header(&ctx, mouse, &mut actions, nav);
     reels::draw_reels(ctx.data, ctx.session, ctx.shake, ctx.ui_time);
-    draw_control_panel(&ctx, mouse, &mut actions);
+    draw_control_panel(&ctx, mouse, &mut actions, nav);
     draw_footer(&ctx);
 
     if ctx.show_paytable {
-        paytable::draw(&ctx, mouse, &mut actions);
+        paytable::draw(&ctx, mouse, &mut actions, nav);
     }
     if ctx.show_achievements {
-        achievements::draw(ctx.achievements, mouse, &mut actions);
+        achievements::draw(ctx.achievements, mouse, &mut actions, nav);
     }
     if ctx.show_machines {
-        machines::draw(ctx.data, ctx.profiles, mouse, &mut actions);
+        machines::draw(ctx.data, ctx.profiles, mouse, &mut actions, nav);
     }
     if ctx.show_settings {
         settings::draw(
@@ -136,6 +139,7 @@ pub fn draw_game_ui(ctx: UiContext<'_>) -> Vec<UiAction> {
             &ctx.session.preferences,
             mouse,
             &mut actions,
+            nav,
         );
     }
 
@@ -147,23 +151,30 @@ pub fn draw_game_ui(ctx: UiContext<'_>) -> Vec<UiAction> {
     // The gamble owns the screen while it is up: it is a decision, and the
     // reels behind it are inert until it is made.
     if let Some(round) = ctx.session.gamble.as_ref() {
-        gamble::draw(ctx.data, ctx.session, round, mouse, &mut actions);
+        gamble::draw(ctx.data, ctx.session, round, mouse, &mut actions, nav);
     }
 
     if ctx.show_vision {
-        vision::draw(ctx.data, mouse, &mut actions);
+        vision::draw(ctx.data, mouse, &mut actions, nav);
     }
 
     if ctx.show_waveforms {
-        waveform::draw(mouse, &mut actions);
+        waveform::draw(mouse, &mut actions, nav);
     }
 
     if ctx.show_ledger {
-        ledger::draw(ctx.data, ctx.ledger, ctx.profiles, mouse, &mut actions);
+        ledger::draw(ctx.data, ctx.ledger, ctx.profiles, mouse, &mut actions, nav);
     }
 
     if ctx.show_featurebuy {
-        featurebuy::draw(ctx.data, ctx.session, ctx.profiles, mouse, &mut actions);
+        featurebuy::draw(
+            ctx.data,
+            ctx.session,
+            ctx.profiles,
+            mouse,
+            &mut actions,
+            nav,
+        );
     }
 
     // The bonus board sits over the game but under a card, so the Hatch card
@@ -179,6 +190,7 @@ pub fn draw_game_ui(ctx: UiContext<'_>) -> Vec<UiAction> {
             mouse,
             ctx.ui_time,
             &mut actions,
+            nav,
         );
     }
 
@@ -190,10 +202,13 @@ pub fn draw_game_ui(ctx: UiContext<'_>) -> Vec<UiAction> {
         }
     }
 
+    // Every control has registered by now, so focus can be moved.
+    nav.finish();
+
     actions
 }
 
-fn draw_header(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>) {
+fn draw_header(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>, nav: &mut Nav) {
     let rect = Rect::new(18.0, 16.0, LOGICAL_WIDTH - 36.0, 64.0);
     draw_surface(
         rect,
@@ -224,6 +239,7 @@ fn draw_header(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>) {
         true,
         ButtonTone::Secondary,
         mouse,
+        nav,
     ) {
         actions.push(UiAction::ToggleFeatureBuy);
     }
@@ -233,6 +249,7 @@ fn draw_header(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>) {
         true,
         ButtonTone::Secondary,
         mouse,
+        nav,
     ) {
         actions.push(UiAction::ToggleAchievements);
     }
@@ -242,6 +259,7 @@ fn draw_header(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>) {
         true,
         ButtonTone::Secondary,
         mouse,
+        nav,
     ) {
         actions.push(UiAction::ToggleMachines);
     }
@@ -251,6 +269,7 @@ fn draw_header(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>) {
         true,
         ButtonTone::Secondary,
         mouse,
+        nav,
     ) {
         actions.push(UiAction::ToggleSettings);
     }
@@ -279,7 +298,12 @@ fn draw_header(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>) {
     );
 }
 
-fn draw_control_panel(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>) {
+fn draw_control_panel(
+    ctx: &UiContext<'_>,
+    mouse: Vec2,
+    actions: &mut Vec<UiAction>,
+    nav: &mut Nav,
+) {
     let rect = Rect::new(852.0, 96.0, 410.0, 520.0);
     draw_surface(
         rect,
@@ -305,11 +329,11 @@ fn draw_control_panel(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiActi
     let content = rect.inset(18.0);
     let mut y = content.y + 44.0;
     y = draw_win_readout(ctx, content, y);
-    y = draw_bet_controls(ctx, content, y, mouse, actions);
+    y = draw_bet_controls(ctx, content, y, mouse, actions, nav);
     draw_feature_banner(ctx, content, y);
 
-    let buttons_top = draw_session_buttons(ctx, content, mouse, actions);
-    draw_spin_button(ctx, content, buttons_top, mouse, actions);
+    let buttons_top = draw_session_buttons(ctx, content, mouse, actions, nav);
+    draw_spin_button(ctx, content, buttons_top, mouse, actions, nav);
 }
 
 fn draw_win_readout(ctx: &UiContext<'_>, content: Rect, y: f32) -> f32 {
@@ -347,6 +371,7 @@ fn draw_bet_controls(
     y: f32,
     mouse: Vec2,
     actions: &mut Vec<UiAction>,
+    nav: &mut Nav,
 ) -> f32 {
     let line_bet = ctx.session.line_bet(ctx.data);
     let enabled = !ctx.session.bet_locked();
@@ -365,6 +390,7 @@ fn draw_bet_controls(
         enabled,
         ButtonTone::Secondary,
         mouse,
+        nav,
     ) {
         actions.push(UiAction::BetDown);
     }
@@ -382,6 +408,7 @@ fn draw_bet_controls(
         enabled,
         ButtonTone::Secondary,
         mouse,
+        nav,
     ) {
         actions.push(UiAction::BetUp);
     }
@@ -473,6 +500,7 @@ fn draw_spin_button(
     below: f32,
     mouse: Vec2,
     actions: &mut Vec<UiAction>,
+    nav: &mut Nav,
 ) {
     let secondary_y = below - 12.0 - 38.0;
     let spin_y = secondary_y - 10.0 - 70.0;
@@ -490,6 +518,7 @@ fn draw_spin_button(
         ctx.session.can_spin(ctx.data),
         ButtonTone::Positive,
         mouse,
+        nav,
     ) {
         actions.push(UiAction::Spin);
     }
@@ -501,6 +530,7 @@ fn draw_spin_button(
         !ctx.session.bet_locked(),
         ButtonTone::Primary,
         mouse,
+        nav,
     ) {
         actions.push(UiAction::MaxBet);
     }
@@ -524,6 +554,7 @@ fn draw_spin_button(
         running > 0 || (ctx.session.can_spin(ctx.data) && !ctx.session.in_free_spins()),
         auto_tone,
         mouse,
+        nav,
     ) {
         actions.push(UiAction::ToggleAutospin);
     }
@@ -534,6 +565,7 @@ fn draw_spin_button(
         true,
         ButtonTone::Secondary,
         mouse,
+        nav,
     ) {
         actions.push(UiAction::TogglePaytable);
     }
@@ -546,6 +578,7 @@ fn draw_session_buttons(
     content: Rect,
     mouse: Vec2,
     actions: &mut Vec<UiAction>,
+    nav: &mut Nav,
 ) -> f32 {
     let half = (content.w - 10.0) / 2.0;
     let bottom_row = content.bottom() - 34.0;
@@ -561,6 +594,7 @@ fn draw_session_buttons(
         storage_ready,
         ButtonTone::Positive,
         mouse,
+        nav,
     ) {
         actions.push(UiAction::Save);
     }
@@ -570,6 +604,7 @@ fn draw_session_buttons(
         storage_ready && ctx.save_exists,
         ButtonTone::Primary,
         mouse,
+        nav,
     ) {
         actions.push(UiAction::Load);
     }
@@ -579,6 +614,7 @@ fn draw_session_buttons(
         ctx.session.phase.is_idle(),
         ButtonTone::Secondary,
         mouse,
+        nav,
     ) {
         actions.push(UiAction::NewGame);
     }
@@ -588,6 +624,7 @@ fn draw_session_buttons(
         ctx.session.phase.is_idle() && ctx.save_exists,
         ButtonTone::Danger,
         mouse,
+        nav,
     ) {
         actions.push(UiAction::DeleteSave);
     }
@@ -644,11 +681,21 @@ fn draw_footer(ctx: &UiContext<'_>) {
     );
 }
 
-fn virtual_button(rect: Rect, text: &str, enabled: bool, tone: ButtonTone, mouse: Vec2) -> bool {
+fn virtual_button(
+    rect: Rect,
+    text: &str,
+    enabled: bool,
+    tone: ButtonTone,
+    mouse: Vec2,
+    nav: &mut Nav,
+) -> bool {
+    // Registering here means every button in the game answers to the keyboard
+    // (§5.27) without a single call site having to think about it.
+    let hit = nav.control(rect, enabled, mouse);
     let style = ButtonStyle::from_tone(tone);
     let hovered = enabled && rect.contains_point(mouse);
     let pressed = hovered && is_mouse_button_down(MouseButton::Left);
-    let activated = hovered && is_mouse_button_released(MouseButton::Left);
+    let activated = hit.activated;
     let fill = if !enabled {
         style.disabled
     } else if pressed {
@@ -663,6 +710,9 @@ fn virtual_button(rect: Rect, text: &str, enabled: bool, tone: ButtonTone, mouse
         rect,
         &SurfaceStyle::new(fill).with_border(1.0, style.border),
     );
+    if hit.focused {
+        nav::focus_ring(rect);
+    }
     draw_text_centered_in_box_ex(
         text,
         rect.x + 8.0,
@@ -734,5 +784,6 @@ pub fn actions_from_keys(celebrating: bool) -> Vec<UiAction> {
     if is_key_pressed(KeyCode::L) {
         actions.push(UiAction::Load);
     }
+
     actions
 }

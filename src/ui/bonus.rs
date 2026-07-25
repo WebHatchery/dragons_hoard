@@ -5,6 +5,7 @@
 //! `revealed_cell`, so it cannot leak the board even by accident.
 
 use crate::state::bonus::{BonusCell, BonusRound};
+use crate::ui::nav::{self, Nav};
 use crate::ui::{palette, symbols, UiAction, LOGICAL_HEIGHT, LOGICAL_WIDTH};
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::{
@@ -21,6 +22,7 @@ pub fn draw(
     mouse: Vec2,
     ui_time: f32,
     actions: &mut Vec<UiAction>,
+    nav: &mut Nav,
 ) {
     draw_rectangle(
         0.0,
@@ -77,7 +79,7 @@ pub fn draw(
             CELL,
             CELL,
         );
-        if draw_cell(round, chest, index, cell, mouse, ui_time) {
+        if draw_cell(round, chest, index, cell, mouse, ui_time, nav) {
             actions.push(UiAction::PickBonus(index));
         }
     }
@@ -104,6 +106,7 @@ fn draw_cell(
     cell: Rect,
     mouse: Vec2,
     ui_time: f32,
+    nav: &mut Nav,
 ) -> bool {
     match round.revealed_cell(index) {
         Some(BonusCell::Prize(permille)) => {
@@ -149,6 +152,7 @@ fn draw_cell(
         None => {
             // Closed. A hover lift is the only affordance; the contents are not
             // available to this function at all.
+            let hit = nav.control(cell, !round.is_finished(), mouse);
             let hovered = !round.is_finished() && cell.contains_point(mouse);
             let glow = 0.5 + 0.5 * (ui_time * 2.2 + index as f32 * 0.6).sin();
             draw_surface(
@@ -171,7 +175,13 @@ fn draw_cell(
             if let Some(def) = chest {
                 symbols::draw(def, cell.inset(18.0), if hovered { 0.6 } else { 0.0 });
             }
-            hovered && is_mouse_button_released(MouseButton::Left)
+            // Through the nav (§5.27), not a raw hit test. An open board holds
+            // the game, so a chest that could only be clicked was a soft-lock
+            // for anyone without a mouse.
+            if hit.focused {
+                nav::focus_ring(cell);
+            }
+            hit.activated
         }
     }
 }

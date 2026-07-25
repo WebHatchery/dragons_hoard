@@ -17,6 +17,7 @@
 //! harness.
 
 use crate::audio::{config, voices_for, Sfx};
+use crate::ui::nav::Nav;
 use crate::ui::{palette, virtual_button, UiAction, LOGICAL_HEIGHT, LOGICAL_WIDTH};
 use macroquad::prelude::*;
 use macroquad_toolkit::synth::render_waveform;
@@ -28,7 +29,7 @@ use macroquad_toolkit::ui::{
 /// effect, so the noise drawn here is noise the player would actually hear.
 const PLOT_SEED: u64 = 0xA11CE;
 
-pub fn draw(mouse: Vec2, actions: &mut Vec<UiAction>) {
+pub fn draw(mouse: Vec2, actions: &mut Vec<UiAction>, nav: &mut Nav) {
     draw_rectangle(
         0.0,
         0.0,
@@ -79,6 +80,7 @@ pub fn draw(mouse: Vec2, actions: &mut Vec<UiAction>) {
         true,
         ButtonTone::Danger,
         mouse,
+        nav,
     ) {
         actions.push(UiAction::ToggleWaveforms);
     }

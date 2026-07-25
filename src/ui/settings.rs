@@ -6,6 +6,7 @@
 
 use crate::data::GameConfig;
 use crate::state::preferences::Preferences;
+use crate::ui::nav::Nav;
 use crate::ui::{palette, virtual_button, UiAction, LOGICAL_HEIGHT, LOGICAL_WIDTH};
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::{
@@ -15,7 +16,13 @@ use macroquad_toolkit::ui::{
 
 const ROW_HEIGHT: f32 = 52.0;
 
-pub fn draw(config: &GameConfig, prefs: &Preferences, mouse: Vec2, actions: &mut Vec<UiAction>) {
+pub fn draw(
+    config: &GameConfig,
+    prefs: &Preferences,
+    mouse: Vec2,
+    actions: &mut Vec<UiAction>,
+    nav: &mut Nav,
+) {
     draw_rectangle(
         0.0,
         0.0,
@@ -44,6 +51,7 @@ pub fn draw(config: &GameConfig, prefs: &Preferences, mouse: Vec2, actions: &mut
         true,
         ButtonTone::Danger,
         mouse,
+        nav,
     ) {
         actions.push(UiAction::ToggleSettings);
     }
@@ -60,6 +68,7 @@ pub fn draw(config: &GameConfig, prefs: &Preferences, mouse: Vec2, actions: &mut
         volume > 0,
         ButtonTone::Secondary,
         mouse,
+        nav,
     ) {
         actions.push(UiAction::VolumeDown);
     }
@@ -88,13 +97,14 @@ pub fn draw(config: &GameConfig, prefs: &Preferences, mouse: Vec2, actions: &mut
         volume < 100,
         ButtonTone::Secondary,
         mouse,
+        nav,
     ) {
         actions.push(UiAction::VolumeUp);
     }
     y += ROW_HEIGHT;
 
     draw_row_label(panel, y, "Spin Speed", "how long the reels take to land");
-    if cycle_button(panel, y, prefs.spin_speed.label(), mouse) {
+    if cycle_button(panel, y, prefs.spin_speed.label(), mouse, nav) {
         actions.push(UiAction::CycleSpinSpeed);
     }
     y += ROW_HEIGHT;
@@ -105,19 +115,25 @@ pub fn draw(config: &GameConfig, prefs: &Preferences, mouse: Vec2, actions: &mut
         "Autospin Length",
         "spins an unattended run is worth",
     );
-    if cycle_button(panel, y, &prefs.autospin_spins(config).to_string(), mouse) {
+    if cycle_button(
+        panel,
+        y,
+        &prefs.autospin_spins(config).to_string(),
+        mouse,
+        nav,
+    ) {
         actions.push(UiAction::CycleAutospinLength);
     }
     y += ROW_HEIGHT;
 
     draw_row_label(panel, y, "Screen Shake", "camera kick on big wins");
-    if toggle_button(panel, y, prefs.shared.screen_shake, mouse) {
+    if toggle_button(panel, y, prefs.shared.screen_shake, mouse, nav) {
         actions.push(UiAction::ToggleShake);
     }
     y += ROW_HEIGHT;
 
     draw_row_label(panel, y, "Particles", "bursts on wins and features");
-    if toggle_button(panel, y, prefs.particles, mouse) {
+    if toggle_button(panel, y, prefs.particles, mouse, nav) {
         actions.push(UiAction::ToggleParticles);
     }
     y += ROW_HEIGHT + 8.0;
@@ -145,17 +161,18 @@ fn draw_row_label(panel: Rect, y: f32, label: &str, hint: &str) {
     );
 }
 
-fn cycle_button(panel: Rect, y: f32, value: &str, mouse: Vec2) -> bool {
+fn cycle_button(panel: Rect, y: f32, value: &str, mouse: Vec2, nav: &mut Nav) -> bool {
     virtual_button(
         Rect::new(panel.right() - 212.0, y + 6.0, 192.0, 36.0),
         value,
         true,
         ButtonTone::Primary,
         mouse,
+        nav,
     )
 }
 
-fn toggle_button(panel: Rect, y: f32, on: bool, mouse: Vec2) -> bool {
+fn toggle_button(panel: Rect, y: f32, on: bool, mouse: Vec2, nav: &mut Nav) -> bool {
     virtual_button(
         Rect::new(panel.right() - 212.0, y + 6.0, 192.0, 36.0),
         if on { "On" } else { "Off" },
@@ -166,5 +183,6 @@ fn toggle_button(panel: Rect, y: f32, on: bool, mouse: Vec2) -> bool {
             ButtonTone::Secondary
         },
         mouse,
+        nav,
     )
 }

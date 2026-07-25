@@ -1,6 +1,7 @@
 //! The paytable overlay: what every symbol pays, and the rules in prose.
 
 use crate::state::{bonus, holdspin, jackpot};
+use crate::ui::nav::Nav;
 use crate::ui::{
     palette, symbols, virtual_button, UiAction, UiContext, LOGICAL_HEIGHT, LOGICAL_WIDTH,
 };
@@ -10,7 +11,7 @@ use macroquad_toolkit::ui::{
     ButtonTone, SurfaceStyle, TextStyle,
 };
 
-pub fn draw(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>) {
+pub fn draw(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>, nav: &mut Nav) {
     draw_rectangle(
         0.0,
         0.0,
@@ -132,6 +133,7 @@ pub fn draw(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>) {
         true,
         ButtonTone::Danger,
         mouse,
+        nav,
     ) {
         actions.push(UiAction::TogglePaytable);
     }

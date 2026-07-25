@@ -10,13 +10,14 @@
 
 use crate::data::GameData;
 use crate::ui::legibility::{simulate, Vision};
+use crate::ui::nav::Nav;
 use crate::ui::{palette, symbols, virtual_button, UiAction, LOGICAL_HEIGHT, LOGICAL_WIDTH};
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::{
     draw_surface, draw_ui_text_ex, ButtonTone, RectExt, SurfaceStyle, TextStyle,
 };
 
-pub fn draw(data: &GameData, mouse: Vec2, actions: &mut Vec<UiAction>) {
+pub fn draw(data: &GameData, mouse: Vec2, actions: &mut Vec<UiAction>, nav: &mut Nav) {
     draw_rectangle(
         0.0,
         0.0,
@@ -92,6 +93,7 @@ pub fn draw(data: &GameData, mouse: Vec2, actions: &mut Vec<UiAction>) {
         true,
         ButtonTone::Danger,
         mouse,
+        nav,
     ) {
         actions.push(UiAction::ToggleVision);
     }

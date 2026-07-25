@@ -7,6 +7,7 @@
 use crate::data::{GameData, MachineDef, MACHINES};
 use crate::engine::sim::BAND_LABELS;
 use crate::state::profile::{MachineProfile, ProfileBook};
+use crate::ui::nav::Nav;
 use crate::ui::{palette, virtual_button, UiAction, LOGICAL_HEIGHT, LOGICAL_WIDTH};
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::{
@@ -16,7 +17,13 @@ use macroquad_toolkit::ui::{
 
 const ROW_HEIGHT: f32 = 140.0;
 
-pub fn draw(data: &GameData, profiles: &ProfileBook, mouse: Vec2, actions: &mut Vec<UiAction>) {
+pub fn draw(
+    data: &GameData,
+    profiles: &ProfileBook,
+    mouse: Vec2,
+    actions: &mut Vec<UiAction>,
+    nav: &mut Nav,
+) {
     draw_rectangle(
         0.0,
         0.0,
@@ -46,6 +53,7 @@ pub fn draw(data: &GameData, profiles: &ProfileBook, mouse: Vec2, actions: &mut 
         true,
         ButtonTone::Danger,
         mouse,
+        nav,
     ) {
         actions.push(UiAction::ToggleMachines);
     }
@@ -57,7 +65,7 @@ pub fn draw(data: &GameData, profiles: &ProfileBook, mouse: Vec2, actions: &mut 
             panel.w - 40.0,
             ROW_HEIGHT - 12.0,
         );
-        draw_row(data, profiles, machine, index, row, mouse, actions);
+        draw_row(data, profiles, machine, row, mouse, actions, nav);
     }
 
     draw_ui_text_ex(
@@ -72,10 +80,10 @@ fn draw_row(
     data: &GameData,
     profiles: &ProfileBook,
     machine: &'static MachineDef,
-    index: usize,
     row: Rect,
     mouse: Vec2,
     actions: &mut Vec<UiAction>,
+    nav: &mut Nav,
 ) {
     let playing = machine.id == data.machine_id();
     let fill = if playing {
@@ -140,8 +148,14 @@ fn draw_row(
         true,
         ButtonTone::Positive,
         mouse,
+        nav,
     ) {
-        actions.push(UiAction::SelectMachine(index));
+        actions.push(UiAction::SelectMachine(
+            MACHINES
+                .iter()
+                .position(|entry| entry.id == machine.id)
+                .unwrap_or(0),
+        ));
     }
 }
 

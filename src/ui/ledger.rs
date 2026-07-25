@@ -9,6 +9,7 @@ use crate::data::GameData;
 use crate::engine::sim::BAND_LABELS;
 use crate::state::ledger::{Ledger, MachineLedger};
 use crate::state::profile::{MachineProfile, ProfileBook};
+use crate::ui::nav::Nav;
 use crate::ui::{palette, virtual_button, UiAction, LOGICAL_HEIGHT, LOGICAL_WIDTH};
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::{
@@ -22,6 +23,7 @@ pub fn draw(
     profiles: &ProfileBook,
     mouse: Vec2,
     actions: &mut Vec<UiAction>,
+    nav: &mut Nav,
 ) {
     draw_rectangle(
         0.0,
@@ -98,6 +100,7 @@ pub fn draw(
         true,
         ButtonTone::Danger,
         mouse,
+        nav,
     ) {
         actions.push(UiAction::ToggleLedger);
     }

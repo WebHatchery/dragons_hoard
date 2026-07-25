@@ -175,6 +175,15 @@ impl Game {
             }
             "waveforms" => self.show_waveforms = true,
             "vision" => self.show_vision = true,
+            "keyboard" => {
+                // An open Vault Pick with the keyboard driving. Before §5.27
+                // this board could only be cleared with a mouse, and it holds
+                // the game — so a keyboard-only player was stuck for good.
+                self.fast_forward_to(|session| session.bonus.is_some());
+                self.session.celebrations.clear();
+                // Past the header and wager controls, onto a chest.
+                self.nav.pin(17);
+            }
             "settings" => self.show_settings = true,
             "anticipation" => self.hold_a_near_miss(),
             _ => {}

@@ -10,6 +10,7 @@
 use crate::data::GameData;
 use crate::state::gamble::{GambleRound, Scale};
 use crate::state::GameSession;
+use crate::ui::nav::{self, Nav};
 use crate::ui::{palette, virtual_button, UiAction, LOGICAL_HEIGHT, LOGICAL_WIDTH};
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::{
@@ -26,6 +27,7 @@ pub fn draw(
     round: &GambleRound,
     mouse: Vec2,
     actions: &mut Vec<UiAction>,
+    nav: &mut Nav,
 ) {
     draw_rectangle(
         0.0,
@@ -104,6 +106,7 @@ pub fn draw(
         can_flip,
         mouse,
         actions,
+        nav,
     );
     draw_colour_button(
         Rect::new(row.right() - half_width, row.y, half_width, row.h),
@@ -112,6 +115,7 @@ pub fn draw(
         can_flip,
         mouse,
         actions,
+        nav,
     );
 
     // Half-gamble sits under the colours because it changes *how much*, not
@@ -125,6 +129,7 @@ pub fn draw(
             true,
             ButtonTone::Secondary,
             mouse,
+            nav,
         ) {
             actions.push(UiAction::GambleHalf(Scale::Ember));
         }
@@ -134,6 +139,7 @@ pub fn draw(
             true,
             ButtonTone::Secondary,
             mouse,
+            nav,
         ) {
             actions.push(UiAction::GambleHalf(Scale::Ash));
         }
@@ -151,6 +157,7 @@ pub fn draw(
         true,
         ButtonTone::Primary,
         mouse,
+        nav,
     ) {
         actions.push(UiAction::TakeGamble);
     }
@@ -234,7 +241,11 @@ fn draw_colour_button(
     enabled: bool,
     mouse: Vec2,
     actions: &mut Vec<UiAction>,
+    nav: &mut Nav,
 ) {
+    // Registered with the nav (§5.27) so the colours can be chosen without a
+    // mouse; the whole panel was otherwise unreachable from the keyboard.
+    let hit = nav.control(rect, enabled, mouse);
     let hovered = enabled && rect.contains(mouse);
     draw_surface(
         rect,
@@ -268,7 +279,10 @@ fn draw_colour_button(
         ),
     );
 
-    if enabled && hovered && is_mouse_button_released(MouseButton::Left) {
+    if hit.focused {
+        nav::focus_ring(rect);
+    }
+    if hit.activated {
         actions.push(UiAction::Gamble(scale));
     }
 }

@@ -1225,6 +1225,50 @@ buffer still has one rather than being a special case a caller has to remember,
 and that silhouette difference ignores colour while monochrome difference does
 not — which is what makes them the right tools for two different questions.
 
+### 5.27 Keyboard navigation (post-v1)
+
+§5.24 and §5.25 took colour vision seriously. This is the other accessibility
+axis, and it was hiding a **soft-lock**.
+
+The game had shortcuts to *open* every panel and no way to do anything inside
+one. Mostly an inconvenience — but an open Vault Pick (§5.10) **holds the game**:
+the reels do not turn and a spin is refused until a chest is picked, and picking
+required a mouse. Fill the hoard without one and the game stops for good. The
+gamble panel (§5.16) was the same shape of problem, one decision short of a
+dead end.
+
+**Focus in an immediate-mode UI is just an index.** There is no widget tree to
+walk, only a sequence of draw calls — and it is the *same* sequence every frame
+while the same panels are open. So `Nav` reads the movement and activation keys
+once per frame, hands each control a `Hit` as it draws, and wraps the index
+against however many there turned out to be. Nothing registers in advance and no
+control needs to know its own number.
+
+Because it lives inside `virtual_button`, **every button in the game answered to
+the keyboard the moment that one function changed**. Only two controls needed
+touching by hand: the Vault Pick's chests and the gamble's colour buttons, both
+of which had rolled their own hit tests.
+
+Three decisions worth naming:
+
+- **Enter activates, not Space.** Space already spins. A key that both spins and
+  presses whatever is focused is a trap.
+- **Focus resets when the control count changes**, because the order is only
+  stable while the same panels are open. Landing on a different button because
+  something else appeared is worse than starting again. It takes effect the
+  frame *after*, since the count is not known until everything has drawn.
+- **Focus never lands on a disabled control.** Stepping onto a greyed-out button
+  and pressing Enter to no effect reads as a broken key, not a disabled button.
+
+**The dead-code check caught the one bug that mattered.** `finish` was never
+called — focus was registered every frame and never moved. Clippy noticed the
+method was unused; nothing else would have, because the ring still drew on the
+first control and looked perfectly plausible.
+
+Moving focus also had to happen in `begin` rather than `finish`. Applying the
+step after the controls had drawn showed the move a frame late and, worse, would
+have activated the control the player had just left.
+
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
 - Winning lines: pulse highlight (`blink`/`pulse`), floating win amounts
@@ -1592,6 +1636,11 @@ and a Project Roost deployment record. Verified live — see §15.
   in hit frequency (a reskin fails), must not share a save slot (sharing one
   would silently overwrite a balance and hoard), must not share a symbol set,
   and an unknown machine id falls back to the first rather than failing.
+- **Keyboard navigation (`ui/nav.rs`):** focus starts on the first control and
+  **exactly one is ever focused**; it wraps in both directions; activating fires
+  the focused control and nothing else; **a disabled control is skipped
+  entirely**; focus resets when a panel opens or closes; and a frame with no
+  controls at all leaves it somewhere valid rather than out of range.
 - **The rasteriser (`macroquad-toolkit/src/paint.rs`):** a filled rectangle
   covers exactly its area, a triangle about half its bounding box, a circle
   π/4 of one; **winding order does not matter**, since art is rarely consistent
@@ -1810,6 +1859,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Symbols that only differ by colour | Any two sharing a shape must stay apart under three simulated dichromacies (§5.24). The three gems now have three cuts, so the check has nothing left to catch. |
 | Art verified only by someone looking at it | The symbol routines rasterise to a buffer in a unit test (§5.25). It disproved §5.24's own screenshot-backed claim on its first run. |
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
+| A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | A new machine shipping at the wrong RTP | The sim iterates `MACHINES`; a cabinet cannot be added without being measured (§5.8). |
 | Two machines sharing a save slot | Slots are `<machine>_<slot>`; a test asserts they are distinct. |
 | Jackpots exploitable by bet-switching | Odds are per credit wagered, so the trigger is bet-fair by construction (§5.6) and tested. The bet-ladder sim test excludes jackpots deliberately — they are too high-variance to compare over 20k spins — and their return is checked against its closed form instead. |
@@ -1842,9 +1892,9 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus twenty-one post-v1 systems
+## 15. Current State — v1 shipped, plus twenty-two post-v1 systems
 
-**All five phases are done, every item in §14 is met**, and twenty-one systems have
+**All five phases are done, every item in §14 is met**, and twenty-two systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
 machines (§5.8), achievements (§5.9), the Vault Pick (§5.10), the reel-feel pass
 (§5.11), the Dragon's Wrath (§5.12), the Feature Buy (§5.13), ways-to-win
@@ -1852,11 +1902,12 @@ machines (§5.8), achievements (§5.9), the Vault Pick (§5.10), the reel-feel p
 profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
-the rasteriser promotion (§5.26). The game is
+the rasteriser promotion (§5.26) and keyboard
+navigation (§5.27). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-291 tests pass here and 169 in `macroquad-toolkit`; `cargo fmt --check`,
+298 tests pass here and 169 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
 release build are clean. Every `.rs` file is under the 800-line limit, `data.rs`
 (741) and `ui/reels.rs` (738) the largest — `state/spin.rs` dropped from 615 to
@@ -1874,7 +1925,7 @@ Captures in `docs/verification/`: `ui_idle`, `ui_spin`, `ui_win`, `ui_freespins`
 `ui_bonus`, `ui_feature_card`, `ui_hatch`, `ui_jackpot`, `ui_autospin`,
 `ui_anticipation`, `ui_wrath`, `ui_featurebuy`, `ui_ways`, `ui_cascade`,
 `ui_gamble`, `ui_ledger`, `ui_waveforms`, `ui_shifting`, `ui_refining`,
-`ui_vision`. The catalog card image at the project root is produced by the same
+`ui_vision`, `ui_keyboard`. The catalog card image at the project root is produced by the same
 harness. `ui_spin` is captured at 20 frames rather than 150 — at the default
 the spin has already finished, so the blur it is meant to show is not there.
 
