@@ -12,8 +12,8 @@
 #[cfg(test)]
 mod tests {
     use crate::data::{GameData, SymbolDef, MACHINES};
-    use crate::ui::paint::Buffer;
     use crate::ui::symbols;
+    use macroquad_toolkit::paint::Buffer;
 
     /// Cell height in pixels on the tallest reel the game can produce.
     ///
@@ -128,6 +128,62 @@ mod tests {
                     difference * 100.0
                 );
             }
+        }
+    }
+
+    /// Fingerprint of every art routine at the smallest cell, recorded before
+    /// the rasteriser moved into `macroquad_toolkit::paint` (§5.26).
+    ///
+    /// The art has been changed four times by someone looking at a capture and
+    /// deciding it was wrong — gems reading as kites, a coin stack as a blob, an
+    /// egg as a teardrop, a hexagon that was really a circle. Every one of those
+    /// was a deliberate edit. What nothing could catch was an *accidental* one:
+    /// a shared helper nudged, a constant tweaked for one shape that four others
+    /// also use. This is the audio baseline's bargain (§5.19) applied to
+    /// pixels — a change to the art has to be a decision.
+    const FINGERPRINTS: [(&str, u64); 9] = [
+        ("coin", 0xB9C5_51DB_C523_3731),
+        ("coin_stack", 0x3F58_0DF0_3F02_9C7E),
+        ("gem", 0x4B10_896F_132D_6E40),
+        ("gem_round", 0xFC55_AADA_0AF5_15EF),
+        ("gem_step", 0x7AD0_3344_ECD9_6BE7),
+        ("chest", 0x5BCF_611F_1068_9606),
+        ("egg", 0x1D06_B42A_5FA5_E68F),
+        ("dragon", 0xD96C_F7BF_6B47_D4CA),
+        ("flame", 0x33B6_26B1_8851_C647),
+    ];
+
+    #[test]
+    fn the_art_matches_its_baseline() {
+        let data = GameData::load().unwrap();
+        for (art, expected) in FINGERPRINTS {
+            let def = data
+                .symbols
+                .iter()
+                .map(|(_, def)| def)
+                .find(|def| def.art == art)
+                .unwrap_or_else(|| panic!("no symbol drawn as '{}'", art));
+
+            assert_eq!(
+                render(def, SMALLEST_CELL).fingerprint(),
+                expected,
+                "'{}' has changed",
+                art
+            );
+        }
+    }
+
+    #[test]
+    fn the_baseline_covers_every_art_routine() {
+        // A new shape added without a baseline entry would slip past the test
+        // above entirely.
+        let data = GameData::load().unwrap();
+        for (_, def) in data.symbols.iter() {
+            assert!(
+                FINGERPRINTS.iter().any(|(art, _)| *art == def.art),
+                "'{}' has no baseline",
+                def.art
+            );
         }
     }
 

@@ -16,8 +16,8 @@
 mod legible;
 
 use crate::data::SymbolDef;
-use crate::ui::paint::{Painter, ScreenPainter};
 use macroquad::prelude::*;
+use macroquad_toolkit::paint::{Painter, ScreenPainter};
 
 /// The shapes the renderer knows how to draw.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -561,7 +561,7 @@ mod tests {
 
     #[test]
     fn the_canvas_maps_normalised_coordinates_onto_the_cell() {
-        let mut painter = crate::ui::paint::Buffer::new(1, 1);
+        let mut painter = macroquad_toolkit::paint::Buffer::new(1, 1);
         let canvas = Canvas::new(Rect::new(100.0, 200.0, 60.0, 90.0), &mut painter);
 
         assert_eq!(canvas.p(0.0, 0.0), vec2(100.0, 200.0));

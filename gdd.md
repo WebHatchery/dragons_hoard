@@ -1190,6 +1190,41 @@ claim was about *shape* and colour must not be allowed to prop it up.
 shifting cabinet (§5.20) — the smallest this game ever draws a symbol, and the
 question §5.24 left open.
 
+### 5.26 The rasteriser promoted, and a golden image for the art (post-v1)
+
+§5.25 built a CPU rasteriser so the symbol art could be measured. It is now
+`macroquad_toolkit::paint`, because procedural art is cheap to ship and
+impossible to test in **every** game that draws it — the art only exists once
+there is a window, a context and a frame, so the only check available is a person
+looking at a screenshot.
+
+Unlike the audio (§5.19) and the reel motion (§5.23), nothing stayed behind. The
+whole module was already general; it was only living here because this is where
+it was needed first.
+
+**And it gained the thing that makes it worth promoting.** `Buffer::fingerprint`
+is a stable hash of the rendered image, quantised to 8 bits so it does not move
+with floating-point noise between platforms. Record it once, assert it
+afterwards, and a change to the art has to be a **decision**.
+
+That matters more than it sounds. The art has been changed four times by someone
+looking at a capture and deciding it was wrong — gems reading as kites, a coin
+stack as a blob, an egg as a teardrop, a hexagon that was really a circle. Every
+one of those was deliberate. What nothing could catch was an *accidental* change:
+a shared helper nudged, a constant tweaked for one shape that four others also
+use. `hex_vertex` is used by the gem cut and the coin's embossed face; §5.25
+changed it for the gem and nothing would have said the coin moved too.
+
+All nine art routines are now pinned, and the fingerprints recorded before the
+move came through **identical** after it — the same bargain the sound set makes,
+and the same proof that a promotion changed nothing.
+
+The toolkit's own tests cover the part a game cannot: that the same drawing
+fingerprints the same, that a shape moved by one pixel does not, that an empty
+buffer still has one rather than being a special case a caller has to remember,
+and that silhouette difference ignores colour while monochrome difference does
+not — which is what makes them the right tools for two different questions.
+
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
 - Winning lines: pulse highlight (`blink`/`pulse`), floating win amounts
@@ -1557,12 +1592,14 @@ and a Project Roost deployment record. Verified live — see §15.
   in hit frequency (a reskin fails), must not share a save slot (sharing one
   would silently overwrite a balance and hoard), must not share a symbol set,
   and an unknown machine id falls back to the first rather than failing.
-- **The rasteriser (`ui/paint.rs`):** a filled rectangle covers exactly its
-  area, a triangle about half its bounding box and a circle π/4 of one;
-  **winding order does not matter**, since the art is not consistent about it
-  and a rasteriser that cared would silently drop half the facets; alpha blends
-  rather than replaces; and drawing outside the buffer is ignored rather than
-  panicking.
+- **The rasteriser (`macroquad-toolkit/src/paint.rs`):** a filled rectangle
+  covers exactly its area, a triangle about half its bounding box, a circle
+  π/4 of one; **winding order does not matter**, since art is rarely consistent
+  about it and a rasteriser that cared would silently drop half the facets; alpha
+  blends rather than replaces; drawing outside the buffer is ignored rather than
+  panicking; **the same drawing fingerprints the same and a changed one does
+  not**; an empty buffer still has a fingerprint; and silhouette difference
+  ignores colour where monochrome difference does not.
 - **Art legibility (`ui/symbols/legible.rs`):** every symbol draws something at
   the smallest cell the game produces and does not fill it edge to edge; **no
   two symbols look alike in monochrome at that size**; the three gem cuts are
@@ -1772,6 +1809,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | A feature tuned by gutting the base game | Refining took Frost to 6.92; the fix was rebalancing the feature's own spins and multiplier, not a 36% paytable cut that would have paid for the feature out of the base game (§5.21). |
 | Symbols that only differ by colour | Any two sharing a shape must stay apart under three simulated dichromacies (§5.24). The three gems now have three cuts, so the check has nothing left to catch. |
 | Art verified only by someone looking at it | The symbol routines rasterise to a buffer in a unit test (§5.25). It disproved §5.24's own screenshot-backed claim on its first run. |
+| Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A new machine shipping at the wrong RTP | The sim iterates `MACHINES`; a cabinet cannot be added without being measured (§5.8). |
 | Two machines sharing a save slot | Slots are `<machine>_<slot>`; a test asserts they are distinct. |
 | Jackpots exploitable by bet-switching | Odds are per credit wagered, so the trigger is bet-fair by construction (§5.6) and tested. The bet-ladder sim test excludes jackpots deliberately — they are too high-variance to compare over 20k spins — and their return is checked against its closed form instead. |
@@ -1804,21 +1842,21 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus twenty post-v1 systems
+## 15. Current State — v1 shipped, plus twenty-one post-v1 systems
 
-**All five phases are done, every item in §14 is met**, and twenty systems have
+**All five phases are done, every item in §14 is met**, and twenty-one systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
 machines (§5.8), achievements (§5.9), the Vault Pick (§5.10), the reel-feel pass
 (§5.11), the Dragon's Wrath (§5.12), the Feature Buy (§5.13), ways-to-win
 (§5.14), cascading reels (§5.15), the Dragon's Gamble (§5.16), live machine
 profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
-the reel-motion promotion (§5.23), colour legibility (§5.24) and testable art
-(§5.25). The game is
+the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
+the rasteriser promotion (§5.26). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-295 tests pass here and 158 in `macroquad-toolkit`; `cargo fmt --check`,
+291 tests pass here and 169 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
 release build are clean. Every `.rs` file is under the 800-line limit, `data.rs`
 (741) and `ui/reels.rs` (738) the largest — `state/spin.rs` dropped from 615 to
@@ -1901,9 +1939,9 @@ accruing. That closes the gap this section previously listed.
 - Nothing is left on the promotion list. `audio.rs` went in §5.19 and the reel
   motion in §5.23; what remains in this project is either this game's tuning or
   this game's rules.
-- `ui/paint.rs` is a general-purpose CPU rasteriser for macroquad's primitives
-  and is the obvious next candidate for `macroquad-toolkit`: any game drawing
-  procedural art has the same problem of not being able to test it. A real cabinet would show each feature's
+- The promotion list is empty again. Three modules have gone into the toolkit
+  now — synthesis, strip motion, and the rasteriser — and each left this project
+  smaller and better tested than it found it. A real cabinet would show each feature's
   volatility or a sample of what it pays; the price alone tells a player what it
   costs but not what to expect for it.
 - **Listen to the effects.** The waveform panel closed the part of this that is
