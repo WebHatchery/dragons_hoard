@@ -698,6 +698,62 @@ that buys a chain.
 `state.rs` reached 843 lines and the spin lifecycle — commit, reveal, settle —
 moved to `state/lifecycle.rs`.
 
+### 5.16 The Dragon's Gamble (post-v1)
+
+Twelve systems in, the player still had exactly one decision: how much to bet.
+Everything else either happened to them (free spins, the Dragon's Wrath), revealed
+something already decided (the Vault Pick), or was a purchase at a fixed price
+(the Feature Buy). **This is the first system that lets them get something wrong.**
+
+After a paying spin the win can be staked on the colour of a dragon scale —
+**ember** or **ash**. Right doubles it, wrong takes it. A win can be pushed up a
+five-rung ladder, with a ceiling in total bets, and `take` banks whatever is
+standing. Half-gamble risks half and banks the rest.
+
+**It is exactly fair, and that is the design.** A double-or-nothing at even odds
+has expected value `0.5 × 2x + 0.5 × 0 = x`, so **the gamble cannot move RTP at
+all** — only variance. That completes a set of four distinct relationships this
+game now has to its own maths:
+
+| System | Relationship to RTP | What it cost |
+|---|---|---|
+| Progressive jackpots (§5.6) | **adds** EV | a full paytable retune |
+| The Vault Pick (§5.10) | **normalised** to what it replaced | nothing |
+| The Feature Buy (§5.13) | **priced at** EV | measuring every tier |
+| The Dragon's Gamble | **neutral** by construction | nothing |
+
+Real cabinets usually shave the gamble — a 47.5% win chance dressed as a coin
+flip. There is no reason to here: it is play money (§1), the house edge already
+lives in the paytable, and "provably fair" is a better thing to be able to say.
+Two tests hold it: `the_scale_is_fair` measures the coin over 200,000 flips, and
+`the_gamble_returns_what_it_risks` pushes every round to the end of the ladder —
+the worst case for the claim — and asserts the ratio.
+
+**The strongest test compares two whole simulations.** `gambling_cannot_move_rtp`
+runs 120,000 spins twice from one seed, once gambling nothing and once gambling
+every win to the ladder's end, and asserts the two RTPs match: **0.9254 against
+0.9187**. It is the only test in the suite with no target to aim at, because
+"unchanged" *is* the assertion.
+
+**What a fair gamble does still cost the player is time to zero.** Neutral EV is
+not neutral risk, and a balance runs out faster when every win is doubled or
+lost. That is why the ladder is capped, why the ceiling exists, and why Take is
+the calmest-looking button on the panel.
+
+**Base game only.** During free spins the chain spins itself and an autospin run
+does the same, so either would have the reels turning underneath a decision the
+player is still making. `can_gamble` requires a settled session, a win, no
+feature and no run.
+
+**Staking takes the win back out of the balance.** It was credited when the spin
+settled, so gambling it has to remove it again — otherwise a lost gamble would
+cost nothing and a won one would pay the original twice. A busted round closes
+itself rather than leaving a panel asking the player to press Take on zero, and
+raises the one card in the game that is not good news.
+
+The odd credit on a half-gamble goes to the player. Rounding against them on
+their own money is a bad look for one credit.
+
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
 - Winning lines: pulse highlight (`blink`/`pulse`), floating win amounts
@@ -1065,6 +1121,21 @@ and a Project Roost deployment record. Verified live — see §15.
   in hit frequency (a reskin fails), must not share a save slot (sharing one
   would silently overwrite a balance and hoard), must not share a symbol set,
   and an unknown machine id falls back to the first rather than failing.
+- **The Dragon's Gamble (`state/gamble.rs`, `engine/sim.rs`, `state/tests/gamble.rs`):**
+  a right guess doubles and a wrong one ends the round; **the scale is fair** over
+  200,000 flips and **a gamble returns what it risks** when every round is pushed
+  to the end of the ladder; half-gambling is fair too and banks half out of reach;
+  the odd credit goes to the player; the ladder stops at its cap and a stake over
+  the ceiling cannot be gambled again; a finished round cannot be gambled and
+  cannot be taken twice; half is refused where the machine forbids it; **a flip
+  consumes the same randomness whether it wins or loses**; and one seed replays
+  one round. In the sim: **gambling everything measures the same RTP as gambling
+  nothing** — the claim the whole feature rests on. End to end: staking takes the
+  win back out of the balance; taking without flipping returns exactly the win; a
+  won flip doubles what reaches the balance and a lost one leaves nothing and
+  closes the round; nothing is offered without a win, during free spins, or during
+  an autospin run; an open gamble holds the reels and refuses a spin without
+  taking a stake; and a gamble is never written to the save.
 - **Cascades (`engine/cascade.rs`, `state/tests/cascade.rs`):** a chain always
   has at least the landing grid; it **ends on a grid that cleared nothing** (one
   that stopped mid-collapse would leave holes on screen); every step but the last
@@ -1183,6 +1254,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | A bought feature priced away from its value | `feature_buy_prices_are_exact` buys every tier 200,000 times and asserts the return matches the machine (§5.13). Mispricing downward makes never spinning the optimal strategy, and nothing else in the suite would notice. |
 | A new evaluation model quietly breaking the old one | `evaluation` defaults to `lines`, so existing data needed no edit, and both models are asserted present in the catalog (§5.14). Wins carry their own cells, so no consumer branches on the model. |
 | A reveal that consumes randomness | A cascade refills from each reel's own strip rather than rolling (§5.15), so the chain is a function of the stops. Tested by running the animated and headless paths from one seed on the cascading cabinet. |
+| A gamble quietly shaved | The scale is asserted fair over 200,000 flips, and a whole simulation that gambles every win is compared against one that gambles none (§5.16). A shaved coin would look like ordinary RTP drift in any single-number band. |
 | A new machine shipping at the wrong RTP | The sim iterates `MACHINES`; a cabinet cannot be added without being measured (§5.8). |
 | Two machines sharing a save slot | Slots are `<machine>_<slot>`; a test asserts they are distinct. |
 | Jackpots exploitable by bet-switching | Odds are per credit wagered, so the trigger is bet-fair by construction (§5.6) and tested. The bet-ladder sim test excludes jackpots deliberately — they are too high-variance to compare over 20k spins — and their return is checked against its closed form instead. |
@@ -1215,21 +1287,20 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus ten post-v1 systems
+## 15. Current State — v1 shipped, plus eleven post-v1 systems
 
-**All five phases are done, every item in §14 is met**, and ten systems have
+**All five phases are done, every item in §14 is met**, and eleven systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
 machines (§5.8), achievements (§5.9), the Vault Pick (§5.10), the reel-feel pass
 (§5.11), the Dragon's Wrath (§5.12), the Feature Buy (§5.13), ways-to-win
-(§5.14) and cascading reels (§5.15). The game is
+(§5.14), cascading reels (§5.15) and the Dragon's Gamble (§5.16). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-238 tests pass; `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`
+261 tests pass; `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`
 and the `wasm32-unknown-unknown` release build are clean. Every `.rs` file is
-under the 800-line limit; `state.rs` reached 843 adding cascades and its spin
-lifecycle was split into `state/lifecycle.rs`, leaving `data.rs` (785) the one to
-watch.
+under the 800-line limit; `data.rs` reached 811 and its machine catalog was split
+into `data/machines.rs`, leaving `game.rs` (783) the one to watch.
 
 Measured RTP over 1,000,000 spins: Dragon's Hoard **0.9612** at **0.411** hit
 frequency, Frost Wyrm **0.9450** at **0.258**, Emberfall **0.9596** at **0.622**
@@ -1241,8 +1312,9 @@ existed, priced to return exactly what the reels return.
 Captures in `docs/verification/`: `ui_idle`, `ui_spin`, `ui_win`, `ui_freespins`,
 `ui_paytable`, `ui_settings`, `ui_machines`, `ui_frost`, `ui_achievements`,
 `ui_bonus`, `ui_feature_card`, `ui_hatch`, `ui_jackpot`, `ui_autospin`,
-`ui_anticipation`, `ui_wrath`, `ui_featurebuy`, `ui_ways`, `ui_cascade`. The
-catalog card image at the project root is produced by the same harness. `ui_spin` is captured at 20 frames rather than 150 — at the default
+`ui_anticipation`, `ui_wrath`, `ui_featurebuy`, `ui_ways`, `ui_cascade`,
+`ui_gamble`. The catalog card image at the project root is produced by the same
+harness. `ui_spin` is captured at 20 frames rather than 150 — at the default
 the spin has already finished, so the blur it is meant to show is not there.
 
 ### Verified, and not
@@ -1297,6 +1369,10 @@ accruing. That closes the gap this section previously listed.
   blur/bounce/anticipation work in `state/spin.rs` — none of it is specific to a
   slot machine beyond the anticipation trigger, and any game with a spinning or
   scrolling strip would want it.
+- The gamble panel is the only screen where a **losing** decision is possible,
+  and it has no confirmation. That is deliberate — a cabinet that asked "are you
+  sure?" on every flip would be unusable — but it does mean a misclick on Ember
+  costs the whole win.
 - The cascade multiplier badge overlaps the top-right symbol. It is transient
   and only appears above ×1, but a real cabinet would find it somewhere of its
   own rather than over a cell.

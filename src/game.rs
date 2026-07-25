@@ -9,6 +9,7 @@ use crate::state::achievements::AchievementBook;
 use crate::state::autospin::AutospinStop;
 use crate::state::celebration::CelebrationKind;
 use crate::state::featurebuy::BuyBlocked;
+use crate::state::gamble::GambleBlocked;
 use crate::state::preferences::Preferences;
 use crate::state::spin::SpinEvent;
 use crate::state::{migrate_save_value, GameSession, SaveData, SpinBlocked, SpinResolution};
@@ -419,6 +420,12 @@ impl Game {
                 self.sound.play(Sfx::Scatter);
                 self.spawn_hatch_burst();
             }
+            // A bust gets shake but no burst: it is the one card in the game
+            // that is not good news, and showering it in gold would read wrong.
+            CelebrationKind::GambleLost { .. } => {
+                self.add_trauma(0.45);
+                self.sound.play_at(Sfx::ReelStop, 0.45);
+            }
             CelebrationKind::FreeSpinsRetrigger { .. } => {
                 self.add_trauma(0.5);
                 self.sound.play(Sfx::Scatter);
@@ -572,6 +579,28 @@ impl Game {
             ActionOutcome::AchievementsToggled => {
                 self.show_achievements = !self.show_achievements;
                 self.sound.play(Sfx::Click);
+            }
+            ActionOutcome::GambleOffered => {
+                self.sound.play(Sfx::Scatter);
+                self.show_featurebuy = false;
+            }
+            ActionOutcome::GambleFlipped(flip) => {
+                if flip.won {
+                    self.add_trauma(0.35);
+                    self.sound.play(Sfx::WinSmall);
+                } else {
+                    self.sound.play_at(Sfx::ReelStop, 0.5);
+                }
+            }
+            ActionOutcome::GambleTaken(total) => {
+                self.sound.play(Sfx::CoinLock);
+                self.notifications
+                    .success(format!("Gamble taken — {} credits", total));
+                self.autosave();
+            }
+            ActionOutcome::GambleRefused(reason) => {
+                self.sound.play_at(Sfx::Click, 0.6);
+                self.notifications.warning(gamble_refusal(reason));
             }
             ActionOutcome::FeatureBuyToggled => {
                 self.show_featurebuy = !self.show_featurebuy;
@@ -727,6 +756,17 @@ impl Game {
 
     fn refresh_save_state(&mut self) {
         self.save_exists = slot_exists(&self.data.config.game_name, &self.data.save_slot());
+    }
+}
+
+/// Why a gamble was refused, in the player's terms. `NotOffered` is the one a
+/// player will actually hit — pressing G on a losing spin — so it says what is
+/// needed rather than what is missing.
+fn gamble_refusal(reason: GambleBlocked) -> &'static str {
+    match reason {
+        GambleBlocked::NotOffered => "Nothing to gamble — win a spin first",
+        GambleBlocked::LimitReached => "The gamble ladder is spent",
+        GambleBlocked::CannotHalve => "This win cannot be split",
     }
 }
 

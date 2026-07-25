@@ -8,6 +8,7 @@
 use super::Game;
 use crate::data::GameData;
 use crate::state::celebration::CelebrationKind;
+use crate::state::gamble::Scale;
 use crate::state::GameSession;
 
 impl Game {
@@ -99,6 +100,34 @@ impl Game {
                 // greyed-out rows would photograph the wallet, not the feature.
                 self.session.balance = 500_000;
                 self.show_featurebuy = true;
+            }
+            "gamble" => {
+                // A win, staked, and one rung climbed — the panel says more
+                // about the decision when there is something on the ladder.
+                self.fast_forward_to(|session| session.last_win > 0);
+                self.session.celebrations.clear();
+                let _ = self.session.begin_gamble(&self.data);
+                for _ in 0..8 {
+                    if self
+                        .session
+                        .gamble
+                        .as_ref()
+                        .is_some_and(|round| round.steps() > 0)
+                    {
+                        break;
+                    }
+                    // Keep flipping until one lands; a busted round closes
+                    // itself and there would be no panel to photograph.
+                    if self
+                        .session
+                        .flip_gamble(Scale::Ember, false, &self.data)
+                        .is_err()
+                    {
+                        self.fast_forward_to(|session| session.last_win > 0);
+                        self.session.celebrations.clear();
+                        let _ = self.session.begin_gamble(&self.data);
+                    }
+                }
             }
             "settings" => self.show_settings = true,
             "anticipation" => self.hold_a_near_miss(),

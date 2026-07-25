@@ -7,6 +7,10 @@
 use macroquad_toolkit::assets::TextureConfig;
 use macroquad_toolkit::data_loader::{load_embedded_json, load_embedded_json_labeled};
 use serde::{Deserialize, Serialize};
+
+mod machines;
+
+pub use machines::{machine_by_id, MachineDef, MACHINES};
 use std::collections::HashMap;
 
 const TEXTURE_MANIFEST_JSON: &str = include_str!("../assets/data/texture_manifest.json");
@@ -14,105 +18,7 @@ const TEXTURE_MANIFEST_JSON: &str = include_str!("../assets/data/texture_manifes
 /// the hoard whose expected value is normalised to 1000 permille, so each
 /// cabinet's own `hatch_pot_multiplier` is what scales it (§5.10).
 const BONUS_JSON: &str = include_str!("../assets/data/bonus.json");
-
-/// One playable machine: a complete, self-contained set of maths and content.
-///
-/// Everything that makes a machine what it is — symbols, strips, paytable,
-/// feature rules, jackpot tiers — is JSON. The only Rust here is the list of
-/// which files to embed, because `include_str!` runs at compile time.
-///
-/// Adding a machine is: drop a directory under `assets/data/machines/`, add an
-/// entry to [`MACHINES`], and re-run the RTP sim — which tests **every** machine
-/// (§4), so a new one cannot ship out of band.
-#[derive(Debug)]
-pub struct MachineDef {
-    pub id: &'static str,
-    /// One line for the picker, describing how this machine plays.
-    pub blurb: &'static str,
-    config: &'static str,
-    symbols: &'static str,
-    reels: &'static str,
-    paylines: &'static str,
-    freespins: &'static str,
-    jackpots: &'static str,
-    holdspin: &'static str,
-    cascade: Option<&'static str>,
-    featurebuy: &'static str,
-}
-
-macro_rules! machine {
-    ($id:literal, $dir:literal, $blurb:literal) => {
-        MachineDef {
-            id: $id,
-            blurb: $blurb,
-            config: include_str!(concat!(
-                "../assets/data/machines/",
-                $dir,
-                "/game_config.json"
-            )),
-            symbols: include_str!(concat!("../assets/data/machines/", $dir, "/symbols.json")),
-            reels: include_str!(concat!("../assets/data/machines/", $dir, "/reels.json")),
-            paylines: include_str!(concat!("../assets/data/machines/", $dir, "/paylines.json")),
-            freespins: include_str!(concat!("../assets/data/machines/", $dir, "/freespins.json")),
-            jackpots: include_str!(concat!("../assets/data/machines/", $dir, "/jackpots.json")),
-            holdspin: include_str!(concat!("../assets/data/machines/", $dir, "/holdspin.json")),
-            featurebuy: include_str!(concat!(
-                "../assets/data/machines/",
-                $dir,
-                "/featurebuy.json"
-            )),
-            cascade: None,
-        }
-    };
-}
-
-/// A cabinet whose reels cascade (§5.15). Same fields as `machine!`, plus the
-/// cascade config — a separate macro so the three that do not cascade carry no
-/// mention of it.
-macro_rules! cascading_machine {
-    ($id:literal, $dir:literal, $blurb:literal) => {
-        MachineDef {
-            cascade: Some(include_str!(concat!(
-                "../assets/data/machines/",
-                $dir,
-                "/cascade.json"
-            ))),
-            ..machine!($id, $dir, $blurb)
-        }
-    };
-}
-
-pub static MACHINES: &[MachineDef] = &[
-    machine!(
-        "dragon",
-        "dragon",
-        "Medium volatility. Frequent coin and gem wins, doubled free spins."
-    ),
-    machine!(
-        "frost",
-        "frost",
-        "High volatility. Rarer wins, far bigger, with tripled free spins."
-    ),
-    machine!(
-        "ways",
-        "ways",
-        "243 ways to win — no paylines. Symbols pay from the left wherever they land."
-    ),
-    cascading_machine!(
-        "avalanche",
-        "avalanche",
-        "Cascading 243 ways. Winners are cleared, the grid refills, and the multiplier climbs."
-    ),
-];
-
-/// Look a machine up by id, falling back to the first so a stale saved id can
-/// never leave the player with no machine at all.
-pub fn machine_by_id(id: &str) -> &'static MachineDef {
-    MACHINES
-        .iter()
-        .find(|machine| machine.id == id)
-        .unwrap_or(&MACHINES[0])
-}
+const GAMBLE_JSON: &str = include_str!("../assets/data/gamble.json");
 
 /// Longest run a paytable entry can describe. Index 0..=5, so a 5-reel game
 /// indexes `pay_table[symbol][count]` directly.
@@ -389,6 +295,22 @@ impl CascadeConfig {
     }
 }
 
+/// The Dragon's Gamble (§5.16).
+///
+/// Shared by every cabinet. Unlike the hold-and-spin trigger (§5.12) nothing
+/// here reads the strips — a fair double is a fair double on any machine — and
+/// the ceiling is expressed in total bets, so it scales with the stake by
+/// itself.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GambleConfig {
+    /// How many doubles a single win may be pushed through.
+    pub max_steps: usize,
+    /// Highest stake that may be gambled, in multiples of total bet. What stops
+    /// a lucky run compounding without bound.
+    pub ceiling_multiple: i64,
+    pub allow_half: bool,
+}
+
 /// The Feature Buy menu (§5.13).
 ///
 /// Per-machine, and necessarily so: a tier's price is derived from the expected
@@ -474,6 +396,7 @@ pub struct GameData {
     pub bonus: BonusConfig,
     pub holdspin: HoldSpinConfig,
     pub featurebuy: FeatureBuyConfig,
+    pub gamble: GambleConfig,
     /// `Some` only on a cascading cabinet (§5.15).
     pub cascade: Option<CascadeConfig>,
     pub texture_manifest: Vec<TextureConfig>,
@@ -503,6 +426,7 @@ impl GameData {
             load_embedded_json_labeled(&label("holdspin"), machine.holdspin)?;
         let featurebuy: FeatureBuyConfig =
             load_embedded_json_labeled(&label("featurebuy"), machine.featurebuy)?;
+        let gamble: GambleConfig = load_embedded_json_labeled("gamble", GAMBLE_JSON)?;
         let cascade: Option<CascadeConfig> = machine
             .cascade
             .map(|raw| load_embedded_json_labeled(&label("cascade"), raw))
@@ -521,6 +445,7 @@ impl GameData {
             bonus,
             holdspin,
             featurebuy,
+            gamble,
             cascade,
             texture_manifest,
         };
@@ -675,6 +600,12 @@ impl GameData {
         // without it.
         let cells = self.config.reel_count * self.config.row_count;
         crate::state::featurebuy::validate(&self.featurebuy, cells)?;
+        if self.gamble.max_steps == 0 {
+            return Err("a gamble with no steps could never be taken".to_owned());
+        }
+        if self.gamble.ceiling_multiple <= 0 {
+            return Err("the gamble ceiling must leave something to gamble".to_owned());
+        }
         if let Some(cascade) = &self.cascade {
             if cascade.max_steps == 0 {
                 return Err("a cascade capped at zero steps would pay nothing".to_owned());

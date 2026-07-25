@@ -1,0 +1,5 @@
+{
+  "max_steps": 5,
+  "ceiling_multiple": 200,
+  "allow_half": true
+}

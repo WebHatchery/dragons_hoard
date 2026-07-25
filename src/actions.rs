@@ -3,6 +3,7 @@
 use crate::data::GameData;
 use crate::state::autospin::AutospinStop;
 use crate::state::featurebuy::{BuyBlocked, BuyResult};
+use crate::state::gamble::{GambleBlocked, GambleFlip};
 use crate::state::{GameSession, SpinBlocked};
 use crate::ui::UiAction;
 
@@ -30,6 +31,11 @@ pub enum ActionOutcome {
     MachinesToggled,
     AchievementsToggled,
     FeatureBuyToggled,
+    /// A gamble opened, flipped, or was taken (§5.16).
+    GambleOffered,
+    GambleFlipped(GambleFlip),
+    GambleTaken(i64),
+    GambleRefused(GambleBlocked),
     /// A feature was bought: what it was, and what it cost (§5.13).
     FeatureBought(BuyResult),
     /// The buy was refused. Carries why, so the message can say so.
@@ -80,6 +86,22 @@ pub fn apply(
         UiAction::ToggleMachines => ActionOutcome::MachinesToggled,
         UiAction::ToggleAchievements => ActionOutcome::AchievementsToggled,
         UiAction::ToggleFeatureBuy => ActionOutcome::FeatureBuyToggled,
+        UiAction::OfferGamble => match session.begin_gamble(data) {
+            Ok(_) => ActionOutcome::GambleOffered,
+            Err(reason) => ActionOutcome::GambleRefused(reason),
+        },
+        UiAction::Gamble(scale) => match session.flip_gamble(scale, false, data) {
+            Ok(flip) => ActionOutcome::GambleFlipped(flip),
+            Err(reason) => ActionOutcome::GambleRefused(reason),
+        },
+        UiAction::GambleHalf(scale) => match session.flip_gamble(scale, true, data) {
+            Ok(flip) => ActionOutcome::GambleFlipped(flip),
+            Err(reason) => ActionOutcome::GambleRefused(reason),
+        },
+        UiAction::TakeGamble => match session.take_gamble() {
+            Some(total) => ActionOutcome::GambleTaken(total),
+            None => ActionOutcome::GambleRefused(GambleBlocked::NotOffered),
+        },
         UiAction::BuyFeature(index) => match session.buy_feature(index, data) {
             Ok(purchase) => ActionOutcome::FeatureBought(purchase),
             Err(reason) => ActionOutcome::FeatureBuyRefused(reason),

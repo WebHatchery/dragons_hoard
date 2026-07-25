@@ -4,6 +4,7 @@ pub mod achievements;
 pub mod bonus;
 pub mod celebration;
 pub mod featurebuy;
+pub mod gamble;
 pub mod holdspin;
 pub mod machines;
 pub mod paytable;
@@ -53,6 +54,11 @@ pub enum UiAction {
     ToggleAchievements,
     /// Open or close the Feature Buy menu (§5.13).
     ToggleFeatureBuy,
+    /// Put the last win at risk (§5.16).
+    OfferGamble,
+    Gamble(crate::state::gamble::Scale),
+    GambleHalf(crate::state::gamble::Scale),
+    TakeGamble,
     /// Buy the tier at this index of `featurebuy.json`.
     BuyFeature(usize),
     /// Index into `data::MACHINES`.
@@ -121,6 +127,12 @@ pub fn draw_game_ui(ctx: UiContext<'_>) -> Vec<UiAction> {
     // The respin board takes over the reel window while a round is open.
     if let Some(round) = ctx.session.holdspin.as_ref() {
         holdspin::draw(ctx.data, round, ctx.ui_time);
+    }
+
+    // The gamble owns the screen while it is up: it is a decision, and the
+    // reels behind it are inert until it is made.
+    if let Some(round) = ctx.session.gamble.as_ref() {
+        gamble::draw(ctx.data, ctx.session, round, mouse, &mut actions);
     }
 
     if ctx.show_featurebuy {
@@ -589,7 +601,7 @@ fn draw_footer(ctx: &UiContext<'_>) {
         TextStyle::new(16.0, palette::TEXT).params(),
     );
     draw_ui_text_ex(
-        "Space spins · Up/Down bet · M max · A autospin · B buy · P paytable · O settings · C machines · V awards",
+        "Space spins · Up/Down bet · M max · A autospin · G gamble · B buy · P paytable · O settings · C machines · V awards",
         rect.x + 470.0,
         rect.y + 56.0,
         TextStyle::new(15.0, palette::TEXT_DIM).params(),
@@ -673,6 +685,9 @@ pub fn actions_from_keys(celebrating: bool) -> Vec<UiAction> {
     }
     if is_key_pressed(KeyCode::B) {
         actions.push(UiAction::ToggleFeatureBuy);
+    }
+    if is_key_pressed(KeyCode::G) {
+        actions.push(UiAction::OfferGamble);
     }
     if is_key_pressed(KeyCode::S) {
         actions.push(UiAction::Save);

@@ -26,6 +26,12 @@ pub struct SessionStats {
     /// menu existed still loads.
     #[serde(default)]
     pub features_bought: u32,
+    /// Gambles that ended above what they staked, and gambles that busted
+    /// (§5.16). `default` so a save from before the feature still loads.
+    #[serde(default)]
+    pub gambles_won: u32,
+    #[serde(default)]
+    pub gambles_lost: u32,
 }
 
 /// What lands on disk. Deliberately excludes the grid and any in-flight spin or

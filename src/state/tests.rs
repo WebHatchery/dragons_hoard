@@ -478,6 +478,7 @@ fn a_legacy_save_migrates_to_the_current_shape() {
 mod bonus;
 mod cascade;
 mod featurebuy;
+mod gamble;
 mod holdspin;
 mod jackpots;
 mod machines;

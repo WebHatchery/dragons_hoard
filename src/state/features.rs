@@ -12,6 +12,7 @@
 use super::bonus::{self, BonusOutcome};
 use super::celebration::CelebrationKind;
 use super::featurebuy::{self, BuyBlocked, BuyResult};
+use super::gamble::{GambleBlocked, GambleFlip, GambleRound, Scale};
 use super::holdspin::{self, HoldSpinOutcome, HoldSpinRound};
 use super::spin::SpinEvent;
 use super::{FreeSpinState, GameSession, HOLD_SPIN_BEAT};
@@ -169,5 +170,81 @@ impl GameSession {
             && self.is_settled()
             && featurebuy::tier_at(data, index)
                 .is_some_and(|tier| self.balance >= featurebuy::price(tier, self.total_bet(data)))
+    }
+}
+
+impl GameSession {
+    /// Whether a gamble can be offered right now (§5.16).
+    ///
+    /// Base game only. During free spins the chain spins itself, and a round
+    /// that held the reels would either stall the feature or be run straight
+    /// over — neither is a decision the player gets to make properly.
+    pub fn can_gamble(&self) -> bool {
+        self.gamble.is_none()
+            && !self.in_free_spins()
+            && self.autospin.is_none()
+            && self.is_settled()
+            && self.last_win > 0
+    }
+
+    /// Take the last win back out of the balance and put it at risk.
+    pub fn begin_gamble(&mut self, data: &GameData) -> Result<i64, GambleBlocked> {
+        if !self.can_gamble() {
+            return Err(GambleBlocked::NotOffered);
+        }
+        let win = self.last_win;
+        // The win was credited when the spin settled, so staking it means
+        // taking it back out. Anything else would let a player gamble money
+        // they had already banked.
+        self.balance -= win;
+        self.gamble = Some(GambleRound::new(win, self.total_bet(data), &data.gamble));
+        Ok(win)
+    }
+
+    /// Risk it all, or half of it, on a colour.
+    pub fn flip_gamble(
+        &mut self,
+        picked: Scale,
+        half: bool,
+        data: &GameData,
+    ) -> Result<GambleFlip, GambleBlocked> {
+        let round = self.gamble.as_mut().ok_or(GambleBlocked::NotOffered)?;
+        let flip = if half {
+            round.flip_half(picked, &mut self.rng)
+        } else {
+            round.flip(picked, &mut self.rng)
+        }?;
+
+        // A busted round is closed immediately: there is nothing standing to
+        // take, and leaving the panel up would ask the player to press Take on
+        // zero.
+        if round.standing() == 0 {
+            self.gamble = None;
+            self.last_win = 0;
+            self.stats.gambles_lost += 1;
+            self.celebrations.push(CelebrationKind::GambleLost {
+                lost: flip.stake.max(0),
+                landed: flip.landed.label(),
+            });
+        }
+        let _ = data;
+        Ok(flip)
+    }
+
+    /// Bank whatever is standing and close the round.
+    pub fn take_gamble(&mut self) -> Option<i64> {
+        let round = self.gamble.as_mut()?;
+        let opening = round.opening();
+        let total = round.take();
+        self.gamble = None;
+
+        self.balance += total;
+        self.last_win = total;
+        if total > opening {
+            self.stats.gambles_won += 1;
+            self.stats.total_won += total - opening;
+            self.stats.biggest_win = self.stats.biggest_win.max(total);
+        }
+        Some(total)
     }
 }

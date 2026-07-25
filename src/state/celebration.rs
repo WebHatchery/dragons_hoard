@@ -47,6 +47,12 @@ pub enum CelebrationKind {
         coins: usize,
         full_board: bool,
     },
+    /// A gamble busted (§5.16). Losing needs a beat of its own — without one
+    /// the win simply vanishes from the readout and reads as a bug.
+    GambleLost {
+        lost: i64,
+        landed: &'static str,
+    },
 }
 
 impl CelebrationKind {
@@ -58,6 +64,7 @@ impl CelebrationKind {
             CelebrationKind::Hatch { .. } => 2.8,
             CelebrationKind::Jackpot { .. } => 3.4,
             CelebrationKind::BigWin { .. } => 1.9,
+            CelebrationKind::GambleLost { .. } => 1.8,
             CelebrationKind::Wrath { full_board, .. } => {
                 if *full_board {
                     3.6
@@ -76,6 +83,7 @@ impl CelebrationKind {
             CelebrationKind::Hatch { credits, .. } => format!("{} CREDITS", credits),
             CelebrationKind::Jackpot { credits, .. } => format!("{} CREDITS", credits),
             CelebrationKind::BigWin { credits } => format!("{} CREDITS", credits),
+            CelebrationKind::GambleLost { .. } => "NOTHING".to_owned(),
             CelebrationKind::Wrath { credits, .. } => format!("{} CREDITS", credits),
         }
     }
@@ -88,6 +96,7 @@ impl CelebrationKind {
             CelebrationKind::Hatch { .. } => "THE HOARD HATCHES",
             CelebrationKind::Jackpot { .. } => "JACKPOT",
             CelebrationKind::BigWin { .. } => "BIG WIN",
+            CelebrationKind::GambleLost { .. } => "THE SCALE TURNS",
             CelebrationKind::Wrath { full_board, .. } => {
                 if *full_board {
                     "THE HOARD IS YOURS"
@@ -110,6 +119,9 @@ impl CelebrationKind {
             CelebrationKind::Hatch { eggs, .. } => format!("{} dragon eggs cashed in", eggs),
             CelebrationKind::Jackpot { name, .. } => format!("the {} progressive falls", name),
             CelebrationKind::BigWin { .. } => "The vault gives up its gold".to_owned(),
+            CelebrationKind::GambleLost { lost, landed } => {
+                format!("{} landed — {} credits gone", landed, lost)
+            }
             CelebrationKind::Wrath {
                 coins, full_board, ..
             } => {

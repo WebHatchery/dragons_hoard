@@ -6,6 +6,7 @@ pub mod bonus;
 pub mod celebration;
 pub mod featurebuy;
 pub mod features;
+pub mod gamble;
 pub mod hoard;
 pub mod holdspin;
 pub mod jackpot;
@@ -19,6 +20,7 @@ use crate::engine::{self, Grid, SpinMode, SpinOutcome, SpinResult};
 use autospin::{AutospinState, AutospinStop};
 use bonus::BonusRound;
 use celebration::{CelebrationKind, CelebrationQueue};
+use gamble::GambleRound;
 use holdspin::HoldSpinRound;
 use jackpot::{JackpotState, JackpotWin};
 use macroquad_toolkit::rng::SeededRng;
@@ -174,6 +176,8 @@ pub struct GameSession {
     /// An open Dragon's Wrath round (§5.12). Holds the game like a card does,
     /// but advances on a beat rather than on a pick.
     pub holdspin: Option<HoldSpinRound>,
+    /// An open Dragon's Gamble (§5.16). Holds the game while the player decides.
+    pub gamble: Option<GambleRound>,
     pub autospin: Option<AutospinState>,
     /// Player preferences. Deliberately *not* part of `SaveData` — volume and
     /// spin speed belong to the player, not to a save slot, so a New Game or a
@@ -205,6 +209,7 @@ impl GameSession {
             holdspin_beat: Timer::new(HOLD_SPIN_BEAT),
             bonus: None,
             holdspin: None,
+            gamble: None,
             autospin: None,
             preferences: Preferences::with_defaults(&data.config),
             reel_stops: vec![0; data.reels.len()],
@@ -234,6 +239,7 @@ impl GameSession {
             holdspin_beat: Timer::new(HOLD_SPIN_BEAT),
             bonus: None,
             holdspin: None,
+            gamble: None,
             autospin: None,
             preferences: Preferences::with_defaults(&data.config),
             reel_stops: vec![0; data.reels.len()],
@@ -342,6 +348,7 @@ impl GameSession {
             && !self.celebrations.is_active()
             && self.bonus.is_none()
             && self.holdspin.is_none()
+            && self.gamble.is_none()
     }
 
     fn can_afford_spin(&self, data: &GameData) -> bool {

@@ -8,6 +8,7 @@
 //! badly understate the return.
 
 use crate::data::GameData;
+use crate::state::gamble::Scale;
 use crate::state::GameSession;
 
 /// Balance the sim tops up to before each paid spin, so a losing streak can
@@ -198,6 +199,58 @@ pub fn simulate_buys(data: &GameData, tier: usize, rounds: u64, seed: u64) -> Bu
         report.won += session.balance - (before - purchase.price);
     }
 
+    report
+}
+
+/// Spin, and push every win through the gamble ladder until it busts or the
+/// ladder is spent (§5.16).
+///
+/// The point of this is the comparison in `gambling_cannot_move_rtp`: an
+/// even-money double has expected value equal to its stake, so a player who
+/// gambles everything must — over a long enough run — end up in the same place
+/// as one who gambles nothing. Anything else means the coin is not fair or the
+/// stake accounting is wrong, and neither would show up in a total-RTP band on
+/// its own.
+pub fn simulate_gambling_everything(data: &GameData, spins: u64, seed: u64) -> SimReport {
+    let mut session = GameSession::new(data, seed);
+    let mut report = SimReport::default();
+
+    for _ in 0..spins {
+        session.balance = 1_000_000_000;
+        session.celebrations.clear();
+
+        let Ok(resolution) = session.spin(data) else {
+            break;
+        };
+        report.paid_spins += 1;
+        accumulate(&mut report, &resolution, false);
+
+        while session.in_free_spins() {
+            let Ok(free) = session.spin(data) else {
+                break;
+            };
+            report.free_spins += 1;
+            accumulate(&mut report, &free, true);
+        }
+
+        // Gamble whatever the spin left standing, as far as it will go.
+        let before = session.balance;
+        if session.begin_gamble(data).is_ok() {
+            while session
+                .gamble
+                .as_ref()
+                .is_some_and(|round| round.can_flip())
+            {
+                let _ = session.flip_gamble(Scale::Ember, false, data);
+            }
+            session.take_gamble();
+            // The delta is what the gamble did to the win: positive if it
+            // climbed, negative down to the whole win if it busted.
+            report.total_won += session.balance - before;
+        }
+    }
+
+    report.total_wagered = session.stats.total_wagered;
     report
 }
 
@@ -605,6 +658,56 @@ mod buy_tests {
 
             assert_eq!(purchase.price, quoted);
             assert_eq!(session.balance, before - quoted);
+        }
+    }
+}
+
+#[cfg(test)]
+mod gamble_tests {
+    use super::*;
+    use crate::data::MACHINES;
+
+    /// The claim §5.16 rests on: an even-money double moves variance and
+    /// nothing else. A player who gambles every win to the ladder's end must
+    /// measure the same RTP as one who never gambles.
+    ///
+    /// This is the only test in the suite that compares two *whole* simulations
+    /// against each other rather than against a target, because "unchanged" is
+    /// the assertion — there is no number to aim at.
+    #[test]
+    fn gambling_cannot_move_rtp() {
+        let data = GameData::load().unwrap();
+        let plain = run(
+            &data,
+            SimConfig {
+                spins: 120_000,
+                line_bet_index: 0,
+                seed: 0x6A_6B1E,
+            },
+        );
+        let gambled = simulate_gambling_everything(&data, 120_000, 0x6A_6B1E);
+
+        println!(
+            "plain {:.4} | gambling everything {:.4}",
+            plain.rtp(),
+            gambled.rtp()
+        );
+        assert!(
+            (plain.rtp() - gambled.rtp()).abs() < 0.06,
+            "gambling moved RTP from {:.4} to {:.4}",
+            plain.rtp(),
+            gambled.rtp()
+        );
+    }
+
+    /// A gamble must be offered on exactly the machines that can pay one, which
+    /// is all of them — the config is shared and reads nothing from the strips.
+    #[test]
+    fn every_machine_offers_the_gamble() {
+        for machine in MACHINES {
+            let data = GameData::load_machine(machine).unwrap();
+            assert!(data.gamble.max_steps > 0, "{} has no ladder", machine.id);
+            assert!(data.gamble.ceiling_multiple > 0);
         }
     }
 }
