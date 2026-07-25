@@ -45,15 +45,15 @@ pub fn draw(
     draw_surface(
         panel,
         &SurfaceStyle::new(Color::new(0.14, 0.10, 0.04, 1.0))
-            .with_border(2.0, palette::GOLD)
-            .with_header(52.0, palette::STONE_HEADER)
-            .with_header_divider(1.0, palette::GOLD_DIM),
+            .with_border(2.0, palette::gold())
+            .with_header(52.0, palette::stone_header())
+            .with_header_divider(1.0, palette::gold_dim()),
     );
     draw_ui_text_ex(
         "THE VAULT PICK",
         panel.x + 22.0,
         panel.y + 34.0,
-        TextStyle::new(22.0, palette::GOLD_BRIGHT).params(),
+        TextStyle::new(22.0, palette::gold_bright()).params(),
     );
     draw_text_centered_in_box_ex(
         &format!(
@@ -65,7 +65,7 @@ pub fn draw(
         panel.y + 12.0,
         320.0,
         30.0,
-        TextStyle::new(17.0, palette::TEXT),
+        TextStyle::new(17.0, palette::text()),
     );
 
     let origin = vec2(
@@ -94,7 +94,7 @@ pub fn draw(
         panel.bottom() - 46.0,
         panel.w,
         32.0,
-        TextStyle::new(20.0, palette::GOLD_BRIGHT),
+        TextStyle::new(20.0, palette::gold_bright()),
     );
 }
 
@@ -113,7 +113,7 @@ fn draw_cell(
             draw_surface(
                 cell,
                 &SurfaceStyle::new(Color::new(0.20, 0.16, 0.05, 1.0))
-                    .with_border(2.0, palette::GOLD),
+                    .with_border(2.0, palette::gold()),
             );
             draw_text_centered_in_box_ex(
                 &format!("{}", round.base() * permille / 1000),
@@ -121,7 +121,7 @@ fn draw_cell(
                 cell.y - 6.0,
                 cell.w,
                 cell.h,
-                TextStyle::new(30.0, palette::GOLD_BRIGHT),
+                TextStyle::new(30.0, palette::gold_bright()),
             );
             draw_text_centered_in_box_ex(
                 &format!("{}%", permille / 10),
@@ -129,7 +129,7 @@ fn draw_cell(
                 cell.y + cell.h * 0.5,
                 cell.w,
                 cell.h * 0.4,
-                TextStyle::new(15.0, palette::TEXT_DIM),
+                TextStyle::new(15.0, palette::text_dim()),
             );
             false
         }
@@ -165,9 +165,9 @@ fn draw_cell(
                 .with_border(
                     if hovered { 3.0 } else { 1.0 },
                     Color::new(
-                        palette::GOLD.r,
-                        palette::GOLD.g,
-                        palette::GOLD.b,
+                        palette::gold().r,
+                        palette::gold().g,
+                        palette::gold().b,
                         0.35 + 0.45 * glow,
                     ),
                 ),

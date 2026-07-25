@@ -21,15 +21,15 @@ pub fn draw(hint: &HintDef, mouse: Vec2, actions: &mut Vec<UiAction>, nav: &mut 
     draw_surface(
         bar,
         &SurfaceStyle::new(Color::new(0.16, 0.11, 0.03, 0.96))
-            .with_border(1.0, palette::GOLD_DIM)
-            .with_left_accent(3.0, palette::EMBER),
+            .with_border(1.0, palette::gold_dim())
+            .with_left_accent(3.0, palette::ember()),
     );
 
     draw_ui_text_ex(
         &hint.text,
         bar.x + 16.0,
         bar.y + 20.0,
-        TextStyle::new(14.0, palette::TEXT_BRIGHT).params(),
+        TextStyle::new(14.0, palette::text_bright()).params(),
     );
 
     let dismiss = Rect::new(bar.right() - 88.0, bar.y + 3.0, 80.0, 24.0);

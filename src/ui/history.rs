@@ -46,19 +46,19 @@ pub fn draw(
         Color::new(0.0, 0.0, 0.0, 0.80),
     );
     // Everything drawn below is measured against this panel (§5.37).
-    let _region = Region::on(PANEL, palette::STONE);
+    let _region = Region::on(PANEL, palette::stone());
     draw_surface(
         PANEL,
-        &SurfaceStyle::new(palette::STONE)
-            .with_border(2.0, palette::GOLD)
-            .with_header(48.0, palette::STONE_HEADER)
-            .with_header_divider(1.0, palette::GOLD_DIM),
+        &SurfaceStyle::new(palette::stone())
+            .with_border(2.0, palette::gold())
+            .with_header(48.0, palette::stone_header())
+            .with_header_divider(1.0, palette::gold_dim()),
     );
     draw_ui_text_ex(
         "This Session",
         PANEL.x + 20.0,
         PANEL.y + 32.0,
-        TextStyle::new(21.0, palette::GOLD_BRIGHT).params(),
+        TextStyle::new(21.0, palette::gold_bright()).params(),
     );
     draw_text_right(
         &format!(
@@ -67,7 +67,7 @@ pub fn draw(
         ),
         PANEL.right() - 140.0,
         PANEL.y + 31.0,
-        TextStyle::new(14.0, palette::TEXT_DIM),
+        TextStyle::new(14.0, palette::text_dim()),
     );
     if virtual_button(
         Rect::new(PANEL.right() - 130.0, PANEL.y + 9.0, 110.0, 30.0),
@@ -88,7 +88,7 @@ pub fn draw(
             plot.y,
             plot.w,
             plot.h,
-            TextStyle::new(18.0, palette::TEXT_DIM),
+            TextStyle::new(18.0, palette::text_dim()),
         );
         return;
     }
@@ -110,7 +110,7 @@ pub fn draw(
         56.0,
         16.0,
         4.0,
-        palette::TEXT_DIM,
+        palette::text_dim(),
     );
 }
 
@@ -130,7 +130,8 @@ fn range(history: &History) -> (f32, f32) {
 fn draw_plot(history: &History, plot: Rect) {
     draw_surface(
         plot,
-        &SurfaceStyle::new(Color::new(0.05, 0.045, 0.05, 1.0)).with_border(1.0, palette::GOLD_DIM),
+        &SurfaceStyle::new(Color::new(0.05, 0.045, 0.05, 1.0))
+            .with_border(1.0, palette::gold_dim()),
     );
 
     let (low, high) = range(history);
@@ -152,7 +153,7 @@ fn draw_plot(history: &History, plot: Rect) {
             &format!("start {}", naming::credits(opening)),
             plot.x + 6.0,
             y - 5.0,
-            TextStyle::new(12.0, palette::TEXT_DIM).params(),
+            TextStyle::new(12.0, palette::text_dim()).params(),
         );
     }
 
@@ -183,7 +184,7 @@ fn draw_plot(history: &History, plot: Rect) {
             x + step,
             y_of(pair[1].last),
             1.6,
-            palette::GOLD_BRIGHT,
+            palette::gold_bright(),
         );
     }
 
@@ -217,10 +218,10 @@ fn draw_marks(history: &History, plot: Rect, step: f32, y_of: &dyn Fn(f32) -> f3
 
 fn mark_colour(cause: Cause) -> Color {
     match cause {
-        Cause::Feature => palette::JADE,
-        Cause::Hatch => palette::EMBER,
+        Cause::Feature => palette::jade(),
+        Cause::Hatch => palette::ember(),
         Cause::Wrath => Color::new(0.85, 0.35, 0.85, 1.0),
-        Cause::Jackpot => palette::GOLD_BRIGHT,
+        Cause::Jackpot => palette::gold_bright(),
         Cause::BigWin => Color::new(0.45, 0.70, 1.0, 1.0),
     }
 }
@@ -233,22 +234,22 @@ fn draw_figures(history: &History, ledger: &Ledger, row: Rect) {
     let net = now - opening;
 
     let figures = [
-        ("Peak", naming::credits(high), palette::TEXT_BRIGHT),
-        ("Trough", naming::credits(low), palette::TEXT_BRIGHT),
+        ("Peak", naming::credits(high), palette::text_bright()),
+        ("Trough", naming::credits(low), palette::text_bright()),
         (
             "Deepest fall",
             // "At least", because once buckets merge a peak and the trough after
             // it can share one and their order is no longer known (§5.32).
             format!("at least {}", naming::credits(history.deepest_fall())),
-            palette::EMBER,
+            palette::ember(),
         ),
         (
             "Net",
             naming::net(net),
             match net.signum() {
-                1 => palette::JADE,
-                -1 => palette::EMBER,
-                _ => palette::TEXT_BRIGHT,
+                1 => palette::jade(),
+                -1 => palette::ember(),
+                _ => palette::text_bright(),
             },
         ),
     ];
@@ -262,7 +263,7 @@ fn draw_figures(history: &History, ledger: &Ledger, row: Rect) {
             row.y,
             column,
             20.0,
-            TextStyle::new(14.0, palette::TEXT_DIM),
+            TextStyle::new(14.0, palette::text_dim()),
         );
         draw_text_centered_in_box_ex(
             value,
@@ -283,7 +284,7 @@ fn draw_figures(history: &History, ledger: &Ledger, row: Rect) {
             cause.label(),
             x + 14.0,
             row.bottom(),
-            TextStyle::new(13.0, palette::TEXT_DIM).params(),
+            TextStyle::new(13.0, palette::text_dim()).params(),
         );
         x += 14.0 + cause.label().len() as f32 * 7.0 + 14.0;
     }
@@ -296,7 +297,7 @@ fn draw_figures(history: &History, ledger: &Ledger, row: Rect) {
             ),
             row.right(),
             row.bottom(),
-            TextStyle::new(13.0, palette::TEXT_DIM),
+            TextStyle::new(13.0, palette::text_dim()),
         );
     }
     let _ = ledger;

@@ -34,7 +34,7 @@ pub fn draw(data: &GameData, round: &HoldSpinRound, ui_time: f32) {
     );
     draw_surface(
         grid.inset(-10.0),
-        &SurfaceStyle::new(Color::new(0.10, 0.04, 0.01, 1.0)).with_border(3.0, palette::EMBER),
+        &SurfaceStyle::new(Color::new(0.10, 0.04, 0.01, 1.0)).with_border(3.0, palette::ember()),
     );
 
     let rows = data.config.row_count.max(1);
@@ -79,14 +79,14 @@ fn draw_coin(cell: Rect, credits: i64, fresh: bool, ui_time: f32) {
             0.03,
             1.0,
         ))
-        .with_border(2.0 + 2.0 * flash, palette::GOLD_BRIGHT),
+        .with_border(2.0 + 2.0 * flash, palette::gold_bright()),
     );
 
     let centre = vec2(cell.x + cell.w * 0.5, cell.y + cell.h * 0.5);
     let radius = cell.w.min(cell.h) * 0.36;
-    draw_circle(centre.x, centre.y, radius, palette::GOLD_DIM);
-    draw_circle(centre.x, centre.y, radius * 0.86, palette::GOLD);
-    draw_circle_lines(centre.x, centre.y, radius, 2.0, palette::GOLD_BRIGHT);
+    draw_circle(centre.x, centre.y, radius, palette::gold_dim());
+    draw_circle(centre.x, centre.y, radius * 0.86, palette::gold());
+    draw_circle_lines(centre.x, centre.y, radius, 2.0, palette::gold_bright());
 
     // Long numbers have to fit inside the disc, so the type shrinks with the
     // digit count rather than spilling over the rim.
@@ -123,20 +123,20 @@ fn draw_banner(round: &HoldSpinRound, grid: Rect) {
         banner,
         // Fully opaque: at 0.96 the jackpot ladder underneath read straight
         // through the banner and the two sets of numbers fought.
-        &SurfaceStyle::new(Color::new(0.16, 0.06, 0.01, 1.0)).with_border(2.0, palette::EMBER),
+        &SurfaceStyle::new(Color::new(0.16, 0.06, 0.01, 1.0)).with_border(2.0, palette::ember()),
     );
 
     draw_ui_text_ex(
         "THE DRAGON'S WRATH",
         banner.x + 16.0,
         banner.y + 24.0,
-        TextStyle::new(21.0, palette::GOLD_BRIGHT).params(),
+        TextStyle::new(21.0, palette::gold_bright()).params(),
     );
     draw_ui_text_ex(
         &format!("{} of {} coins locked", round.coins(), round.cell_count()),
         banner.x + 16.0,
         banner.y + 45.0,
-        TextStyle::new(15.0, palette::TEXT_DIM).params(),
+        TextStyle::new(15.0, palette::text_dim()).params(),
     );
 
     // The respin counter is the tension in the feature, so it gets the loudest
@@ -150,7 +150,7 @@ fn draw_banner(round: &HoldSpinRound, grid: Rect) {
         } else {
             Color::new(0.08, 0.07, 0.10, 1.0)
         })
-        .with_border(1.0, palette::GOLD_DIM),
+        .with_border(1.0, palette::gold_dim()),
     );
     // Words, not a glyph: macroquad's default font has no arrows, and a `↻`
     // here rendered as tofu — the same trap §7.1 records for emoji.
@@ -160,13 +160,13 @@ fn draw_banner(round: &HoldSpinRound, grid: Rect) {
         respins.y,
         respins.w,
         respins.h,
-        TextStyle::new(19.0, palette::GOLD_BRIGHT),
+        TextStyle::new(19.0, palette::gold_bright()),
     );
 
     let total = Rect::new(banner.right() - 106.0, banner.y + 8.0, 96.0, 40.0);
     draw_surface(
         total,
-        &SurfaceStyle::new(Color::new(0.06, 0.14, 0.07, 1.0)).with_border(1.0, palette::GOLD_DIM),
+        &SurfaceStyle::new(Color::new(0.06, 0.14, 0.07, 1.0)).with_border(1.0, palette::gold_dim()),
     );
     draw_text_centered_in_box_ex(
         &naming::credits(round.collected()),
@@ -174,6 +174,6 @@ fn draw_banner(round: &HoldSpinRound, grid: Rect) {
         total.y,
         total.w,
         total.h,
-        TextStyle::new(20.0, palette::TEXT_BRIGHT),
+        TextStyle::new(20.0, palette::text_bright()),
     );
 }

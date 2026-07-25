@@ -35,19 +35,19 @@ pub fn draw(
     let height = 120.0 + MACHINES.len() as f32 * ROW_HEIGHT;
     let panel = Rect::new(280.0, (LOGICAL_HEIGHT - height) * 0.5, 720.0, height);
     // Everything drawn below is measured against this panel (§5.37).
-    let _region = Region::on(panel, palette::STONE);
+    let _region = Region::on(panel, palette::stone());
     draw_surface(
         panel,
-        &SurfaceStyle::new(palette::STONE)
-            .with_border(2.0, palette::GOLD)
-            .with_header(48.0, palette::STONE_HEADER)
-            .with_header_divider(1.0, palette::GOLD_DIM),
+        &SurfaceStyle::new(palette::stone())
+            .with_border(2.0, palette::gold())
+            .with_header(48.0, palette::stone_header())
+            .with_header_divider(1.0, palette::gold_dim()),
     );
     draw_ui_text_ex(
         "Choose a machine",
         panel.x + 20.0,
         panel.y + 32.0,
-        TextStyle::new(21.0, palette::GOLD_BRIGHT).params(),
+        TextStyle::new(21.0, palette::gold_bright()).params(),
     );
     if virtual_button(
         Rect::new(panel.right() - 120.0, panel.y + 9.0, 100.0, 30.0),
@@ -81,7 +81,7 @@ pub fn draw(
         38.0,
         15.0,
         3.0,
-        palette::TEXT_DIM,
+        palette::text_dim(),
     );
 }
 
@@ -106,12 +106,12 @@ fn draw_row(
             .with_border(
                 if playing { 2.0 } else { 1.0 },
                 if playing {
-                    palette::GOLD_BRIGHT
+                    palette::gold_bright()
                 } else {
-                    palette::GOLD_DIM
+                    palette::gold_dim()
                 },
             )
-            .with_left_accent(4.0, palette::GOLD),
+            .with_left_accent(4.0, palette::gold()),
     );
 
     // The display name lives in each machine's own config, so the picker reads
@@ -121,7 +121,7 @@ fn draw_row(
         &name,
         row.x + 18.0,
         row.y + 32.0,
-        TextStyle::new(23.0, palette::GOLD_BRIGHT).params(),
+        TextStyle::new(23.0, palette::gold_bright()).params(),
     );
     // Clipped to leave the Play button alone — the longest blurb ran straight
     // under it.
@@ -133,7 +133,7 @@ fn draw_row(
         22.0,
         15.0,
         2.0,
-        palette::TEXT,
+        palette::text(),
     );
 
     draw_profile(
@@ -149,7 +149,7 @@ fn draw_row(
             row.y + 20.0,
             160.0,
             44.0,
-            TextStyle::new(18.0, palette::TEXT_DIM),
+            TextStyle::new(18.0, palette::text_dim()),
         );
     } else if virtual_button(
         Rect::new(row.right() - 180.0, row.y + 20.0, 160.0, 44.0),
@@ -192,20 +192,20 @@ fn draw_profile(profiles: &ProfileBook, machine_id: &str, rect: Rect) {
             draw_surface(
                 bar,
                 &SurfaceStyle::new(Color::new(0.07, 0.06, 0.07, 1.0))
-                    .with_border(1.0, palette::GOLD_DIM),
+                    .with_border(1.0, palette::gold_dim()),
             );
             draw_rectangle(
                 bar.x + 1.0,
                 bar.y + 1.0,
                 (bar.w - 2.0) * progress,
                 bar.h - 2.0,
-                palette::EMBER,
+                palette::ember(),
             );
             draw_ui_text_ex(
                 "measuring this cabinet...",
                 bar.right() + 12.0,
                 rect.y + 19.0,
-                TextStyle::new(14.0, palette::TEXT_DIM).params(),
+                TextStyle::new(14.0, palette::text_dim()).params(),
             );
         }
     }
@@ -227,7 +227,7 @@ fn draw_measured(profile: &MachineProfile, rect: Rect) {
         ),
         rect.x,
         rect.y + 14.0,
-        TextStyle::new(14.0, palette::TEXT_BRIGHT).params(),
+        TextStyle::new(14.0, palette::text_bright()).params(),
     );
 
     // The bands are what actually communicate volatility: two cabinets can both
@@ -253,7 +253,7 @@ fn draw_measured(profile: &MachineProfile, rect: Rect) {
     }
     draw_surface(
         bar,
-        &SurfaceStyle::new(Color::new(0.0, 0.0, 0.0, 0.0)).with_border(1.0, palette::GOLD_DIM),
+        &SurfaceStyle::new(Color::new(0.0, 0.0, 0.0, 0.0)).with_border(1.0, palette::gold_dim()),
     );
 
     // Label only the two ends: a legend for seven bands would be longer than
@@ -262,12 +262,12 @@ fn draw_measured(profile: &MachineProfile, rect: Rect) {
         BAND_LABELS[0],
         bar.x,
         bar.bottom() + 14.0,
-        TextStyle::new(12.0, palette::TEXT_DIM).params(),
+        TextStyle::new(12.0, palette::text_dim()).params(),
     );
     draw_text_right(
         BAND_LABELS[BAND_LABELS.len() - 1],
         bar.right(),
         bar.bottom() + 14.0,
-        TextStyle::new(12.0, palette::TEXT_DIM),
+        TextStyle::new(12.0, palette::text_dim()),
     );
 }

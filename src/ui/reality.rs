@@ -36,19 +36,19 @@ pub fn draw(clock: &SessionClock, mouse: Vec2, actions: &mut Vec<UiAction>, nav:
 
     let panel = Rect::new(340.0, 176.0, 600.0, 368.0);
     // Everything drawn below is measured against this panel (§5.37).
-    let _region = Region::on(panel, palette::STONE);
+    let _region = Region::on(panel, palette::stone());
     draw_surface(
         panel,
-        &SurfaceStyle::new(palette::STONE)
-            .with_border(2.0, palette::GOLD_BRIGHT)
-            .with_header(48.0, palette::STONE_HEADER)
-            .with_header_divider(1.0, palette::GOLD_DIM),
+        &SurfaceStyle::new(palette::stone())
+            .with_border(2.0, palette::gold_bright())
+            .with_header(48.0, palette::stone_header())
+            .with_header_divider(1.0, palette::gold_dim()),
     );
     draw_ui_text_ex(
         "Reality Check",
         panel.x + 20.0,
         panel.y + 32.0,
-        TextStyle::new(21.0, palette::GOLD_BRIGHT).params(),
+        TextStyle::new(21.0, palette::gold_bright()).params(),
     );
 
     draw_ui_text_ex(
@@ -58,7 +58,7 @@ pub fn draw(clock: &SessionClock, mouse: Vec2, actions: &mut Vec<UiAction>, nav:
         ),
         panel.x + 24.0,
         panel.y + 84.0,
-        TextStyle::new(18.0, palette::TEXT_BRIGHT).params(),
+        TextStyle::new(18.0, palette::text_bright()).params(),
     );
 
     let net = clock.net();
@@ -66,17 +66,17 @@ pub fn draw(clock: &SessionClock, mouse: Vec2, actions: &mut Vec<UiAction>, nav:
         (
             "Spins",
             naming::count(clock.spins as u64),
-            palette::TEXT_BRIGHT,
+            palette::text_bright(),
         ),
         (
             "Staked",
             naming::credits(clock.staked),
-            palette::TEXT_BRIGHT,
+            palette::text_bright(),
         ),
         (
             "Returned",
             naming::credits(clock.returned),
-            palette::TEXT_BRIGHT,
+            palette::text_bright(),
         ),
         (
             "Net",
@@ -84,9 +84,9 @@ pub fn draw(clock: &SessionClock, mouse: Vec2, actions: &mut Vec<UiAction>, nav:
             // The one coloured figure, and it is coloured by fact rather than by
             // sentiment: down is ember, up is jade, level is neither.
             match net.signum() {
-                1 => palette::JADE,
-                -1 => palette::EMBER,
-                _ => palette::TEXT_BRIGHT,
+                1 => palette::jade(),
+                -1 => palette::ember(),
+                _ => palette::text_bright(),
             },
         ),
     ];
@@ -100,7 +100,7 @@ pub fn draw(clock: &SessionClock, mouse: Vec2, actions: &mut Vec<UiAction>, nav:
             panel.y + 112.0,
             column,
             22.0,
-            TextStyle::new(15.0, palette::TEXT_DIM),
+            TextStyle::new(15.0, palette::text_dim()),
         );
         draw_text_centered_in_box_ex(
             value,
@@ -127,7 +127,7 @@ pub fn draw(clock: &SessionClock, mouse: Vec2, actions: &mut Vec<UiAction>, nav:
         104.0,
         16.0,
         5.0,
-        palette::TEXT_DIM,
+        palette::text_dim(),
     );
 
     if virtual_button(

@@ -68,6 +68,11 @@ pub struct GameConfig {
     pub bet_units: Option<usize>,
     /// Which symbol set this cabinet draws (§5.41).
     pub symbol_set: String,
+    /// Which palette the panels and chrome use (§5.43). Defaults to the symbol
+    /// set's name, because in practice a cabinet's room matches its symbols —
+    /// but the two are separable, and a new theme should not require a new set.
+    #[serde(default)]
+    pub theme: Option<String>,
 }
 
 /// Range of visible rows a reel may take on a shifting cabinet (§5.20).
@@ -423,6 +428,14 @@ impl GameData {
     }
 
     /// Total bet for a line bet: every payline is always active.
+    /// The palette this cabinet asks for.
+    pub fn theme_name(&self) -> &str {
+        self.config
+            .theme
+            .as_deref()
+            .unwrap_or(&self.config.symbol_set)
+    }
+
     pub fn total_bet(&self, line_bet: i64) -> i64 {
         line_bet * self.bet_units() as i64
     }

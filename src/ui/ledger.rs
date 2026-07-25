@@ -37,25 +37,25 @@ pub fn draw(
     // a hand's width of empty stone under the text.
     let panel = Rect::new(190.0, 92.0, 900.0, 516.0);
     // Everything drawn below is measured against this panel (§5.37).
-    let _region = Region::on(panel, palette::STONE);
+    let _region = Region::on(panel, palette::stone());
     draw_surface(
         panel,
-        &SurfaceStyle::new(palette::STONE)
-            .with_border(2.0, palette::GOLD)
-            .with_header(48.0, palette::STONE_HEADER)
-            .with_header_divider(1.0, palette::GOLD_DIM),
+        &SurfaceStyle::new(palette::stone())
+            .with_border(2.0, palette::gold())
+            .with_header(48.0, palette::stone_header())
+            .with_header_divider(1.0, palette::gold_dim()),
     );
     draw_ui_text_ex(
         "Your ledger",
         panel.x + 20.0,
         panel.y + 32.0,
-        TextStyle::new(21.0, palette::GOLD_BRIGHT).params(),
+        TextStyle::new(21.0, palette::gold_bright()).params(),
     );
     draw_text_right(
         &format!("{} rounds across the catalog", ledger.total_rounds()),
         panel.right() - 140.0,
         panel.y + 32.0,
-        TextStyle::new(15.0, palette::TEXT_DIM),
+        TextStyle::new(15.0, palette::text_dim()),
     );
 
     let entry = ledger.get(data.machine_id());
@@ -65,7 +65,7 @@ pub fn draw(
         &format!("On {}", data.config.display_name),
         panel.x + 20.0,
         panel.y + 78.0,
-        TextStyle::new(19.0, palette::GOLD).params(),
+        TextStyle::new(19.0, palette::gold()).params(),
     );
 
     match entry {
@@ -91,7 +91,7 @@ pub fn draw(
                 "Nothing played on this cabinet yet. Spin a few times and come back.",
                 panel.x + 20.0,
                 panel.y + 130.0,
-                TextStyle::new(16.0, palette::TEXT_DIM).params(),
+                TextStyle::new(16.0, palette::text_dim()).params(),
             );
         }
     }
@@ -144,26 +144,26 @@ fn draw_figures(entry: &MachineLedger, profile: Option<&MachineProfile>, rect: R
         draw_surface(
             cell,
             &SurfaceStyle::new(Color::new(0.075, 0.068, 0.055, 1.0))
-                .with_border(1.0, palette::GOLD_DIM),
+                .with_border(1.0, palette::gold_dim()),
         );
         draw_ui_text_ex(
             label,
             cell.x + 14.0,
             cell.y + 24.0,
-            TextStyle::new(13.0, palette::TEXT_DIM).params(),
+            TextStyle::new(13.0, palette::text_dim()).params(),
         );
         draw_ui_text_ex(
             value,
             cell.x + 14.0,
             cell.y + 58.0,
-            TextStyle::new(30.0, palette::GOLD_BRIGHT).params(),
+            TextStyle::new(30.0, palette::gold_bright()).params(),
         );
         if !note.is_empty() {
             draw_ui_text_ex(
                 note,
                 cell.x + 14.0,
                 cell.y + 80.0,
-                TextStyle::new(12.0, palette::TEXT_DIM).params(),
+                TextStyle::new(12.0, palette::text_dim()).params(),
             );
         }
     }
@@ -175,7 +175,7 @@ fn draw_comparison(entry: &MachineLedger, profile: Option<&MachineProfile>, rect
         "How often each size of win turns up",
         rect.x,
         rect.y + 4.0,
-        TextStyle::new(15.0, palette::TEXT).params(),
+        TextStyle::new(15.0, palette::text()).params(),
     );
 
     let bar_height = 34.0;
@@ -198,13 +198,13 @@ fn draw_comparison(entry: &MachineLedger, profile: Option<&MachineProfile>, rect
         BAND_LABELS[0],
         rect.x,
         rect.y + 148.0,
-        TextStyle::new(12.0, palette::TEXT_DIM).params(),
+        TextStyle::new(12.0, palette::text_dim()).params(),
     );
     draw_text_right(
         BAND_LABELS[BAND_LABELS.len() - 1],
         rect.right(),
         rect.y + 148.0,
-        TextStyle::new(12.0, palette::TEXT_DIM),
+        TextStyle::new(12.0, palette::text_dim()),
     );
 }
 
@@ -213,7 +213,7 @@ fn draw_bands(bands: &[f64], label: &str, rect: Rect) {
         label,
         rect.x,
         rect.y - 4.0,
-        TextStyle::new(13.0, palette::TEXT_DIM).params(),
+        TextStyle::new(13.0, palette::text_dim()).params(),
     );
 
     let bar = Rect::new(rect.x, rect.y + 2.0, rect.w, rect.h - 6.0);
@@ -235,7 +235,7 @@ fn draw_bands(bands: &[f64], label: &str, rect: Rect) {
     }
     draw_surface(
         bar,
-        &SurfaceStyle::new(Color::new(0.0, 0.0, 0.0, 0.0)).with_border(1.0, palette::GOLD_DIM),
+        &SurfaceStyle::new(Color::new(0.0, 0.0, 0.0, 0.0)).with_border(1.0, palette::gold_dim()),
     );
 }
 
@@ -270,6 +270,6 @@ fn draw_caveat(entry: &MachineLedger, profile: Option<&MachineProfile>, rect: Re
         rect.h,
         15.0,
         4.0,
-        palette::TEXT_DIM,
+        palette::text_dim(),
     );
 }

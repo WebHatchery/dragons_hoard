@@ -24,19 +24,19 @@ pub fn draw(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>, nav: 
     // footer behind the overlay.
     let rect = Rect::new(180.0, 44.0, 920.0, 632.0);
     // Everything drawn below is measured against this panel (§5.37).
-    let _region = Region::on(rect, palette::STONE);
+    let _region = Region::on(rect, palette::stone());
     draw_surface(
         rect,
-        &SurfaceStyle::new(palette::STONE)
-            .with_border(2.0, palette::GOLD)
-            .with_header(48.0, palette::STONE_HEADER)
-            .with_header_divider(1.0, palette::GOLD_DIM),
+        &SurfaceStyle::new(palette::stone())
+            .with_border(2.0, palette::gold())
+            .with_header(48.0, palette::stone_header())
+            .with_header_divider(1.0, palette::gold_dim()),
     );
     draw_ui_text_ex(
         "Paytable — multipliers of the line bet",
         rect.x + 20.0,
         rect.y + 32.0,
-        TextStyle::new(21.0, palette::GOLD_BRIGHT).params(),
+        TextStyle::new(21.0, palette::gold_bright()).params(),
     );
 
     let mut y = rect.y + 76.0;
@@ -52,7 +52,7 @@ pub fn draw(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>, nav: 
                 0.065 + tint.b * 0.14,
                 1.0,
             ))
-            .with_border(1.0, palette::GOLD_DIM),
+            .with_border(1.0, palette::gold_dim()),
         );
         if !symbols::draw(def, swatch, 0.0) {
             draw_text_centered_in_box_ex(
@@ -61,20 +61,20 @@ pub fn draw(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>, nav: 
                 swatch.y,
                 swatch.w,
                 swatch.h,
-                TextStyle::new(18.0, palette::TEXT_BRIGHT),
+                TextStyle::new(18.0, palette::text_bright()),
             );
         }
         draw_ui_text_ex(
             &def.name,
             row.x + 68.0,
             row.y + 25.0,
-            TextStyle::new(18.0, palette::TEXT_BRIGHT).params(),
+            TextStyle::new(18.0, palette::text_bright()).params(),
         );
         draw_ui_text_ex(
             &symbol_note(ctx, index),
             row.x + 270.0,
             row.y + 25.0,
-            TextStyle::new(15.0, palette::TEXT_DIM).params(),
+            TextStyle::new(15.0, palette::text_dim()).params(),
         );
         draw_text_right(
             &format!(
@@ -85,7 +85,7 @@ pub fn draw(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>, nav: 
             ),
             row.right(),
             row.y + 25.0,
-            TextStyle::new(17.0, palette::GOLD),
+            TextStyle::new(17.0, palette::gold()),
         );
         y += 46.0;
     }
@@ -106,7 +106,7 @@ pub fn draw(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>, nav: 
         56.0,
         16.0,
         6.0,
-        palette::TEXT_DIM,
+        palette::text_dim(),
     );
 
     if virtual_button(

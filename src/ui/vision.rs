@@ -28,19 +28,19 @@ pub fn draw(data: &GameData, mouse: Vec2, actions: &mut Vec<UiAction>, nav: &mut
 
     let panel = Rect::new(90.0, 96.0, 1100.0, 500.0);
     // Everything drawn below is measured against this panel (§5.37).
-    let _region = Region::on(panel, palette::STONE);
+    let _region = Region::on(panel, palette::stone());
     draw_surface(
         panel,
-        &SurfaceStyle::new(palette::STONE)
-            .with_border(2.0, palette::GOLD)
-            .with_header(44.0, palette::STONE_HEADER)
-            .with_header_divider(1.0, palette::GOLD_DIM),
+        &SurfaceStyle::new(palette::stone())
+            .with_border(2.0, palette::gold())
+            .with_header(44.0, palette::stone_header())
+            .with_header_divider(1.0, palette::gold_dim()),
     );
     draw_ui_text_ex(
         "Symbols — colour vision",
         panel.x + 20.0,
         panel.y + 29.0,
-        TextStyle::new(20.0, palette::GOLD_BRIGHT).params(),
+        TextStyle::new(20.0, palette::gold_bright()).params(),
     );
 
     let count = data.symbols.iter().count().max(1);
@@ -53,7 +53,7 @@ pub fn draw(data: &GameData, mouse: Vec2, actions: &mut Vec<UiAction>, nav: &mut
             vision.label(),
             panel.x + 20.0,
             top + row_height * 0.5,
-            TextStyle::new(15.0, palette::TEXT_DIM).params(),
+            TextStyle::new(15.0, palette::text_dim()).params(),
         );
 
         for (index, (_, def)) in data.symbols.iter().enumerate() {
@@ -86,7 +86,7 @@ pub fn draw(data: &GameData, mouse: Vec2, actions: &mut Vec<UiAction>, nav: &mut
         "Every symbol has its own shape. Colour reinforces it; nothing depends on it.",
         panel.x + 20.0,
         panel.bottom() - 14.0,
-        TextStyle::new(14.0, palette::TEXT_DIM).params(),
+        TextStyle::new(14.0, palette::text_dim()).params(),
     );
 
     if virtual_button(

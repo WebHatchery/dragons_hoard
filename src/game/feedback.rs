@@ -121,8 +121,11 @@ impl Game {
             };
             let (reel, row) = (cell / rows, cell % rows);
             let position = ui::reels::cell_center(&self.data, reel, row);
-            self.floating
-                .spawn(format!("+{}", win.credits), position, palette::GOLD_BRIGHT);
+            self.floating.spawn(
+                format!("+{}", win.credits),
+                position,
+                palette::gold_bright(),
+            );
             if win.credits >= self.session.total_bet(&self.data) {
                 self.spawn_win_burst(position);
             }
@@ -132,7 +135,7 @@ impl Game {
             self.floating.spawn(
                 format!("Scatter +{}", outcome.scatter_credits),
                 ui::reels::grid_center(),
-                palette::EMBER,
+                palette::ember(),
             );
         }
     }
@@ -145,7 +148,7 @@ impl Game {
                 speed: (60.0, 190.0),
                 size: (1.5, 3.5),
                 life: (0.35, 0.8),
-                colors: vec![palette::GOLD_BRIGHT, palette::GOLD, palette::EMBER],
+                colors: vec![palette::gold_bright(), palette::gold(), palette::ember()],
                 gravity: 220.0,
                 ..Default::default()
             },
@@ -161,9 +164,9 @@ impl Game {
                 size: (2.0, 5.0),
                 life: (0.6, 1.4),
                 colors: vec![
-                    palette::GOLD_BRIGHT,
-                    palette::GOLD,
-                    palette::EMBER,
+                    palette::gold_bright(),
+                    palette::gold(),
+                    palette::ember(),
                     Color::new(1.0, 1.0, 0.92, 1.0),
                 ],
                 gravity: 260.0,

@@ -35,7 +35,7 @@ pub fn draw(celebration: &Celebration) {
         card,
         &SurfaceStyle::new(fade(fill, alpha))
             .with_border(3.0, fade(accent, alpha))
-            .with_top_highlight(4.0, fade(palette::GOLD_BRIGHT, alpha * 0.9)),
+            .with_top_highlight(4.0, fade(palette::gold_bright(), alpha * 0.9)),
     );
 
     draw_text_centered_in_box_ex(
@@ -52,7 +52,7 @@ pub fn draw(celebration: &Celebration) {
         card.y + 88.0 * scale,
         card.w,
         90.0 * scale,
-        TextStyle::new(64.0 * scale, fade(palette::GOLD_BRIGHT, alpha)),
+        TextStyle::new(64.0 * scale, fade(palette::gold_bright(), alpha)),
     );
     draw_text_centered_in_box_ex(
         &kind.subtitle(),
@@ -60,7 +60,7 @@ pub fn draw(celebration: &Celebration) {
         card.y + 190.0 * scale,
         card.w,
         40.0 * scale,
-        TextStyle::new(19.0 * scale, fade(palette::TEXT, alpha)),
+        TextStyle::new(19.0 * scale, fade(palette::text(), alpha)),
     );
     draw_text_centered_in_box_ex(
         "press space to continue",
@@ -68,7 +68,7 @@ pub fn draw(celebration: &Celebration) {
         card.bottom() - 44.0 * scale,
         card.w,
         30.0 * scale,
-        TextStyle::new(14.0 * scale, fade(palette::TEXT_DIM, alpha * 0.8)),
+        TextStyle::new(14.0 * scale, fade(palette::text_dim(), alpha * 0.8)),
     );
 }
 
@@ -79,14 +79,14 @@ pub fn card_center() -> Vec2 {
 
 fn card_colors(kind: &CelebrationKind) -> (Color, Color) {
     match kind {
-        CelebrationKind::Hatch { .. } => (Color::new(0.20, 0.09, 0.03, 1.0), palette::EMBER),
+        CelebrationKind::Hatch { .. } => (Color::new(0.20, 0.09, 0.03, 1.0), palette::ember()),
         CelebrationKind::Jackpot { .. } => {
-            (Color::new(0.16, 0.13, 0.02, 1.0), palette::GOLD_BRIGHT)
+            (Color::new(0.16, 0.13, 0.02, 1.0), palette::gold_bright())
         }
         CelebrationKind::FreeSpinsSummary { .. } => {
-            (Color::new(0.08, 0.09, 0.13, 1.0), palette::GOLD)
+            (Color::new(0.08, 0.09, 0.13, 1.0), palette::gold())
         }
-        _ => (Color::new(0.15, 0.07, 0.12, 1.0), palette::GOLD_BRIGHT),
+        _ => (Color::new(0.15, 0.07, 0.12, 1.0), palette::gold_bright()),
     }
 }
 

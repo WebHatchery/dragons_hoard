@@ -53,19 +53,19 @@ pub fn draw(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>, nav: 
         Color::new(0.0, 0.0, 0.0, 0.72),
     );
     // Everything drawn below is measured against this panel (§5.37).
-    let _region = Region::on(PANEL, palette::STONE);
+    let _region = Region::on(PANEL, palette::stone());
     draw_surface(
         PANEL,
-        &SurfaceStyle::new(palette::STONE)
-            .with_border(2.0, palette::GOLD)
-            .with_header(48.0, palette::STONE_HEADER)
-            .with_header_divider(1.0, palette::GOLD_DIM),
+        &SurfaceStyle::new(palette::stone())
+            .with_border(2.0, palette::gold())
+            .with_header(48.0, palette::stone_header())
+            .with_header_divider(1.0, palette::gold_dim()),
     );
     draw_ui_text_ex(
         &format!("How {} plays", ctx.data.config.display_name),
         PANEL.x + PADDING,
         PANEL.y + 32.0,
-        TextStyle::new(21.0, palette::GOLD_BRIGHT).params(),
+        TextStyle::new(21.0, palette::gold_bright()).params(),
     );
 
     let rules = rules::rules(ctx.data);
@@ -79,7 +79,7 @@ pub fn draw(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>, nav: 
             &rule.title,
             x,
             slot.y + body + 2.0,
-            TextStyle::new(body + 3.0, palette::GOLD).params(),
+            TextStyle::new(body + 3.0, palette::gold()).params(),
         );
         let mut line_y = slot.y + body + 12.0 + body;
         // This panel wraps its own text and then draws it a line at a time, so
@@ -94,7 +94,7 @@ pub fn draw(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>, nav: 
                 &line,
                 x,
                 line_y,
-                TextStyle::new(body, palette::TEXT_DIM).params(),
+                TextStyle::new(body, palette::text_dim()).params(),
             );
             line_y += body + 4.0;
         }

@@ -54,25 +54,25 @@ pub fn draw(
 
     let panel = Rect::new(150.0, 48.0, 980.0, 624.0);
     // Everything drawn below is measured against this panel (§5.37).
-    let _region = Region::on(panel, palette::STONE);
+    let _region = Region::on(panel, palette::stone());
     draw_surface(
         panel,
-        &SurfaceStyle::new(palette::STONE)
-            .with_border(2.0, palette::GOLD)
-            .with_header(44.0, palette::STONE_HEADER)
-            .with_header_divider(1.0, palette::GOLD_DIM),
+        &SurfaceStyle::new(palette::stone())
+            .with_border(2.0, palette::gold())
+            .with_header(44.0, palette::stone_header())
+            .with_header_divider(1.0, palette::gold_dim()),
     );
     draw_ui_text_ex(
         "Sound — waveforms",
         panel.x + 20.0,
         panel.y + 29.0,
-        TextStyle::new(20.0, palette::GOLD_BRIGHT).params(),
+        TextStyle::new(20.0, palette::gold_bright()).params(),
     );
     draw_text_right(
         &format!("mood: {:?}   ·   peak · length · shape", mood),
         panel.right() - 130.0,
         panel.y + 29.0,
-        TextStyle::new(14.0, palette::TEXT_DIM),
+        TextStyle::new(14.0, palette::text_dim()),
     );
 
     let config = config();
@@ -168,13 +168,13 @@ fn draw_row(name: &str, detail: &str, wave: &[f32], row: Rect, span: f32) {
         name,
         row.x,
         row.y + 14.0,
-        TextStyle::new(14.0, palette::GOLD).params(),
+        TextStyle::new(14.0, palette::gold()).params(),
     );
     draw_ui_text_ex(
         detail,
         row.x,
         row.y + 30.0,
-        TextStyle::new(12.0, palette::TEXT_DIM).params(),
+        TextStyle::new(12.0, palette::text_dim()).params(),
     );
 
     // Every plot is drawn on the same time and amplitude scale, so the effects
@@ -185,7 +185,8 @@ fn draw_row(name: &str, detail: &str, wave: &[f32], row: Rect, span: f32) {
     let plot = Rect::new(row.x + 268.0, row.y, row.w - 268.0, row.h);
     draw_surface(
         plot,
-        &SurfaceStyle::new(Color::new(0.05, 0.045, 0.05, 1.0)).with_border(1.0, palette::GOLD_DIM),
+        &SurfaceStyle::new(Color::new(0.05, 0.045, 0.05, 1.0))
+            .with_border(1.0, palette::gold_dim()),
     );
 
     let mid = plot.y + plot.h * 0.5;

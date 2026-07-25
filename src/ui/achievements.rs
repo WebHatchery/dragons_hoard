@@ -25,13 +25,13 @@ pub fn draw(book: &AchievementBook, mouse: Vec2, actions: &mut Vec<UiAction>, na
     let height = 108.0 + book.defs().len() as f32 * ROW_HEIGHT;
     let panel = Rect::new(230.0, (LOGICAL_HEIGHT - height) * 0.5, 820.0, height);
     // Everything drawn below is measured against this panel (§5.37).
-    let _region = Region::on(panel, palette::STONE);
+    let _region = Region::on(panel, palette::stone());
     draw_surface(
         panel,
-        &SurfaceStyle::new(palette::STONE)
-            .with_border(2.0, palette::GOLD)
-            .with_header(48.0, palette::STONE_HEADER)
-            .with_header_divider(1.0, palette::GOLD_DIM),
+        &SurfaceStyle::new(palette::stone())
+            .with_border(2.0, palette::gold())
+            .with_header(48.0, palette::stone_header())
+            .with_header_divider(1.0, palette::gold_dim()),
     );
 
     let (unlocked, total) = book.tally();
@@ -39,7 +39,7 @@ pub fn draw(book: &AchievementBook, mouse: Vec2, actions: &mut Vec<UiAction>, na
         &format!("Achievements — {} of {}", unlocked, total),
         panel.x + 20.0,
         panel.y + 32.0,
-        TextStyle::new(21.0, palette::GOLD_BRIGHT).params(),
+        TextStyle::new(21.0, palette::gold_bright()).params(),
     );
     if virtual_button(
         Rect::new(panel.right() - 120.0, panel.y + 9.0, 100.0, 30.0),
@@ -71,17 +71,17 @@ pub fn draw(book: &AchievementBook, mouse: Vec2, actions: &mut Vec<UiAction>, na
             .with_left_accent(
                 4.0,
                 if earned {
-                    palette::GOLD_BRIGHT
+                    palette::gold_bright()
                 } else {
-                    palette::TEXT_DIM
+                    palette::text_dim()
                 },
             ),
         );
 
         let title = if earned {
-            palette::GOLD_BRIGHT
+            palette::gold_bright()
         } else {
-            palette::TEXT
+            palette::text()
         };
         draw_ui_text_ex(
             &def.name,
@@ -93,7 +93,7 @@ pub fn draw(book: &AchievementBook, mouse: Vec2, actions: &mut Vec<UiAction>, na
             &def.description,
             row.x + 16.0,
             row.y + 33.0,
-            TextStyle::new(14.0, palette::TEXT_DIM).params(),
+            TextStyle::new(14.0, palette::text_dim()).params(),
         );
 
         let have = current(book, def.condition.kind);
@@ -109,9 +109,9 @@ pub fn draw(book: &AchievementBook, mouse: Vec2, actions: &mut Vec<UiAction>, na
             TextStyle::new(
                 17.0,
                 if earned {
-                    palette::GOLD
+                    palette::gold()
                 } else {
-                    palette::TEXT_DIM
+                    palette::text_dim()
                 },
             ),
         );

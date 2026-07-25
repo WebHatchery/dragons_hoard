@@ -33,19 +33,19 @@ pub fn draw(
 
     let panel = Rect::new(340.0, 118.0, 600.0, 508.0);
     // Everything drawn below is measured against this panel (§5.37).
-    let _region = Region::on(panel, palette::STONE);
+    let _region = Region::on(panel, palette::stone());
     draw_surface(
         panel,
-        &SurfaceStyle::new(palette::STONE)
-            .with_border(2.0, palette::GOLD)
-            .with_header(48.0, palette::STONE_HEADER)
-            .with_header_divider(1.0, palette::GOLD_DIM),
+        &SurfaceStyle::new(palette::stone())
+            .with_border(2.0, palette::gold())
+            .with_header(48.0, palette::stone_header())
+            .with_header_divider(1.0, palette::gold_dim()),
     );
     draw_ui_text_ex(
         "Settings",
         panel.x + 20.0,
         panel.y + 32.0,
-        TextStyle::new(21.0, palette::GOLD_BRIGHT).params(),
+        TextStyle::new(21.0, palette::gold_bright()).params(),
     );
     if virtual_button(
         Rect::new(panel.right() - 120.0, panel.y + 9.0, 100.0, 30.0),
@@ -163,7 +163,7 @@ pub fn draw(
         38.0,
         15.0,
         3.0,
-        palette::TEXT_DIM,
+        palette::text_dim(),
     );
 }
 
@@ -204,9 +204,9 @@ fn volume_stepper(
         TextStyle::new(
             20.0,
             if percent == 0 {
-                palette::TEXT_DIM
+                palette::text_dim()
             } else {
-                palette::GOLD_BRIGHT
+                palette::gold_bright()
             },
         ),
     );
@@ -227,13 +227,13 @@ fn draw_row_label(panel: Rect, y: f32, label: &str, hint: &str) {
         label,
         panel.x + 20.0,
         y + 22.0,
-        TextStyle::new(19.0, palette::TEXT_BRIGHT).params(),
+        TextStyle::new(19.0, palette::text_bright()).params(),
     );
     draw_ui_text_ex(
         hint,
         panel.x + 20.0,
         y + 40.0,
-        TextStyle::new(14.0, palette::TEXT_DIM).params(),
+        TextStyle::new(14.0, palette::text_dim()).params(),
     );
 }
 

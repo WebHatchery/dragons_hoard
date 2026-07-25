@@ -44,19 +44,19 @@ pub fn draw(
     let height = 152.0 + tiers.len() as f32 * ROW_HEIGHT;
     let panel = Rect::new(260.0, (LOGICAL_HEIGHT - height) * 0.5, 760.0, height);
     // Everything drawn below is measured against this panel (§5.37).
-    let _region = Region::on(panel, palette::STONE);
+    let _region = Region::on(panel, palette::stone());
     draw_surface(
         panel,
-        &SurfaceStyle::new(palette::STONE)
-            .with_border(2.0, palette::GOLD)
-            .with_header(48.0, palette::STONE_HEADER)
-            .with_header_divider(1.0, palette::GOLD_DIM),
+        &SurfaceStyle::new(palette::stone())
+            .with_border(2.0, palette::gold())
+            .with_header(48.0, palette::stone_header())
+            .with_header_divider(1.0, palette::gold_dim()),
     );
     draw_ui_text_ex(
         "Buy a feature",
         panel.x + 20.0,
         panel.y + 32.0,
-        TextStyle::new(21.0, palette::GOLD_BRIGHT).params(),
+        TextStyle::new(21.0, palette::gold_bright()).params(),
     );
 
     let total_bet = session.total_bet(data);
@@ -68,7 +68,7 @@ pub fn draw(
         ),
         panel.right() - 150.0,
         panel.y + 32.0,
-        TextStyle::new(15.0, palette::TEXT_DIM),
+        TextStyle::new(15.0, palette::text_dim()),
     );
 
     let mut y = panel.y + 68.0;
@@ -84,13 +84,13 @@ pub fn draw(
             } else {
                 Color::new(0.07, 0.06, 0.06, 1.0)
             })
-            .with_border(1.0, palette::GOLD_DIM),
+            .with_border(1.0, palette::gold_dim()),
         );
 
         let title = if affordable {
-            palette::GOLD_BRIGHT
+            palette::gold_bright()
         } else {
-            palette::TEXT_DIM
+            palette::text_dim()
         };
         draw_ui_text_ex(
             &tier.name,
@@ -102,7 +102,7 @@ pub fn draw(
             &tier.description,
             row.x + 16.0,
             row.y + 52.0,
-            TextStyle::new(14.0, palette::TEXT_DIM).params(),
+            TextStyle::new(14.0, palette::text_dim()).params(),
         );
 
         draw_tier_profile(
@@ -135,7 +135,7 @@ pub fn draw(
                 &format!("{} needed", price),
                 button.x + 14.0,
                 button.y + 29.0,
-                TextStyle::new(15.0, palette::TEXT_DIM).params(),
+                TextStyle::new(15.0, palette::text_dim()).params(),
             );
         }
 
@@ -150,7 +150,7 @@ pub fn draw(
         38.0,
         14.0,
         3.0,
-        palette::TEXT_DIM,
+        palette::text_dim(),
     );
 
     if virtual_button(
@@ -182,20 +182,20 @@ fn draw_tier_profile(profile: Option<&TierProfile>, progress: f32, rect: Rect) {
         draw_surface(
             bar,
             &SurfaceStyle::new(Color::new(0.07, 0.06, 0.07, 1.0))
-                .with_border(1.0, palette::GOLD_DIM),
+                .with_border(1.0, palette::gold_dim()),
         );
         draw_rectangle(
             bar.x + 1.0,
             bar.y + 1.0,
             (bar.w - 2.0) * progress,
             bar.h - 2.0,
-            palette::EMBER,
+            palette::ember(),
         );
         draw_ui_text_ex(
             "measuring this feature...",
             bar.right() + 12.0,
             rect.y + 20.0,
-            TextStyle::new(13.0, palette::TEXT_DIM).params(),
+            TextStyle::new(13.0, palette::text_dim()).params(),
         );
         return;
     };
@@ -208,7 +208,7 @@ fn draw_tier_profile(profile: Option<&TierProfile>, progress: f32, rect: Rect) {
         ),
         rect.x,
         rect.y + 14.0,
-        TextStyle::new(13.0, palette::TEXT_BRIGHT).params(),
+        TextStyle::new(13.0, palette::text_bright()).params(),
     );
 
     let bar = Rect::new(rect.x, rect.y + 22.0, rect.w, 12.0);
@@ -230,12 +230,12 @@ fn draw_tier_profile(profile: Option<&TierProfile>, progress: f32, rect: Rect) {
     }
     draw_surface(
         bar,
-        &SurfaceStyle::new(Color::new(0.0, 0.0, 0.0, 0.0)).with_border(1.0, palette::GOLD_DIM),
+        &SurfaceStyle::new(Color::new(0.0, 0.0, 0.0, 0.0)).with_border(1.0, palette::gold_dim()),
     );
     draw_ui_text_ex(
         BAND_LABELS[0],
         bar.x,
         bar.bottom() + 13.0,
-        TextStyle::new(11.0, palette::TEXT_DIM).params(),
+        TextStyle::new(11.0, palette::text_dim()).params(),
     );
 }

@@ -136,6 +136,10 @@ impl Game {
         // Text size (§5.38). Set once at boot and again whenever it changes;
         // the toolkit applies it to drawing and measurement together, so the
         // layout audit measures what the player actually sees.
+        // The cabinet's palette (§5.43). Set here and on every machine switch,
+        // which are the only two moments it changes.
+        ui::theme::set(ui::theme::by_name(data.theme_name()));
+
         macroquad_toolkit::ui::set_ui_text_scale(session.preferences.text_scale());
 
         // DRAGONS_HOARD_PSEUDO stress-tests the layout for translation without
@@ -267,7 +271,7 @@ impl Game {
     }
 
     pub fn draw(&mut self) {
-        clear_background(palette::BACKGROUND);
+        clear_background(palette::background());
 
         let virtual_ui = begin_virtual_ui_frame(ui::LOGICAL_WIDTH, ui::LOGICAL_HEIGHT);
         let actions = ui::draw_game_ui(
@@ -434,7 +438,7 @@ impl Game {
                     speed: (40.0, 130.0),
                     size: (1.2, 2.8),
                     life: (0.25, 0.55),
-                    colors: vec![palette::GOLD_BRIGHT, palette::GOLD],
+                    colors: vec![palette::gold_bright(), palette::gold()],
                     gravity: 260.0,
                     ..Default::default()
                 },
@@ -636,6 +640,7 @@ impl Game {
         let mut preferences = self.session.preferences.clone();
         preferences.machine_id = machine.id.to_owned();
         self.data = data;
+        ui::theme::set(ui::theme::by_name(self.data.theme_name()));
         self.session = self.load_machine_session();
         self.session.preferences = preferences;
 
@@ -674,7 +679,7 @@ impl Game {
             self.floating.spawn(
                 def.name.clone(),
                 ui::celebration::card_center(),
-                palette::GOLD_BRIGHT,
+                palette::gold_bright(),
             );
         }
         self.sound.play(Sfx::WinSmall);

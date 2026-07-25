@@ -163,7 +163,7 @@ pub fn focus_ring(rect: Rect) {
         ring.w,
         ring.h,
         3.0,
-        super::palette::GOLD_BRIGHT,
+        super::palette::gold_bright(),
     );
 }
 

@@ -6,7 +6,6 @@
 //! the cabinet pulling the lever until the right thing happens.
 
 use super::Game;
-use crate::data::GameData;
 use crate::state::celebration::CelebrationKind;
 use crate::state::gamble::Scale;
 use crate::state::GameSession;
@@ -19,6 +18,16 @@ impl Game {
     /// Scenes: `idle`, `spin` (reels mid-flight), `win`, `freespins`,
     /// `paytable`, `settings`, `feature_card`, `hatch`, `autospin`, `anticipation`,
     /// `wrath`.
+    /// Swap the cabinet a scene is shot on.
+    ///
+    /// Not just an assignment: a cabinet brings its palette with it (§5.43), and
+    /// six scenes setting `self.data` directly would each have to remember that.
+    fn use_machine(&mut self, machine: &'static crate::data::MachineDef) {
+        self.data = crate::data::GameData::load_machine(machine)
+            .unwrap_or_else(|err| panic!("{}: {}", machine.id, err));
+        crate::ui::theme::set(crate::ui::theme::by_name(self.data.theme_name()));
+    }
+
     pub fn begin_capture_scene(&mut self, scene: &str) {
         // A fixed seed keeps every capture reproducible run to run.
         self.session = GameSession::new(&self.data, 0xD2A6_0F1E);
@@ -78,29 +87,28 @@ impl Game {
             "cascade" => {
                 // Mid-chain, at a step where the multiplier has climbed —
                 // a resting Avalanche board looks like any other cabinet.
-                self.data = GameData::load_machine(&crate::data::MACHINES[3]).unwrap();
+                self.use_machine(&crate::data::MACHINES[3]);
                 self.session = GameSession::new(&self.data, 0xD2A6_0F1E);
                 self.hold_a_cascade();
             }
             "shifting" => {
                 // The shifting cabinet (§5.20), on a paying spin — a resting
                 // board is where the varying reel heights actually read.
-                self.data =
-                    GameData::load_machine(crate::data::machine_by_id("wyrmspire")).unwrap();
+                self.use_machine(crate::data::machine_by_id("wyrmspire"));
                 self.session = GameSession::new(&self.data, 0xD2A6_0F1E);
                 self.fast_forward_to(|session| session.last_win > 0);
             }
             "ways" => {
                 // The 243-ways cabinet (§5.14). Fast-forwarded to a win, because
                 // a resting board says nothing about how differently it pays.
-                self.data = GameData::load_machine(&crate::data::MACHINES[2]).unwrap();
+                self.use_machine(&crate::data::MACHINES[2]);
                 self.session = GameSession::new(&self.data, 0xD2A6_0F1E);
                 self.fast_forward_to(|session| session.last_win > 0);
             }
             "refining" => {
                 // Frost Wyrm mid-feature, a few spins in, so the banner names
                 // what has already been burned off the strips (§5.21).
-                self.data = GameData::load_machine(crate::data::machine_by_id("frost")).unwrap();
+                self.use_machine(crate::data::machine_by_id("frost"));
                 self.session = GameSession::new(&self.data, 0xD2A6_0F1E);
                 self.fast_forward_to(GameSession::in_free_spins);
                 self.session.celebrations.clear();
@@ -115,7 +123,7 @@ impl Game {
                 let _ = self.session.begin_spin(&self.data);
             }
             "frost" => {
-                self.data = GameData::load_machine(&crate::data::MACHINES[1]).unwrap();
+                self.use_machine(&crate::data::MACHINES[1]);
                 self.session = GameSession::new(&self.data, 0xD2A6_0F1E);
                 self.fast_forward_to(|session| session.last_win > 0);
             }
@@ -226,9 +234,7 @@ impl Game {
                 self.show_history = true;
             }
             "cluster" => {
-                self.data =
-                    crate::data::GameData::load_machine(crate::data::machine_by_id("tidepool"))
-                        .unwrap();
+                self.use_machine(crate::data::machine_by_id("tidepool"));
                 self.session = self.load_machine_session();
                 self.session.balance = 1_000_000;
                 for _ in 0..40 {
@@ -274,6 +280,12 @@ impl Game {
                         macroquad_toolkit::ui::set_ui_text_scale(scale);
                     }
                 }
+                // DRAGONS_HOARD_THEME runs the audit under any cabinet's palette
+                // without a scene per theme (§5.43). Every colour pairing has to
+                // survive every room.
+                if let Ok(name) = std::env::var("DRAGONS_HOARD_THEME") {
+                    crate::ui::theme::set(crate::ui::theme::by_name(&name));
+                }
                 macroquad_toolkit::ui::begin_audit();
             }
             "rules" => self.show_rules = true,
@@ -303,12 +315,11 @@ impl Game {
                 self.reality_check = true;
             }
             "rules_avalanche" => {
-                self.data =
-                    GameData::load_machine(crate::data::machine_by_id("avalanche")).unwrap();
+                self.use_machine(crate::data::machine_by_id("avalanche"));
                 self.show_rules = true;
             }
             "rules_frost" => {
-                self.data = GameData::load_machine(crate::data::machine_by_id("frost")).unwrap();
+                self.use_machine(crate::data::machine_by_id("frost"));
                 self.show_rules = true;
             }
             "waveforms" => self.show_waveforms = true,

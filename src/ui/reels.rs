@@ -104,17 +104,21 @@ pub fn draw_reels(data: &GameData, session: &GameSession, shake: Vec2, ui_time: 
     let (surface, chrome, title) = if feature {
         (
             Color::new(0.14, 0.070, 0.045, 0.97),
-            palette::EMBER,
+            palette::ember(),
             feature_title(data, session),
         )
     } else {
-        (palette::STONE, palette::GOLD_DIM, String::from("The Vault"))
+        (
+            palette::stone(),
+            palette::gold_dim(),
+            String::from("The Vault"),
+        )
     };
 
     let style = SurfaceStyle::new(surface)
         .with_border(if feature { 2.0 } else { 1.0 }, chrome)
         .with_inner_border(4.0, 1.0, Color::new(1.0, 0.85, 0.5, 0.06))
-        .with_header(44.0, palette::STONE_HEADER)
+        .with_header(44.0, palette::stone_header())
         .with_header_divider(1.0, chrome);
     draw_surface(panel, &style);
 
@@ -125,9 +129,9 @@ pub fn draw_reels(data: &GameData, session: &GameSession, shake: Vec2, ui_time: 
         TextStyle::new(
             19.0,
             if feature {
-                palette::GOLD_BRIGHT
+                palette::gold_bright()
             } else {
-                palette::GOLD
+                palette::gold()
             },
         )
         .params(),
@@ -211,9 +215,9 @@ fn draw_jackpot_ladder(data: &GameData, session: &GameSession, shake: Vec2, ui_t
             1.0,
         );
         let border = Color::new(
-            palette::GOLD.r,
-            palette::GOLD.g,
-            palette::GOLD.b,
+            palette::gold().r,
+            palette::gold().g,
+            palette::gold().b,
             0.35 + 0.5 * rank * shimmer,
         );
 
@@ -229,7 +233,7 @@ fn draw_jackpot_ladder(data: &GameData, session: &GameSession, shake: Vec2, ui_t
             plate.y + 2.0,
             plate.w,
             18.0,
-            TextStyle::new(13.0, palette::TEXT_DIM),
+            TextStyle::new(13.0, palette::text_dim()),
         );
         draw_text_centered_in_box_ex(
             &naming::credits(*credits),
@@ -240,9 +244,9 @@ fn draw_jackpot_ladder(data: &GameData, session: &GameSession, shake: Vec2, ui_t
             TextStyle::new(
                 21.0,
                 if rank > 0.6 {
-                    palette::GOLD_BRIGHT
+                    palette::gold_bright()
                 } else {
-                    palette::GOLD
+                    palette::gold()
                 },
             ),
         );
@@ -434,7 +438,7 @@ fn draw_anticipation_frame(data: &GameData, reel: usize, shake: Vec2, bounds: Re
     );
     draw_surface(
         column.inset(2.0),
-        &SurfaceStyle::new(Color::new(0.30, 0.14, 0.03, 0.55)).with_border(3.0, palette::EMBER),
+        &SurfaceStyle::new(Color::new(0.30, 0.14, 0.03, 0.55)).with_border(3.0, palette::ember()),
     );
 }
 
@@ -472,9 +476,9 @@ fn draw_cell_tile(data: &GameData, rect: Rect, symbol: usize, highlight: f32, al
 
     let border = if highlight > 0.0 {
         Color::new(
-            palette::GOLD_BRIGHT.r,
-            palette::GOLD_BRIGHT.g,
-            palette::GOLD_BRIGHT.b,
+            palette::gold_bright().r,
+            palette::gold_bright().g,
+            palette::gold_bright().b,
             (0.35 + 0.65 * highlight) * alpha,
         )
     } else {
@@ -500,16 +504,16 @@ fn draw_cell_art(data: &GameData, rect: Rect, symbol: usize, highlight: f32, alp
     // Only reached when a symbol names art the renderer does not have.
     let text_color = if highlight > 0.5 {
         Color::new(
-            palette::GOLD_BRIGHT.r,
-            palette::GOLD_BRIGHT.g,
-            palette::GOLD_BRIGHT.b,
+            palette::gold_bright().r,
+            palette::gold_bright().g,
+            palette::gold_bright().b,
             alpha,
         )
     } else {
         Color::new(
-            palette::TEXT_BRIGHT.r,
-            palette::TEXT_BRIGHT.g,
-            palette::TEXT_BRIGHT.b,
+            palette::text_bright().r,
+            palette::text_bright().g,
+            palette::text_bright().b,
             alpha,
         )
     };
@@ -533,7 +537,7 @@ fn draw_win_summary(data: &GameData, session: &GameSession, rect: Rect) {
             strip.y,
             strip.w,
             strip.h,
-            TextStyle::new(16.0, palette::TEXT_DIM),
+            TextStyle::new(16.0, palette::text_dim()),
         );
         return;
     }
@@ -550,7 +554,7 @@ fn draw_win_summary(data: &GameData, session: &GameSession, rect: Rect) {
         strip.y,
         strip.w,
         strip.h,
-        TextStyle::new(16.0, palette::TEXT_DIM),
+        TextStyle::new(16.0, palette::text_dim()),
     );
 }
 
@@ -565,7 +569,7 @@ fn draw_cascade_badge(session: &GameSession, shake: Vec2) {
 
     draw_surface(
         badge,
-        &SurfaceStyle::new(Color::new(0.34, 0.12, 0.02, 0.95)).with_border(2.0, palette::EMBER),
+        &SurfaceStyle::new(Color::new(0.34, 0.12, 0.02, 0.95)).with_border(2.0, palette::ember()),
     );
     draw_text_centered_in_box_ex(
         &format!("x{}", multiplier),
@@ -573,7 +577,7 @@ fn draw_cascade_badge(session: &GameSession, shake: Vec2) {
         badge.y,
         badge.w,
         badge.h,
-        TextStyle::new(26.0, palette::GOLD_BRIGHT),
+        TextStyle::new(26.0, palette::gold_bright()),
     );
 }
 

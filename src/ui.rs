@@ -21,6 +21,7 @@ pub mod rules;
 pub mod settings;
 pub mod shortcuts;
 pub mod symbols;
+pub mod theme;
 pub mod vision;
 pub mod wager;
 pub mod waveform;
@@ -39,22 +40,60 @@ use macroquad_toolkit::ui::{
 pub const LOGICAL_WIDTH: f32 = 1280.0;
 pub const LOGICAL_HEIGHT: f32 = 720.0;
 
-/// Gold-on-stone theme.
 pub mod palette {
+    //! The colours, read from whichever theme the cabinet asked for (§5.43).
+    //!
+    //! Functions rather than constants because the values are now per-cabinet.
+    //! Every call site reads the same as it did — `palette::gold()` where it said
+    //! `palette::gold()` — which is why nearly three hundred of them could be
+    //! converted mechanically and reviewed by the contrast gate instead of by
+    //! eye.
+    use super::theme;
     use macroquad::prelude::Color;
 
-    pub const BACKGROUND: Color = Color::new(0.045, 0.038, 0.052, 1.0);
-    pub const STONE: Color = Color::new(0.098, 0.086, 0.098, 0.97);
-    pub const STONE_HEADER: Color = Color::new(0.14, 0.118, 0.125, 1.0);
-    pub const GOLD: Color = Color::new(0.90, 0.74, 0.36, 1.0);
-    pub const GOLD_BRIGHT: Color = Color::new(1.0, 0.88, 0.52, 1.0);
-    pub const GOLD_DIM: Color = Color::new(0.52, 0.41, 0.20, 0.85);
-    pub const EMBER: Color = Color::new(0.93, 0.45, 0.18, 1.0);
-    /// The other direction. Used only where a figure is up rather than down.
-    pub const JADE: Color = Color::new(0.42, 0.82, 0.52, 1.0);
-    pub const TEXT_BRIGHT: Color = Color::new(0.96, 0.93, 0.88, 1.0);
-    pub const TEXT: Color = Color::new(0.84, 0.80, 0.74, 1.0);
-    pub const TEXT_DIM: Color = Color::new(0.62, 0.57, 0.52, 1.0);
+    pub fn background() -> Color {
+        theme::current().background
+    }
+
+    pub fn stone() -> Color {
+        theme::current().stone
+    }
+
+    pub fn stone_header() -> Color {
+        theme::current().stone_header
+    }
+
+    pub fn gold() -> Color {
+        theme::current().gold
+    }
+
+    pub fn gold_bright() -> Color {
+        theme::current().gold_bright
+    }
+
+    pub fn gold_dim() -> Color {
+        theme::current().gold_dim
+    }
+
+    pub fn ember() -> Color {
+        theme::current().ember
+    }
+
+    pub fn jade() -> Color {
+        theme::current().jade
+    }
+
+    pub fn text_bright() -> Color {
+        theme::current().text_bright
+    }
+
+    pub fn text() -> Color {
+        theme::current().text
+    }
+
+    pub fn text_dim() -> Color {
+        theme::current().text_dim
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -271,19 +310,19 @@ pub fn draw_game_ui(ctx: UiContext<'_>, nav: &mut Nav) -> Vec<UiAction> {
 fn draw_header(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>, nav: &mut Nav) {
     let rect = Rect::new(18.0, 16.0, LOGICAL_WIDTH - 36.0, 64.0);
     // The header, where the cabinet name ran into the Buy button (§5.35).
-    let _region = Region::on(rect, palette::STONE_HEADER);
+    let _region = Region::on(rect, palette::stone_header());
     draw_surface(
         rect,
-        &SurfaceStyle::new(palette::STONE_HEADER)
-            .with_border(1.0, palette::GOLD_DIM)
-            .with_top_highlight(2.0, palette::GOLD),
+        &SurfaceStyle::new(palette::stone_header())
+            .with_border(1.0, palette::gold_dim())
+            .with_top_highlight(2.0, palette::gold()),
     );
 
     draw_ui_text_ex(
         &ctx.data.config.display_name,
         rect.x + 18.0,
         rect.y + 41.0,
-        TextStyle::new(31.0, palette::GOLD_BRIGHT).params(),
+        TextStyle::new(31.0, palette::gold_bright()).params(),
     );
 
     // The header has the only spare width on screen, and these should be
@@ -346,19 +385,19 @@ fn draw_header(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>, na
             naming::credits(hoard.pot)
         ),
         Color::new(0.22, 0.16, 0.10, 1.0),
-        palette::TEXT,
+        palette::text(),
     );
     draw_badge(
         Rect::new(rect.right() - 258.0, rect.y + 18.0, 152.0, 28.0),
         &format!("Balance {}", naming::credits(ctx.session.balance)),
         Color::new(0.16, 0.20, 0.13, 1.0),
-        palette::TEXT_BRIGHT,
+        palette::text_bright(),
     );
     draw_badge(
         Rect::new(rect.right() - 96.0, rect.y + 18.0, 78.0, 28.0),
         &format!("v{}", ctx.data.config.version),
         Color::new(0.18, 0.15, 0.22, 1.0),
-        palette::TEXT_DIM,
+        palette::text_dim(),
     );
 }
 
@@ -370,7 +409,8 @@ fn draw_footer(ctx: &UiContext<'_>) {
     let _region = Region::on(rect, Color::new(0.07, 0.06, 0.07, 1.0));
     draw_surface(
         rect,
-        &SurfaceStyle::new(Color::new(0.07, 0.06, 0.07, 0.96)).with_border(1.0, palette::GOLD_DIM),
+        &SurfaceStyle::new(Color::new(0.07, 0.06, 0.07, 0.96))
+            .with_border(1.0, palette::gold_dim()),
     );
 
     let hoard = &ctx.session.hoard;
@@ -378,7 +418,7 @@ fn draw_footer(ctx: &UiContext<'_>) {
         Rect::new(rect.x + 18.0, rect.y + 14.0, 420.0, 22.0),
         hoard.count as f32,
         ctx.data.config.hoard_capacity as f32,
-        palette::EMBER,
+        palette::ember(),
         // Machine-agnostic: the Frost cabinet has a hoard too.
         Some(&format!(
             "Hoard {}/{}",
@@ -392,7 +432,7 @@ fn draw_footer(ctx: &UiContext<'_>) {
         ),
         rect.x + 18.0,
         rect.y + 56.0,
-        TextStyle::new(15.0, palette::TEXT_DIM).params(),
+        TextStyle::new(15.0, palette::text_dim()).params(),
     );
 
     let stats = &ctx.session.stats;
@@ -406,7 +446,7 @@ fn draw_footer(ctx: &UiContext<'_>) {
         ),
         rect.x + 470.0,
         rect.y + 30.0,
-        TextStyle::new(16.0, palette::TEXT).params(),
+        TextStyle::new(16.0, palette::text()).params(),
     );
     // A hint (§5.28) takes this line while it is showing. The two say the same
     // sort of thing and only one of them gets read.
@@ -423,7 +463,7 @@ fn draw_footer(ctx: &UiContext<'_>) {
             18.0,
             15.0,
             0.0,
-            palette::TEXT_DIM,
+            palette::text_dim(),
         );
     }
 }
@@ -462,7 +502,7 @@ fn virtual_button(
         if enabled {
             style.text_color
         } else {
-            palette::TEXT_DIM
+            palette::text_dim()
         },
         17.0,
     );
@@ -488,7 +528,7 @@ fn virtual_button(
             if enabled {
                 style.text_color
             } else {
-                palette::TEXT_DIM
+                palette::text_dim()
             },
         ),
     );

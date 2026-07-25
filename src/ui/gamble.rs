@@ -40,19 +40,19 @@ pub fn draw(
 
     let panel = Rect::new(340.0, 110.0, 600.0, 508.0);
     // Everything drawn below is measured against this panel (§5.37).
-    let _region = Region::on(panel, palette::STONE);
+    let _region = Region::on(panel, palette::stone());
     draw_surface(
         panel,
-        &SurfaceStyle::new(palette::STONE)
-            .with_border(2.0, palette::EMBER)
-            .with_header(48.0, palette::STONE_HEADER)
-            .with_header_divider(1.0, palette::GOLD_DIM),
+        &SurfaceStyle::new(palette::stone())
+            .with_border(2.0, palette::ember())
+            .with_header(48.0, palette::stone_header())
+            .with_header_divider(1.0, palette::gold_dim()),
     );
     draw_ui_text_ex(
         "The Dragon's Gamble",
         panel.x + 20.0,
         panel.y + 32.0,
-        TextStyle::new(21.0, palette::GOLD_BRIGHT).params(),
+        TextStyle::new(21.0, palette::gold_bright()).params(),
     );
 
     // What is at risk, in the largest type on the panel — it is the number the
@@ -60,13 +60,13 @@ pub fn draw(
     let stake = Rect::new(panel.x + 20.0, panel.y + 64.0, panel.w - 40.0, 78.0);
     draw_surface(
         stake,
-        &SurfaceStyle::new(Color::new(0.07, 0.06, 0.04, 1.0)).with_border(1.0, palette::GOLD_DIM),
+        &SurfaceStyle::new(Color::new(0.07, 0.06, 0.04, 1.0)).with_border(1.0, palette::gold_dim()),
     );
     draw_ui_text_ex(
         "AT RISK",
         stake.x + 16.0,
         stake.y + 26.0,
-        TextStyle::new(14.0, palette::TEXT_DIM).params(),
+        TextStyle::new(14.0, palette::text_dim()).params(),
     );
     draw_text_centered_in_box_ex(
         &naming::credits(round.stake()),
@@ -74,14 +74,14 @@ pub fn draw(
         stake.y + 22.0,
         stake.w,
         44.0,
-        TextStyle::new(38.0, palette::GOLD_BRIGHT),
+        TextStyle::new(38.0, palette::gold_bright()),
     );
     if round.banked() > 0 {
         draw_ui_text_ex(
             &format!("{} banked and safe", round.banked()),
             stake.x + 16.0,
             stake.bottom() - 10.0,
-            TextStyle::new(14.0, palette::TEXT_BRIGHT).params(),
+            TextStyle::new(14.0, palette::text_bright()).params(),
         );
     }
 
@@ -170,7 +170,7 @@ pub fn draw(
             "The ladder is spent — take the win.",
             panel.x + 20.0,
             take.y - 10.0,
-            TextStyle::new(14.0, palette::TEXT_DIM).params(),
+            TextStyle::new(14.0, palette::text_dim()).params(),
         );
     }
 
@@ -196,9 +196,9 @@ fn draw_ladder(round: &GambleRound, rect: Rect) {
             .with_border(
                 1.0,
                 if climbed {
-                    palette::EMBER
+                    palette::ember()
                 } else {
-                    palette::GOLD_DIM
+                    palette::gold_dim()
                 },
             ),
         );
@@ -212,7 +212,7 @@ fn draw_last_flip(round: &GambleRound, rect: Rect) {
             "Pick a scale. Even money, double or nothing.",
             rect.x,
             rect.y + 20.0,
-            TextStyle::new(15.0, palette::TEXT_DIM).params(),
+            TextStyle::new(15.0, palette::text_dim()).params(),
         );
         return;
     };
@@ -228,9 +228,9 @@ fn draw_last_flip(round: &GambleRound, rect: Rect) {
         TextStyle::new(
             16.0,
             if flip.won {
-                palette::GOLD_BRIGHT
+                palette::gold_bright()
             } else {
-                palette::TEXT_DIM
+                palette::text_dim()
             },
         )
         .params(),
@@ -260,9 +260,9 @@ fn draw_colour_button(
         .with_border(
             if hovered { 3.0 } else { 2.0 },
             if enabled {
-                palette::GOLD_BRIGHT
+                palette::gold_bright()
             } else {
-                palette::GOLD_DIM
+                palette::gold_dim()
             },
         ),
     );
@@ -275,9 +275,9 @@ fn draw_colour_button(
         TextStyle::new(
             30.0,
             if enabled {
-                palette::TEXT_BRIGHT
+                palette::text_bright()
             } else {
-                palette::TEXT_DIM
+                palette::text_dim()
             },
         ),
     );

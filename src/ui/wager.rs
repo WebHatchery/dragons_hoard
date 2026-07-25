@@ -23,13 +23,13 @@ pub fn draw_control_panel(
 ) {
     let rect = Rect::new(852.0, 96.0, 410.0, 520.0);
     // The wager panel (§5.37).
-    let _region = Region::on(rect, palette::STONE);
+    let _region = Region::on(rect, palette::stone());
     draw_surface(
         rect,
-        &SurfaceStyle::new(palette::STONE)
-            .with_border(1.0, palette::GOLD_DIM)
-            .with_header(44.0, palette::STONE_HEADER)
-            .with_header_divider(1.0, palette::GOLD_DIM),
+        &SurfaceStyle::new(palette::stone())
+            .with_border(1.0, palette::gold_dim())
+            .with_header(44.0, palette::stone_header())
+            .with_header_divider(1.0, palette::gold_dim()),
     );
     draw_ui_text_ex(
         if ctx.session.in_free_spins() {
@@ -39,7 +39,7 @@ pub fn draw_control_panel(
         },
         rect.x + 18.0,
         rect.y + 30.0,
-        TextStyle::new(19.0, palette::GOLD).params(),
+        TextStyle::new(19.0, palette::gold()).params(),
     );
 
     // The wager readout flows from the top and the buttons are anchored to the
@@ -59,13 +59,13 @@ fn draw_win_readout(ctx: &UiContext<'_>, content: Rect, y: f32) -> f32 {
     let rect = Rect::new(content.x, y, content.w, 62.0);
     draw_surface(
         rect,
-        &SurfaceStyle::new(Color::new(0.07, 0.06, 0.05, 1.0)).with_border(1.0, palette::GOLD_DIM),
+        &SurfaceStyle::new(Color::new(0.07, 0.06, 0.05, 1.0)).with_border(1.0, palette::gold_dim()),
     );
     draw_ui_text_ex(
         "WIN",
         rect.x + 14.0,
         rect.y + 38.0,
-        TextStyle::new(18.0, palette::TEXT_DIM).params(),
+        TextStyle::new(18.0, palette::text_dim()).params(),
     );
     let win = ctx.session.displayed_win();
     draw_text_right(
@@ -75,9 +75,9 @@ fn draw_win_readout(ctx: &UiContext<'_>, content: Rect, y: f32) -> f32 {
         TextStyle::new(
             30.0,
             if win > 0 {
-                palette::GOLD_BRIGHT
+                palette::gold_bright()
             } else {
-                palette::TEXT_DIM
+                palette::text_dim()
             },
         ),
     );
@@ -99,7 +99,7 @@ fn draw_bet_controls(
         "Line Bet",
         content.x,
         y + 24.0,
-        TextStyle::new(18.0, palette::TEXT).params(),
+        TextStyle::new(18.0, palette::text()).params(),
     );
 
     let button = 38.0;
@@ -119,7 +119,7 @@ fn draw_bet_controls(
         y,
         92.0,
         button,
-        TextStyle::new(22.0, palette::GOLD_BRIGHT),
+        TextStyle::new(22.0, palette::gold_bright()),
     );
     if virtual_button(
         Rect::new(content.right() - button, y, button, button),
@@ -166,7 +166,7 @@ fn draw_bet_controls(
         46.0,
         17.0,
         4.0,
-        palette::TEXT_DIM,
+        palette::text_dim(),
     );
 
     y + 54.0
@@ -178,7 +178,7 @@ fn draw_feature_banner(ctx: &UiContext<'_>, content: Rect, y: f32) {
     let banner = match ctx.session.free_spins.as_ref() {
         Some(free_spins) => Some((
             Color::new(0.24, 0.11, 0.04, 1.0),
-            palette::EMBER,
+            palette::ember(),
             format!("{} free spins left", free_spins.remaining),
             format!(
                 "x{} wilds expand  |  won {}",
@@ -187,7 +187,7 @@ fn draw_feature_banner(ctx: &UiContext<'_>, content: Rect, y: f32) {
         )),
         None if ctx.session.autospin_remaining() > 0 => Some((
             Color::new(0.09, 0.14, 0.19, 1.0),
-            palette::GOLD,
+            palette::gold(),
             format!("Autospin — {} left", ctx.session.autospin_remaining()),
             "Stops on a feature, a hatch or a big win".to_owned(),
         )),
@@ -203,19 +203,19 @@ fn draw_feature_banner(ctx: &UiContext<'_>, content: Rect, y: f32) {
         rect,
         &SurfaceStyle::new(fill)
             .with_border(2.0, accent)
-            .with_left_accent(4.0, palette::GOLD_BRIGHT),
+            .with_left_accent(4.0, palette::gold_bright()),
     );
     draw_ui_text_ex(
         &title,
         rect.x + 14.0,
         rect.y + 26.0,
-        TextStyle::new(19.0, palette::GOLD_BRIGHT).params(),
+        TextStyle::new(19.0, palette::gold_bright()).params(),
     );
     draw_ui_text_ex(
         &subtitle,
         rect.x + 14.0,
         rect.y + 46.0,
-        TextStyle::new(15.0, palette::TEXT).params(),
+        TextStyle::new(15.0, palette::text()).params(),
     );
 }
 
