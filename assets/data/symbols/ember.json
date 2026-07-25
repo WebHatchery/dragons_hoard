@@ -1,0 +1,122 @@
+[
+  {
+    "id": "ember",
+    "name": "Ember",
+    "tier": "low",
+    "short": "EMB",
+    "art": "coin",
+    "texture": "sym_ember",
+    "color": [
+      0.78,
+      0.3,
+      0.16
+    ]
+  },
+  {
+    "id": "cinder",
+    "name": "Cinder Heap",
+    "tier": "low",
+    "short": "CND",
+    "art": "coin_stack",
+    "texture": "sym_cinder",
+    "color": [
+      0.88,
+      0.52,
+      0.18
+    ]
+  },
+  {
+    "id": "sparkstone",
+    "name": "Sparkstone",
+    "tier": "low",
+    "short": "SPK",
+    "art": "gem",
+    "texture": "sym_sparkstone",
+    "color": [
+      0.96,
+      0.8,
+      0.28
+    ]
+  },
+  {
+    "id": "slag",
+    "name": "Slag Glass",
+    "tier": "mid",
+    "short": "SLG",
+    "art": "gem_round",
+    "texture": "sym_slag",
+    "color": [
+      0.38,
+      0.44,
+      0.52
+    ]
+  },
+  {
+    "id": "firebrand",
+    "name": "Firebrand",
+    "tier": "mid",
+    "short": "FBD",
+    "art": "gem_step",
+    "texture": "sym_firebrand",
+    "color": [
+      0.86,
+      0.22,
+      0.36
+    ]
+  },
+  {
+    "id": "forge",
+    "name": "The Forge",
+    "tier": "high",
+    "short": "FRG",
+    "art": "anvil",
+    "texture": "sym_forge",
+    "color": [
+      0.55,
+      0.58,
+      0.64
+    ]
+  },
+  {
+    "id": "wyrmegg",
+    "name": "Wyrm Egg",
+    "tier": "high",
+    "short": "WEG",
+    "art": "egg",
+    "texture": "sym_wyrmegg",
+    "color": [
+      0.94,
+      0.88,
+      0.72
+    ],
+    "is_hoard": true
+  },
+  {
+    "id": "emberwyrm",
+    "name": "Emberwyrm",
+    "tier": "high",
+    "short": "EWM",
+    "art": "dragon",
+    "texture": "sym_emberwyrm",
+    "color": [
+      0.62,
+      0.24,
+      0.72
+    ],
+    "is_wild": true
+  },
+  {
+    "id": "pyre",
+    "name": "Pyre",
+    "tier": "high",
+    "short": "PYR",
+    "art": "flame",
+    "texture": "sym_pyre",
+    "color": [
+      1.0,
+      0.62,
+      0.2
+    ],
+    "is_scatter": true
+  }
+]

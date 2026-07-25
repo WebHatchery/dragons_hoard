@@ -27,5 +27,6 @@
   "big_win_multiple": 20,
   "sfx_volume": 0.7,
   "evaluation": "ways",
-  "bet_units": 25
+  "bet_units": 25,
+  "symbol_set": "ember"
 }

@@ -284,3 +284,43 @@ pub(super) fn flame<P: Painter>(canvas: &mut Canvas<P>, shades: &Shades, alpha: 
 
     canvas.circle(0.50, 0.66, 0.085, core);
 }
+
+/// An anvil. The forge symbol on the ember set (§5.41).
+///
+/// Lives with the hoard shapes rather than in a file of its own because it is
+/// one routine, and a module per symbol would be filing for its own sake.
+pub(super) fn anvil<P: Painter>(canvas: &mut Canvas<P>, shades: &Shades, _alpha: f32) {
+    // Base, waisted stem, then the body — read bottom-up, which is how an anvil
+    // is recognised: the horn is the only part that matters at reel size.
+    canvas.quad(
+        (0.24, 0.88),
+        (0.76, 0.88),
+        (0.70, 0.78),
+        (0.30, 0.78),
+        shades.darker,
+    );
+    canvas.quad(
+        (0.40, 0.78),
+        (0.60, 0.78),
+        (0.56, 0.52),
+        (0.44, 0.52),
+        shades.dark,
+    );
+    canvas.quad(
+        (0.20, 0.52),
+        (0.78, 0.52),
+        (0.78, 0.36),
+        (0.20, 0.36),
+        shades.base,
+    );
+    // The horn, tapering off the left.
+    canvas.tri((0.20, 0.36), (0.02, 0.42), (0.20, 0.50), shades.base);
+    // A struck highlight along the face.
+    canvas.quad(
+        (0.24, 0.38),
+        (0.74, 0.38),
+        (0.74, 0.34),
+        (0.24, 0.34),
+        shades.light,
+    );
+}

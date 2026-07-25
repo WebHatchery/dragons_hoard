@@ -15,7 +15,7 @@ pub use features::{
     BonusConfig, CascadeConfig, FeatureAward, FeatureBuyConfig, FeatureBuyTier, GambleConfig,
     HoldSpinConfig,
 };
-pub use machines::{machine_by_id, MachineDef, MACHINES};
+pub use machines::{machine_by_id, symbol_set, MachineDef, MACHINES};
 use std::collections::HashMap;
 
 const TEXTURE_MANIFEST_JSON: &str = include_str!("../assets/data/texture_manifest.json");
@@ -66,6 +66,8 @@ pub struct GameConfig {
     /// so outright.
     #[serde(default)]
     pub bet_units: Option<usize>,
+    /// Which symbol set this cabinet draws (§5.41).
+    pub symbol_set: String,
 }
 
 /// Range of visible rows a reel may take on a shifting cabinet (§5.20).
@@ -111,6 +113,10 @@ pub struct SymbolDef {
     pub is_hoard: bool,
     /// Run length ("3"/"4"/"5") to payout multiplier. Line symbols multiply the
     /// line bet; the scatter multiplies the total bet.
+    /// Filled from the cabinet's own `paytable.json` at load, not from the
+    /// symbol set: what a symbol *is* is shared between cabinets, what it pays
+    /// is not (§5.41).
+    #[serde(default, skip)]
     pub pays: HashMap<String, i64>,
 }
 
@@ -340,8 +346,33 @@ impl GameData {
         let label = |what: &str| format!("{}/{}", machine.id, what);
 
         let config: GameConfig = load_embedded_json_labeled(&label("game_config"), machine.config)?;
-        let symbol_defs: Vec<SymbolDef> =
-            load_embedded_json_labeled(&label("symbols"), machine.symbols)?;
+        // Identity from the shared set, payouts from this cabinet. Four
+        // cabinets carried nine duplicated symbol definitions before this
+        // split, and retheming one meant editing a copy (§5.41).
+        let mut symbol_defs: Vec<SymbolDef> = load_embedded_json_labeled(
+            &label("symbol set"),
+            symbol_set(&config.symbol_set).ok_or_else(|| {
+                format!("{} names no symbol set '{}'", machine.id, config.symbol_set)
+            })?,
+        )?;
+        let paytable: HashMap<String, HashMap<String, i64>> =
+            load_embedded_json_labeled(&label("paytable"), machine.paytable)?;
+        for def in &mut symbol_defs {
+            def.pays = paytable.get(&def.id).cloned().ok_or_else(|| {
+                format!("{}: no paytable entry for symbol '{}'", machine.id, def.id)
+            })?;
+        }
+        if let Some(extra) = paytable
+            .keys()
+            .find(|id| !symbol_defs.iter().any(|def| def.id == **id))
+        {
+            // A paytable naming a symbol the set does not have is a rename that
+            // only got half done, and would silently never pay.
+            return Err(format!(
+                "{}: paytable names '{}', which is not in the '{}' set",
+                machine.id, extra, config.symbol_set
+            ));
+        }
         let symbols = Symbols::new(symbol_defs)?;
         let strips: Vec<Vec<String>> = load_embedded_json_labeled(&label("reels"), machine.reels)?;
         let paylines: Vec<Payline> =

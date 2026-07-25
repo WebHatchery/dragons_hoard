@@ -27,5 +27,6 @@
   "big_win_multiple": 20,
   "sfx_volume": 0.7,
   "evaluation": "cluster",
-  "bet_units": 20
+  "bet_units": 20,
+  "symbol_set": "tidepool"
 }

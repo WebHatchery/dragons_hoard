@@ -20,7 +20,7 @@ pub struct MachineDef {
     /// One line for the picker, describing how this machine plays.
     pub blurb: &'static str,
     pub(super) config: &'static str,
-    pub(super) symbols: &'static str,
+    pub(super) paytable: &'static str,
     pub(super) reels: &'static str,
     pub(super) paylines: &'static str,
     pub(super) freespins: &'static str,
@@ -40,10 +40,10 @@ macro_rules! machine {
                 $dir,
                 "/game_config.json"
             )),
-            symbols: include_str!(concat!(
+            paytable: include_str!(concat!(
                 "../../assets/data/machines/",
                 $dir,
-                "/symbols.json"
+                "/paytable.json"
             )),
             reels: include_str!(concat!("../../assets/data/machines/", $dir, "/reels.json")),
             paylines: include_str!(concat!(
@@ -90,6 +90,22 @@ macro_rules! cascading_machine {
             ..machine!($id, $dir, $blurb)
         }
     };
+}
+
+/// The symbol sets, by name.
+///
+/// A set is what the symbols *are* — names, art and colour. Several cabinets
+/// share one, and a cabinet's own `paytable.json` says what each pays there
+/// (§5.41). Held as a lookup rather than a field on the machine so a set can be
+/// added without touching every cabinet that does not use it.
+pub fn symbol_set(name: &str) -> Option<&'static str> {
+    Some(match name {
+        "hoard" => include_str!("../../assets/data/symbols/hoard.json"),
+        "frost" => include_str!("../../assets/data/symbols/frost.json"),
+        "tidepool" => include_str!("../../assets/data/symbols/tidepool.json"),
+        "ember" => include_str!("../../assets/data/symbols/ember.json"),
+        _ => return None,
+    })
 }
 
 pub static MACHINES: &[MachineDef] = &[

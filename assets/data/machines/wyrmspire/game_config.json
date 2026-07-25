@@ -31,5 +31,6 @@
   "reel_heights": {
     "min": 2,
     "max": 6
-  }
+  },
+  "symbol_set": "hoard"
 }

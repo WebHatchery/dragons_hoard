@@ -134,15 +134,14 @@ mod tests {
         .unwrap()
     }
 
-    /// Build a grid from column-major short ids.
+    /// Build a grid from column-major ids.
+    ///
+    /// `wild` and `scatter` are resolved from the set's own flags rather than
+    /// named, because a cabinet's wild is whatever it calls its wild — the ember
+    /// set calls it the Emberwyrm (§5.41), and a test that spelled "wild"
+    /// would be asserting about the theme instead of the rule.
     fn grid(data: &GameData, columns: [[&str; 3]; 5]) -> Grid {
-        let resolve = |id: &str| {
-            data.symbols
-                .iter()
-                .find(|(_, def)| def.id == id)
-                .map(|(index, _)| index)
-                .unwrap_or_else(|| panic!("no symbol '{}'", id))
-        };
+        let resolve = |id: &str| symbol_index(data, id);
         Grid::from_columns(
             &columns
                 .iter()
@@ -151,9 +150,26 @@ mod tests {
         )
     }
 
+    /// Resolve a symbol by **role or position**, never by name.
+    ///
+    /// A cabinet's wild is whatever it calls its wild, and its third-cheapest
+    /// symbol is whatever that is: the ember set calls them the Emberwyrm and
+    /// Sparkstone (§5.41). A test that spelled "dragon" or "jade" would be
+    /// asserting about the theme rather than about the rule, and broke the day
+    /// a cabinet was rethemed.
+    fn symbol_index(data: &GameData, id: &str) -> usize {
+        match id {
+            "wild" => data.symbols.wild().expect("the set has no wild"),
+            "scatter" => data.symbols.scatter().expect("the set has no scatter"),
+            other => other
+                .parse::<usize>()
+                .unwrap_or_else(|_| panic!("'{}' is not a role or a position", other)),
+        }
+    }
+
     fn win_for<'a>(wins: &'a [Win], data: &GameData, id: &str) -> Option<&'a Win> {
-        wins.iter()
-            .find(|win| data.symbols.get(win.symbol).id == id)
+        let wanted = symbol_index(data, id);
+        wins.iter().find(|win| win.symbol == wanted)
     }
 
     #[test]
@@ -162,16 +178,16 @@ mod tests {
         let grid = grid(
             &data,
             [
-                ["chest", "copper", "copper"],
-                ["copper", "chest", "copper"],
-                ["copper", "copper", "chest"],
-                ["jade", "jade", "jade"],
-                ["jade", "jade", "jade"],
+                ["5", "0", "0"],
+                ["0", "5", "0"],
+                ["0", "0", "5"],
+                ["2", "2", "2"],
+                ["2", "2", "2"],
             ],
         );
         let wins = wins(&data, &grid, 10, 1);
 
-        let chest = win_for(&wins, &data, "chest").expect("chest did not pay");
+        let chest = win_for(&wins, &data, "5").expect("chest did not pay");
         assert_eq!(chest.count, 3);
         assert_eq!(chest.source, WinSource::Ways(1));
     }
@@ -184,28 +200,28 @@ mod tests {
         let two_one_three = grid(
             &data,
             [
-                ["chest", "chest", "copper"],
-                ["chest", "copper", "copper"],
-                ["chest", "chest", "chest"],
-                ["jade", "jade", "jade"],
-                ["jade", "jade", "jade"],
+                ["5", "5", "0"],
+                ["5", "0", "0"],
+                ["5", "5", "5"],
+                ["2", "2", "2"],
+                ["2", "2", "2"],
             ],
         );
         let single = grid(
             &data,
             [
-                ["chest", "copper", "copper"],
-                ["chest", "copper", "copper"],
-                ["chest", "copper", "copper"],
-                ["jade", "jade", "jade"],
-                ["jade", "jade", "jade"],
+                ["5", "0", "0"],
+                ["5", "0", "0"],
+                ["5", "0", "0"],
+                ["2", "2", "2"],
+                ["2", "2", "2"],
             ],
         );
 
-        let many = win_for(&wins(&data, &two_one_three, 10, 1), &data, "chest")
+        let many = win_for(&wins(&data, &two_one_three, 10, 1), &data, "5")
             .expect("chest did not pay")
             .clone();
-        let one = win_for(&wins(&data, &single, 10, 1), &data, "chest")
+        let one = win_for(&wins(&data, &single, 10, 1), &data, "5")
             .expect("chest did not pay")
             .clone();
 
@@ -222,14 +238,14 @@ mod tests {
         let grid = grid(
             &data,
             [
-                ["copper", "copper", "copper"],
-                ["chest", "chest", "chest"],
-                ["chest", "chest", "chest"],
-                ["chest", "chest", "chest"],
-                ["chest", "chest", "chest"],
+                ["0", "0", "0"],
+                ["5", "5", "5"],
+                ["5", "5", "5"],
+                ["5", "5", "5"],
+                ["5", "5", "5"],
             ],
         );
-        assert!(win_for(&wins(&data, &grid, 10, 1), &data, "chest").is_none());
+        assert!(win_for(&wins(&data, &grid, 10, 1), &data, "5").is_none());
     }
 
     #[test]
@@ -241,17 +257,17 @@ mod tests {
         let grid = grid(
             &data,
             [
-                ["chest", "jade", "copper"],
-                ["chest", "jade", "copper"],
-                ["chest", "jade", "copper"],
-                ["ruby", "ruby", "ruby"],
-                ["ruby", "ruby", "ruby"],
+                ["5", "2", "0"],
+                ["5", "2", "0"],
+                ["5", "2", "0"],
+                ["4", "4", "4"],
+                ["4", "4", "4"],
             ],
         );
         let wins = wins(&data, &grid, 10, 1);
 
-        assert!(win_for(&wins, &data, "chest").is_some());
-        assert!(win_for(&wins, &data, "jade").is_some());
+        assert!(win_for(&wins, &data, "5").is_some());
+        assert!(win_for(&wins, &data, "2").is_some());
     }
 
     #[test]
@@ -260,19 +276,19 @@ mod tests {
         let grid = grid(
             &data,
             [
-                ["dragon", "copper", "copper"],
-                ["dragon", "copper", "copper"],
-                ["chest", "copper", "copper"],
-                ["jade", "jade", "jade"],
-                ["jade", "jade", "jade"],
+                ["wild", "0", "0"],
+                ["wild", "0", "0"],
+                ["5", "0", "0"],
+                ["2", "2", "2"],
+                ["2", "2", "2"],
             ],
         );
         let wins = wins(&data, &grid, 10, 1);
 
-        let chest = win_for(&wins, &data, "chest").expect("wilds did not substitute");
+        let chest = win_for(&wins, &data, "5").expect("wilds did not substitute");
         assert_eq!(chest.count, 3);
         // Two wilds is short of a paying wild run of its own.
-        assert!(win_for(&wins, &data, "dragon").is_none());
+        assert!(win_for(&wins, &data, "wild").is_none());
     }
 
     #[test]
@@ -290,18 +306,18 @@ mod tests {
         let grid = grid(
             &data,
             [
-                ["dragon", "dragon", "dragon"],
-                ["dragon", "dragon", "dragon"],
-                ["dragon", "dragon", "dragon"],
-                ["fire", "fire", "fire"],
-                ["fire", "fire", "fire"],
+                ["wild", "wild", "wild"],
+                ["wild", "wild", "wild"],
+                ["wild", "wild", "wild"],
+                ["scatter", "scatter", "scatter"],
+                ["scatter", "scatter", "scatter"],
             ],
         );
         let wins = wins(&data, &grid, 10, 1);
 
-        assert!(win_for(&wins, &data, "dragon").is_some());
+        assert!(win_for(&wins, &data, "wild").is_some());
         assert!(
-            win_for(&wins, &data, "chest").is_none(),
+            win_for(&wins, &data, "5").is_none(),
             "an all-wild run paid as a substituted symbol too"
         );
         assert_eq!(
@@ -321,18 +337,18 @@ mod tests {
         let grid = grid(
             &data,
             [
-                ["dragon", "copper", "copper"],
-                ["dragon", "copper", "copper"],
-                ["dragon", "copper", "copper"],
-                ["chest", "copper", "copper"],
-                ["chest", "copper", "copper"],
+                ["wild", "0", "0"],
+                ["wild", "0", "0"],
+                ["wild", "0", "0"],
+                ["5", "0", "0"],
+                ["5", "0", "0"],
             ],
         );
         let wins = wins(&data, &grid, 10, 1);
 
-        let chest = win_for(&wins, &data, "chest").expect("chest did not pay");
+        let chest = win_for(&wins, &data, "5").expect("chest did not pay");
         assert_eq!(chest.count, 5);
-        assert!(win_for(&wins, &data, "dragon").is_some());
+        assert!(win_for(&wins, &data, "wild").is_some());
     }
 
     #[test]
@@ -341,11 +357,11 @@ mod tests {
         let grid = grid(
             &data,
             [
-                ["dragon", "dragon", "dragon"],
-                ["dragon", "dragon", "dragon"],
-                ["dragon", "dragon", "dragon"],
-                ["dragon", "dragon", "dragon"],
-                ["dragon", "dragon", "dragon"],
+                ["wild", "wild", "wild"],
+                ["wild", "wild", "wild"],
+                ["wild", "wild", "wild"],
+                ["wild", "wild", "wild"],
+                ["wild", "wild", "wild"],
             ],
         );
         let wins = wins(&data, &grid, 10, 1);
@@ -359,15 +375,15 @@ mod tests {
         let grid = grid(
             &data,
             [
-                ["chest", "chest", "chest"],
-                ["chest", "chest", "chest"],
-                ["chest", "chest", "chest"],
-                ["chest", "chest", "chest"],
-                ["chest", "chest", "chest"],
+                ["5", "5", "5"],
+                ["5", "5", "5"],
+                ["5", "5", "5"],
+                ["5", "5", "5"],
+                ["5", "5", "5"],
             ],
         );
         let found = wins(&data, &grid, 10, 1);
-        let chest = win_for(&found, &data, "chest").unwrap();
+        let chest = win_for(&found, &data, "5").unwrap();
 
         assert_eq!(chest.source, WinSource::Ways(243));
         assert_eq!(chest.count, 5);
@@ -381,11 +397,11 @@ mod tests {
         let grid = grid(
             &data,
             [
-                ["chest", "dragon", "copper"],
-                ["copper", "chest", "copper"],
-                ["chest", "chest", "jade"],
-                ["jade", "jade", "jade"],
-                ["ruby", "ruby", "ruby"],
+                ["5", "wild", "0"],
+                ["0", "5", "0"],
+                ["5", "5", "2"],
+                ["2", "2", "2"],
+                ["4", "4", "4"],
             ],
         );
 

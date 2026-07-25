@@ -1938,6 +1938,47 @@ before it meant anything.
 The audit is clean at the design size, at 130% text (§5.38) and under
 pseudolocalisation (§5.39).
 
+### 5.41 Symbol sets — what a symbol *is* against what it pays here (post-v1)
+
+Six cabinets each carried a full `symbols.json`: nine definitions apiece, and
+four of them byte-identical. Frost Wyrm had its own **names** — Frost Coin, Rime
+Hoard, Glacier Gem — since §5.21 and had never had its own anything else, while
+Emberfall, Wyrmspire and Avalanche were unedited copies of Dragon's Hoard.
+
+The duplication was the symptom; the modelling was the cause. A symbol
+definition mixed two different things:
+
+- **What the symbol is** — name, art, colour, and whether it is the wild, the
+  scatter or the hoard symbol. Shared, and the same wherever it appears.
+- **What it pays on this cabinet** — which is emphatically not shared. Tidepool's
+  rungs are tuned for clusters (§5.35) and mean something different from a
+  five-in-a-row.
+
+So identity moved to `assets/data/symbols/<set>.json` and payouts stayed with the
+cabinet as `paytable.json`, joined at load. Retheming a machine is now naming a
+different set. A paytable that names a symbol the set does not have is rejected
+outright — that is a rename half-finished, and the symbol would otherwise just
+never pay.
+
+**Emberfall got the first new set**: Ember, Cinder Heap, Sparkstone, Slag Glass,
+Firebrand, The Forge, Wyrm Egg, Emberwyrm and Pyre, with one new art routine — an
+anvil, since a treasure chest means nothing in a forge. The palette runs hot, and
+the two cool symbols are not an accident: an all-red set collapses for a
+protanope, so §5.24's gate pushes toward a counterpoint whether or not anyone was
+thinking about it.
+
+**Two existing gates did their jobs unprompted.** §5.36's widened baseline check
+failed the build with `ways: 'anvil' has no baseline` the moment the shape
+existed — which is exactly the failure it was widened to catch, one iteration
+after it had missed nine of them. And the RTP of all six cabinets is unchanged to
+four decimal places, confirming the split moved nothing but structure.
+
+**The tests had to stop naming symbols.** `ways.rs` asserted about `"dragon"` and
+`"jade"`, which are theme rather than rule, and broke the moment a cabinet was
+rethemed. They resolve by **role or position** now — `"wild"`, `"scatter"`, or an
+index into the set — so a test says *the wild leads a run* rather than *the
+Dragon leads a run*, which is what it always meant.
+
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
 - Winning lines: pulse highlight (`blink`/`pulse`), floating win amounts
@@ -2538,6 +2579,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
+| Retheming a cabinet meaning editing a copy | A symbol's identity is a shared set and its payouts stay with the cabinet (§5.41). Four cabinets carried byte-identical definitions before the split. |
 | Text nobody can read off its background | Contrast is measured against the declared surface at every draw (§5.40), and button fills are derived from the requirement rather than picked by eye. Every button was below the standard. |
 | Panels laid out to the width of their English copy | Pseudolocalisation expands every string 40%, accents it and brackets it, and the layout audit measures the result (§5.39). Found the layout translation-ready and the font glyph-complete. |
 | Making text bigger silently breaking panels | The layout audit runs at every offered size, so a text-size setting is a checklist rather than a guess (§5.38). It found three unwrapped footnotes at 130%. |
@@ -2582,7 +2624,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus thirty-five post-v1 systems
+## 15. Current State — v1 shipped, plus thirty-six post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
@@ -2593,14 +2635,14 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) and a contrast gate (§5.40). The game is
+navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) and shared symbol sets (§5.41). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
 427 tests pass here and 245 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
 release build are clean. Every `.rs` file is under the 800-line limit, `data.rs`
-(748) and `ui/reels.rs` (734) the largest — `state/spin.rs` dropped from 615 to
+(779) and `ui/reels.rs` (734) the largest — `state/spin.rs` dropped from 615 to
 298 when its motion moved to the toolkit.
 
 Measured RTP over 1,000,000 spins: Dragon's Hoard **0.9612** at **0.411** hit

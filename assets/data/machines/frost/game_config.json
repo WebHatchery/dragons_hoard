@@ -25,5 +25,6 @@
   ],
   "default_autospin_choice": 1,
   "big_win_multiple": 10,
-  "sfx_volume": 0.5
+  "sfx_volume": 0.5,
+  "symbol_set": "frost"
 }

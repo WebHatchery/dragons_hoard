@@ -33,6 +33,7 @@ pub enum SymbolArt {
     Egg,
     Dragon,
     Flame,
+    Anvil,
     // The tidepool set (§5.36).
     Shell,
     Pearl,
@@ -57,6 +58,7 @@ impl SymbolArt {
             "egg" => SymbolArt::Egg,
             "dragon" => SymbolArt::Dragon,
             "flame" => SymbolArt::Flame,
+            "anvil" => SymbolArt::Anvil,
             "shell" => SymbolArt::Shell,
             "pearl" => SymbolArt::Pearl,
             "starfish" => SymbolArt::Starfish,
@@ -245,6 +247,7 @@ pub fn paint<P: Painter>(
         SymbolArt::Egg => hoard::egg(&mut canvas, &shades, alpha),
         SymbolArt::Dragon => hoard::dragon(&mut canvas, &shades, alpha),
         SymbolArt::Flame => hoard::flame(&mut canvas, &shades, alpha),
+        SymbolArt::Anvil => hoard::anvil(&mut canvas, &shades, alpha),
         SymbolArt::Shell => tidepool::shell(&mut canvas, &shades, alpha),
         SymbolArt::Pearl => tidepool::pearl(&mut canvas, &shades, alpha),
         SymbolArt::Starfish => tidepool::starfish(&mut canvas, &shades, alpha),
