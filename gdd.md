@@ -2245,6 +2245,53 @@ The hint is fitted to the space before the button now.
 Seven tests hold the rules, because every exclusion above is a place where a
 future change could quietly switch the check off.
 
+### 5.48 One command (post-v1)
+
+Forty-seven systems have each added a check, and **every one of them found a real
+defect the first time it ran**. None of that is worth anything if running them
+depends on remembering they exist. This session has already skipped the
+million-spin RTP gate except when something looked wrong, and the last iteration
+took twelve capture invocations typed by hand.
+
+`verify.ps1` is the list made executable: format, lint and tests in both repos,
+the wasm build, then the audit matrix — six themes, three text sizes, the
+pseudolocale, three aspect ratios, and the per-screen collision and touch checks.
+`-Long` adds the million-spin RTP band and the 200,000-round conservation soak.
+Twelve gates in about fifty seconds; fourteen in about two minutes.
+
+The axes are varied **one at a time** rather than crossed. The full product is
+over a hundred runs of something that has never failed on two axes at once, and a
+gate nobody waits for is a gate nobody runs.
+
+**Writing it was three PowerShell traps and one real bug.** The function was named
+`Cargo`, and PowerShell resolves a function before an executable — so `& cargo`
+called *itself* and the first run died of call-stack overflow. A parameter named
+`$Args` shadows an automatic variable. And `$ErrorActionPreference = 'Stop'` turns
+anything a native command writes to stderr into a thrown exception **before the
+exit code is read**, so a clean clippy run reported as a failure. Cargo writes its
+progress to stderr.
+
+**Then the harness earned itself on its first complete run.** It checks the touch
+audit at 1000 logical pixels as well as 1280, which nothing had ever done — and
+found the expanded hit areas from §5.45 overlapping by **thousands of square
+pixels** on the narrower screen. The controls sit closer together there, and
+growing every one to forty-four made them ambiguous. *A press landing on the
+wrong control is worse than one landing on nothing* was the stated rule from the
+start, and it had only ever been checked at the design width.
+
+So growth is now bounded by the neighbours: each side expands at most halfway to
+whatever is beside it. A control with room takes the full standard; one in a
+tight row takes what is going and stays unambiguous. The limits come from the
+**previous** frame's controls, which is sound for the same reason the keyboard
+focus ring is (§5.27) — the set is stable while the same panels are open.
+
+Two consequences fell out of that, and both were the measurement rather than the
+game. The first frame of a scene has no neighbours, so its numbers describe a
+state the game is never in; the report waits until they are warm. And a control
+under an opaque overlay cannot be pressed, so it cannot be ambiguous with
+anything — the same occlusion rule §5.47 needed, which had been applied to
+collisions and not to targets.
+
 
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
@@ -2846,6 +2893,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
+| A gate that nobody remembers to run | `verify.ps1` runs all fourteen in one command (§5.48). Its first complete run found hit areas overlapping at a width nothing had ever been checked at. |
 | Text drawn straight through a button | Every string and control records its footprint and collisions are reported, with labels, strokes and occluded panels excluded (§5.47). Overflow and collision are different questions. |
 | Bars on every screen that is not 16:9 | The logical width follows the window between 4:3 and 21:9, with the height fixed and overlays centred per frame (§5.46). Extra width goes to the reels. |
 | A control that is dead on a phone | Mouse and touch became one `Pointer` at the single seam every control already passed through (§5.45), and hit areas grow to the 44px standard while the drawn size stays. |
@@ -2897,7 +2945,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus forty-two post-v1 systems
+## 15. Current State — v1 shipped, plus forty-three post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
@@ -2908,7 +2956,7 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) and a collision check (§5.47). The game is
+navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) and one command to run every gate (§5.48). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 

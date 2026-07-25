@@ -59,6 +59,7 @@ pub struct Nav {
 impl Nav {
     /// Read this frame's input. Call once, before anything draws.
     pub fn begin(&mut self) {
+        macroquad_toolkit::ui::begin_target_frame();
         self.seen = 0;
         self.step = 0;
         self.activate = false;
@@ -118,6 +119,8 @@ impl Nav {
         macroquad_toolkit::ui::note_target(&format!("{}x{}", rect.w, rect.h), rect);
         // And its footprint, so text drawn across it is caught (§5.47).
         macroquad_toolkit::ui::note_control(&format!("control {}x{}", rect.w, rect.h), rect);
+        // And for next frame’s growth limits (§5.48).
+        macroquad_toolkit::ui::note_neighbour(rect);
 
         let focused = self.engaged && slot == self.index;
         // Hit-tested against the grown area, drawn at the size it was given
@@ -134,6 +137,7 @@ impl Nav {
 
     /// Record what this frame contained. Call once, after everything has drawn.
     pub fn finish(&mut self) {
+        macroquad_toolkit::ui::end_frame_neighbours();
         if self.seen == 0 {
             self.index = 0;
             self.previous = 0;

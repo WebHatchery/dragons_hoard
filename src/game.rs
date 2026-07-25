@@ -334,8 +334,9 @@ impl Game {
         // panels redraw identically, and the recorder de-duplicates anyway.
         // Touch targets are their own audit and their own scenes (§5.45):
         // sizes want every panel, overlaps want one screen at a time.
+        let warm = macroquad_toolkit::ui::neighbours_warm();
         if let Some((width, worst)) =
-            macroquad_toolkit::ui::smallest_touchable_width(ui::logical_width())
+            macroquad_toolkit::ui::smallest_touchable_width(ui::logical_width()).filter(|_| warm)
         {
             println!(
                 "touch targets: need a {:.0}px-wide window; worst is {}",
@@ -350,7 +351,6 @@ impl Game {
                     a, b, area
                 );
             }
-            macroquad_toolkit::ui::end_target_audit();
         }
 
         if macroquad_toolkit::ui::auditing() {
