@@ -147,6 +147,13 @@ fn draw_bet_controls(
                     ctx.session.display_grid().ways(),
                     ceiling
                 ),
+                // A cluster cabinet has neither, and "Lines: 0" would read as a
+                // fault rather than as a different machine (§5.35).
+                _ if ctx.data.config.evaluation == crate::data::Evaluation::Cluster => format!(
+                    "{} cells   (groups of {}+ pay)",
+                    ctx.data.config.reel_count * ctx.data.config.row_count,
+                    crate::engine::cluster::MIN_CLUSTER
+                ),
                 _ => format!("Lines: {}   (all active)", ctx.data.paylines.len()),
             },
             ctx.data.total_bet(line_bet)

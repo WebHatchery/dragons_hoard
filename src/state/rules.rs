@@ -47,6 +47,8 @@ pub enum Topic {
     Lines,
     /// Any path from reel one (§5.14).
     Ways,
+    /// Connected groups anywhere on the grid (§5.35).
+    Clusters,
     /// Reels that change height every spin (§5.20).
     ShiftingReels,
     /// Winning symbols leave and the grid refills (§5.15).
@@ -79,6 +81,7 @@ impl Topic {
         topics.push(match data.config.evaluation {
             Evaluation::Lines => Topic::Lines,
             Evaluation::Ways => Topic::Ways,
+            Evaluation::Cluster => Topic::Clusters,
         });
         if data.config.reel_heights.is_some() {
             topics.push(Topic::ShiftingReels);
@@ -170,6 +173,19 @@ pub fn rules(data: &GameData) -> Vec<Rule> {
                  the line bet.",
                 data.paylines.len(),
                 data.config.bet_units.unwrap_or(data.paylines.len()),
+            ),
+        ),
+        Evaluation::Cluster => add(
+            Topic::Clusters,
+            "Clusters",
+            format!(
+                concat!(
+                    "There are no lines, and no reading across the reels. {} or more of the ",
+                    "same symbol touching each other — up, down, left or right, never ",
+                    "diagonally — pay as one group, anywhere on the grid. One big ",
+                    "group is worth far more than two small ones."
+                ),
+                crate::engine::cluster::MIN_CLUSTER,
             ),
         ),
         Evaluation::Ways => add(
@@ -391,7 +407,9 @@ fn free_spins_rule(data: &GameData) -> Option<Rule> {
 
     let table = awards
         .iter()
-        .map(|(count, spins)| format!("{} for {}", count, spins))
+        // Which number is which has to be unmistakable: "5 for 6, 6 for 10"
+        // reads as either, and both readings are plausible.
+        .map(|(count, spins)| format!("{} scatters award {}", count, spins))
         .collect::<Vec<_>>()
         .join(", ");
 
@@ -413,8 +431,8 @@ fn free_spins_rule(data: &GameData) -> Option<Rule> {
         topic: Topic::FreeSpins,
         title: "Free Spins".to_owned(),
         text: format!(
-            "Scatters award free spins — {} of them.{}{} A free spin costs nothing and is part of \
-             the round that bought it, at the same bet.",
+            "Free spins are awarded by the scatters: {}.{}{} A free spin costs \
+             nothing and is part of the round that bought it, at the same bet.",
             table, multiplier, retrigger,
         ),
     })
@@ -473,11 +491,14 @@ mod tests {
     fn a_cabinet_is_never_told_it_has_both_win_models() {
         for data in every_machine() {
             let topics = Topic::present(&data);
-            assert_ne!(
-                topics.contains(&Topic::Lines),
-                topics.contains(&Topic::Ways),
-                "{} claims both or neither win model",
-                data.machine.id
+            let models = [Topic::Lines, Topic::Ways, Topic::Clusters]
+                .iter()
+                .filter(|topic| topics.contains(topic))
+                .count();
+            assert_eq!(
+                models, 1,
+                "{} claims {} win models",
+                data.machine.id, models
             );
         }
     }
@@ -539,7 +560,7 @@ mod tests {
             };
             let trigger = data.freespins.trigger_count();
             assert!(
-                rule.text.contains(&format!("{} for", trigger)),
+                rule.text.contains(&format!("{} scatters award", trigger)),
                 "{} triggers at {} and the rule does not say so",
                 data.machine.id,
                 trigger

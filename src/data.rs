@@ -85,6 +85,9 @@ pub enum Evaluation {
     /// Any path — a symbol pays if it appears on every reel from the first, and
     /// the win is multiplied by how many paths there are (§5.14).
     Ways,
+    /// Connected groups, anywhere on the grid, ignoring the reels entirely
+    /// (§5.35).
+    Cluster,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -485,7 +488,11 @@ impl GameData {
         if reel_count == 0 || row_count == 0 {
             return Err("reel_count and row_count must both be positive".to_owned());
         }
-        if reel_count > MAX_RUN {
+        // A line or a ways win is a run across the reels, so it cannot be longer
+        // than the paytable. A cluster is a connected group and its size has
+        // nothing to do with the reel count (§5.35), which is why that cabinet
+        // can be six wide.
+        if self.config.evaluation != Evaluation::Cluster && reel_count > MAX_RUN {
             return Err(format!(
                 "reel_count {} exceeds the paytable maximum run of {}",
                 reel_count, MAX_RUN

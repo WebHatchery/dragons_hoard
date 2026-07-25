@@ -78,6 +78,8 @@ pub fn win(data: &GameData, win: &Win) -> String {
         ),
         WinSource::Ways(1) => format!("{} ×{}", name, win.count),
         WinSource::Ways(ways) => format!("{} ×{} across {} ways", name, win.count, ways),
+        // The count is the cluster, so repeating it would read as "×8 of 8".
+        WinSource::Cluster(size) => format!("{} cluster of {}", name, size),
     }
 }
 
@@ -103,7 +105,9 @@ pub fn wins(data: &GameData, outcome: &SpinOutcome) -> String {
             .unwrap_or("Scatter");
         parts.push(format!("{} ×{}", scatter, outcome.scatter_count));
     }
-    parts.join("   ")
+    // A visible separator, not spaces: "cluster of 6 Gold Coins cluster of 6"
+    // runs together into one sentence that means nothing (§5.35).
+    parts.join("   ·   ")
 }
 
 /// The symbols a refining feature has burned off the strips (§5.21).

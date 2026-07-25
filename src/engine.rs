@@ -2,6 +2,7 @@
 //! data it needs and returns a result rather than mutating session state.
 
 pub mod cascade;
+pub mod cluster;
 pub mod evaluate;
 pub mod reels;
 pub mod sim;

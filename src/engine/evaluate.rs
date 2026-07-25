@@ -8,6 +8,7 @@
 pub mod ways;
 
 use crate::data::{Evaluation, GameData, MAX_RUN};
+use crate::engine::cluster;
 use crate::engine::reels::Grid;
 
 /// How a win was formed, and the part of it that differs between the two
@@ -19,6 +20,8 @@ pub enum WinSource {
     Line(usize),
     /// Number of distinct paths through the grid, all paid.
     Ways(usize),
+    /// Cells in the connected group that paid (§5.35).
+    Cluster(usize),
 }
 
 /// One paying combination.
@@ -100,6 +103,7 @@ pub fn evaluate(data: &GameData, grid: &Grid, ctx: &EvalContext) -> SpinOutcome 
     outcome.wins = match data.config.evaluation {
         Evaluation::Lines => line_wins(data, grid, ctx),
         Evaluation::Ways => ways::wins(data, grid, ctx.line_bet, ctx.win_multiplier),
+        Evaluation::Cluster => cluster::wins(data, grid, ctx.line_bet, ctx.win_multiplier),
     };
     outcome.win_credits = outcome.wins.iter().map(|win| win.credits).sum();
 

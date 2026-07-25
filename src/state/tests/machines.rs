@@ -123,6 +123,16 @@ fn a_ways_machine_declares_no_paylines_and_a_lines_machine_declares_some() {
                     None => assert_eq!(data.ways_count(), Some(243)),
                 }
             }
+            // A cluster cabinet (§5.35) has neither lines nor ways: a win is a
+            // connected group, so there is no path to count and nothing for
+            // `ways_count` to answer.
+            Evaluation::Cluster => {
+                assert!(data.paylines.is_empty(), "{} declared paylines", machine.id);
+                assert_eq!(data.ways_count(), None);
+                assert!(data.bet_units() > 0);
+                // Big enough for groups to be a shape rather than an accident.
+                assert!(data.config.reel_count * data.config.row_count >= 25);
+            }
         }
     }
 }

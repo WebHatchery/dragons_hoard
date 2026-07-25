@@ -1643,6 +1643,63 @@ than becoming wrong. The reason that input is tested at all is that `-i64::MIN`
 overflows: it is the one value that sails through every test written with small
 numbers and then panics in a release build.
 
+### 5.35 Cluster pays — a sixth cabinet (post-v1)
+
+The five cabinets differ in what a win *is*, but all five read the grid the same
+way: **reel by reel, left to right**. Lines walk a fixed path across it (§3),
+ways pay every route through it (§5.14), and a shifting cabinet changes how tall
+each column is (§5.20). All three inherit the same assumption from a physical
+machine — that a reel is a thing, and order along it matters.
+
+**Tidepool does not care.** A win is a connected group of the same symbol,
+orthogonally adjacent, anywhere on a 6×5 grid, paid on how many cells are in it.
+A blob in the corner spanning three columns is a win; the same eight symbols
+spread evenly are nothing. Reel one is not special and neither is direction. It
+is the first model where the **shape** of the grid matters more than its columns,
+which is why it belongs beside cascades (§5.15): removing a cluster drops symbols
+into a hole with edges.
+
+**Flood fill, and one rule that needs care.** Wilds join any cluster they touch,
+so a wild may belong to several at once — it is one cell that reads as a gem to
+the gems beside it and as a coin to the coins. But it must never *start* one, or
+a run of adjacent wilds would pay as a cluster of nothing. Ordinary cells are
+consumed, so no cell is ever paid twice: a cluster is a connected component, and
+connected components do not overlap. That is the fault the model invites and
+where the tests spend most of their effort.
+
+**Three existing systems refused to let this ship half-finished**, which is
+exactly what they were built for:
+
+- §5.29's closed `Topic` enum **failed the build** until the new model had prose
+  explaining it. The rules panel now describes clusters on the cabinet that has
+  them and nowhere else, with the minimum group size read from the engine
+  constant rather than retyped.
+- §5.34's `WinSource` match refused to compile until a cluster win had words. It
+  reads `Copper Coin cluster of 6`.
+- §5.33's conservation harness validated the new cabinet without being touched:
+  interactive **0.9005** against the sim's **0.8906**, hit rates **0.4576** and
+  **0.4563** — the same 0.0013 structural agreement the other five show.
+
+**Tuning it was the whole difficulty.** A 30-cell grid is twice a 5×3 one, and
+every count-based trigger doubles with it. The first honest measurement was
+**RTP 8.27**: thirteen thousand free spins and fourteen hundred Wrath rounds out
+of twenty thousand paid spins, because four scatters and four eggs are common on
+thirty cells and rare on fifteen. Scaling the triggers overcorrected to 0.26 with
+no features at all. The settled cabinet reaches **0.9630** over a million spins,
+with base 0.681, free spins 0.148 and the rest split across the shared features.
+
+Two things were learned in the tuning. The paytable had to be **written for
+clusters rather than inherited from a line machine** — a "5" rung that means
+"five in a row" is worth 2× the line bet and a five-cell cluster needs to be worth
+far more. And §5.17's lesson landed again: a 20,000-round smoke test read 0.952
+while the million-spin run said **0.9099**. The short sample was luck, and the
+long test is the only gate that counts.
+
+Three defects the capture caught and no test could: the cabinet name overflowed
+into the Buy button, the wager panel read `Lines: 0` on a machine that has none,
+and the win line ran its parts together — `cluster of 6 Gold Coins cluster of 6`
+— because three spaces are not a separator.
+
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
 - Winning lines: pulse highlight (`blink`/`pulse`), floating win amounts
@@ -2243,6 +2300,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
+| A new cabinet shipping unexplained | Adding a win model failed the build until it had prose and a name (§5.29, §5.34), and the soak harness validated its payouts untouched (§5.33). |
 | A code in place of a name | Symbol short codes are a rendering fallback and a test now keeps them out of prose (§5.34). They read as correct at every individual call site, which is why they lasted twenty-eight iterations. |
 | The sim measuring a game nobody plays | The interactive path is driven headless and held to conservation laws, then compared against the sim on the same seed (§5.33). Features resolve through different functions on the two paths. |
 | A summary that hides the shape | The session graph draws the band between bucket extremes, and the toolkit series decimates by extremes rather than averages (§5.32). Averaging would smooth away the spikes the graph exists to show. |
@@ -2281,7 +2339,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus twenty-nine post-v1 systems
+## 15. Current State — v1 shipped, plus thirty post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
@@ -2292,14 +2350,14 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) and the naming layer (§5.34). The game is
+navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) and a cluster-pays cabinet (§5.35). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-411 tests pass here and 205 in `macroquad-toolkit`; `cargo fmt --check`,
+422 tests pass here and 205 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
 release build are clean. Every `.rs` file is under the 800-line limit, `data.rs`
-(741) and `ui/reels.rs` (734) the largest — `state/spin.rs` dropped from 615 to
+(748) and `ui/reels.rs` (734) the largest — `state/spin.rs` dropped from 615 to
 298 when its motion moved to the toolkit.
 
 Measured RTP over 1,000,000 spins: Dragon's Hoard **0.9612** at **0.411** hit

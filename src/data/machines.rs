@@ -118,6 +118,11 @@ pub static MACHINES: &[MachineDef] = &[
         "avalanche",
         "Cascading 243 ways. Winners are cleared, the grid refills, and the multiplier climbs."
     ),
+    cascading_machine!(
+        "tidepool",
+        "tidepool",
+        "Cluster pays on a 6x5 grid. Groups that touch pay together, wherever they are."
+    ),
 ];
 
 /// Look a machine up by id, falling back to the first so a stale saved id can

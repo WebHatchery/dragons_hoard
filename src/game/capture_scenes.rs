@@ -225,6 +225,29 @@ impl Game {
                 self.session.celebrations.clear();
                 self.show_history = true;
             }
+            "cluster" => {
+                self.data =
+                    crate::data::GameData::load_machine(crate::data::machine_by_id("tidepool"))
+                        .unwrap();
+                self.session = self.load_machine_session();
+                self.session.balance = 1_000_000;
+                for _ in 0..40 {
+                    self.session.celebrations.clear();
+                    if self.session.spin(&self.data).is_err() {
+                        break;
+                    }
+                    if self
+                        .session
+                        .last_outcome
+                        .as_ref()
+                        .is_some_and(|outcome| outcome.wins.len() >= 2)
+                    {
+                        break;
+                    }
+                }
+                self.particles.clear();
+                self.session.celebrations.clear();
+            }
             "rules" => self.show_rules = true,
             "limits" => {
                 // One cap tightened and one loosened, so the panel shows both

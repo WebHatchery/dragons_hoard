@@ -1,0 +1,9 @@
+{
+  "awards": {
+    "5": 6,
+    "6": 10
+  },
+  "retrigger": true,
+  "multiplier": 1,
+  "expanding_wilds": true
+}
