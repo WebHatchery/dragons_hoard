@@ -102,6 +102,7 @@ pub enum UiAction {
     SelectMachine(usize),
     VolumeUp,
     VolumeDown,
+    CycleTextScale,
     CycleSpinSpeed,
     CycleAutospinLength,
     ToggleShake,

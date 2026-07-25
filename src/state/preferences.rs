@@ -55,6 +55,13 @@ impl SpinSpeed {
     }
 }
 
+/// The text sizes on offer.
+///
+/// A short list rather than a slider, and every one of them is a size the panels
+/// have actually been measured at (§5.37). A continuous control would let a
+/// player pick a size nobody ever laid the game out for.
+pub const TEXT_SCALES: [f32; 3] = [1.0, 1.15, 1.3];
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Preferences {
@@ -80,6 +87,11 @@ pub struct Preferences {
     pub limits: crate::state::limits::Limits,
     #[serde(default)]
     pub reality_check_minutes: Option<u32>,
+    /// Text size, as a percentage of the design size (§5.38). An index into
+    /// [`TEXT_SCALES`] rather than a raw float, so a saved value can never be a
+    /// size the game was never laid out for.
+    #[serde(default)]
+    pub text_scale: usize,
 }
 
 impl Default for Preferences {
@@ -97,6 +109,7 @@ impl Default for Preferences {
             particles: true,
             limits: crate::state::limits::Limits::default(),
             reality_check_minutes: None,
+            text_scale: 0,
         }
     }
 }
@@ -139,6 +152,17 @@ impl Preferences {
     /// Music level (§5.31). Separate from the effects because the two want
     /// different answers: the music plays constantly and the effects do not, so
     /// a player who wants one quiet rarely wants the other quiet too.
+    pub fn text_scale(&self) -> f32 {
+        TEXT_SCALES
+            .get(self.text_scale)
+            .copied()
+            .unwrap_or(TEXT_SCALES[0])
+    }
+
+    pub fn cycle_text_scale(&mut self) {
+        self.text_scale = (self.text_scale + 1) % TEXT_SCALES.len();
+    }
+
     pub fn music_volume(&self) -> f32 {
         self.shared.effective_music_volume()
     }
@@ -371,5 +395,61 @@ mod tests {
             config.autospin_choices[config.default_autospin_choice]
         );
         assert!(restored.particles);
+    }
+}
+#[cfg(test)]
+mod text_scale_tests {
+    use super::*;
+
+    #[test]
+    fn the_smallest_offered_size_is_the_design_size() {
+        // Every panel was laid out at 1.0, so it has to be the default and the
+        // floor. A player who has never touched the setting must see exactly
+        // what the layout was drawn for.
+        assert_eq!(TEXT_SCALES[0], 1.0);
+        assert_eq!(Preferences::default().text_scale(), 1.0);
+    }
+
+    #[test]
+    fn the_sizes_only_go_up() {
+        // Down is the toolkit's business, not a setting: text smaller than the
+        // design size fails the legibility floor §5.25 measures art against.
+        for pair in TEXT_SCALES.windows(2) {
+            assert!(pair[1] > pair[0], "{:?}", TEXT_SCALES);
+        }
+        assert!(TEXT_SCALES.iter().all(|scale| *scale >= 1.0));
+    }
+
+    #[test]
+    fn cycling_reaches_every_size_and_comes_back() {
+        let mut prefs = Preferences::default();
+        let mut seen = Vec::new();
+        for _ in 0..TEXT_SCALES.len() {
+            seen.push(prefs.text_scale());
+            prefs.cycle_text_scale();
+        }
+        for scale in TEXT_SCALES {
+            assert!(seen.contains(&scale), "{} unreachable", scale);
+        }
+        assert_eq!(prefs.text_scale(), TEXT_SCALES[0]);
+    }
+
+    #[test]
+    fn a_saved_index_past_the_end_falls_back_rather_than_panicking() {
+        // The list can shrink under a saved preference; an out-of-range index
+        // must not take the game down on the frame it loads.
+        let prefs = Preferences {
+            text_scale: 999,
+            ..Preferences::default()
+        };
+        assert_eq!(prefs.text_scale(), TEXT_SCALES[0]);
+    }
+
+    #[test]
+    fn no_offered_size_is_larger_than_the_panels_were_measured_at() {
+        // The layout audit (§5.37) is run at every value in this list before it
+        // ships. Widening the list without re-running it is the mistake this
+        // note exists to make loud.
+        assert!(TEXT_SCALES.iter().all(|scale| *scale <= 1.3));
     }
 }

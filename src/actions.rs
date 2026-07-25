@@ -148,6 +148,10 @@ pub fn apply(
             session.preferences.adjust_music_volume(-0.1);
             ActionOutcome::PreferenceChanged
         }
+        UiAction::CycleTextScale => {
+            session.preferences.cycle_text_scale();
+            ActionOutcome::PreferenceChanged
+        }
         UiAction::CycleSpinSpeed => {
             session.preferences.cycle_spin_speed();
             ActionOutcome::PreferenceChanged

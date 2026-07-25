@@ -10,8 +10,8 @@ use crate::ui::nav::Nav;
 use crate::ui::{palette, virtual_button, UiAction, LOGICAL_HEIGHT, LOGICAL_WIDTH};
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::{
-    draw_surface, draw_text_centered_in_box_ex, draw_ui_text_ex, ButtonTone, Region, SurfaceStyle,
-    TextStyle,
+    draw_surface, draw_text_block, draw_text_centered_in_box_ex, draw_ui_text_ex, ButtonTone,
+    Region, SurfaceStyle, TextStyle,
 };
 
 const ROW_HEIGHT: f32 = 52.0;
@@ -31,7 +31,7 @@ pub fn draw(
         Color::new(0.0, 0.0, 0.0, 0.78),
     );
 
-    let panel = Rect::new(340.0, 140.0, 600.0, 456.0);
+    let panel = Rect::new(340.0, 118.0, 600.0, 508.0);
     // Everything drawn below is measured against this panel (§5.37).
     let _region = Region::new(panel);
     draw_surface(
@@ -89,6 +89,23 @@ pub fn draw(
     );
     y += ROW_HEIGHT;
 
+    draw_row_label(
+        panel,
+        y,
+        "Text Size",
+        "every panel is measured at each size",
+    );
+    if cycle_button(
+        panel,
+        y,
+        &format!("{}%", (prefs.text_scale() * 100.0).round()),
+        mouse,
+        nav,
+    ) {
+        actions.push(UiAction::CycleTextScale);
+    }
+    y += ROW_HEIGHT;
+
     draw_row_label(panel, y, "Spin Speed", "how long the reels take to land");
     if cycle_button(panel, y, prefs.spin_speed.label(), mouse, nav) {
         actions.push(UiAction::CycleSpinSpeed);
@@ -138,11 +155,15 @@ pub fn draw(
     }
     y += 46.0;
 
-    draw_ui_text_ex(
+    draw_text_block(
         "Settings are kept separately from your save — a new game keeps them.",
         panel.x + 20.0,
-        y + 18.0,
-        TextStyle::new(15.0, palette::TEXT_DIM).params(),
+        y + 4.0,
+        panel.w - 40.0,
+        38.0,
+        15.0,
+        3.0,
+        palette::TEXT_DIM,
     );
 }
 

@@ -182,6 +182,7 @@ impl Game {
                 self.sound.set_volume(self.session.preferences.sfx_volume());
                 self.music
                     .set_volume(self.session.preferences.music_volume());
+                macroquad_toolkit::ui::set_ui_text_scale(self.session.preferences.text_scale());
                 self.sound.play(Sfx::Click);
                 if !self.session.preferences.particles {
                     self.particles.clear();

@@ -18,8 +18,8 @@ use crate::ui::nav::Nav;
 use crate::ui::{palette, virtual_button, UiAction, LOGICAL_HEIGHT, LOGICAL_WIDTH};
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::{
-    draw_surface, draw_text_right, draw_ui_text_ex, ButtonTone, RectExt, Region, SurfaceStyle,
-    TextStyle,
+    draw_surface, draw_text_block, draw_text_right, draw_ui_text_ex, ButtonTone, RectExt, Region,
+    SurfaceStyle, TextStyle,
 };
 
 const ROW_HEIGHT: f32 = 128.0;
@@ -142,11 +142,15 @@ pub fn draw(
         y += ROW_HEIGHT;
     }
 
-    draw_ui_text_ex(
-        "Prices come from what each feature actually pays. The figures below them are measured the same way.",
+    draw_text_block(
+        "Prices come from what each feature actually pays. The figures below them are measured the          same way.",
         panel.x + 20.0,
-        panel.bottom() - 46.0,
-        TextStyle::new(14.0, palette::TEXT_DIM).params(),
+        panel.bottom() - 62.0,
+        panel.w - 40.0,
+        38.0,
+        14.0,
+        3.0,
+        palette::TEXT_DIM,
     );
 
     if virtual_button(

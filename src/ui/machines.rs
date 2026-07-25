@@ -70,11 +70,18 @@ pub fn draw(
         draw_row(data, profiles, machine, row, mouse, actions, nav);
     }
 
-    draw_ui_text_ex(
-        "Each machine keeps its own balance, hoard and jackpots. Figures are measured live over 20,000 spins, not quoted.",
+    // Wrapped rather than set on one line: at 130% text it ran 234px past the
+    // panel (§5.38). A footnote is exactly the kind of long, low-priority prose
+    // that should reflow instead of insisting on its width.
+    draw_text_block(
+        "Each machine keeps its own balance, hoard and jackpots. Figures are measured live over          20,000 spins, not quoted.",
         panel.x + 20.0,
-        panel.bottom() - 20.0,
-        TextStyle::new(15.0, palette::TEXT_DIM).params(),
+        panel.bottom() - 44.0,
+        panel.w - 40.0,
+        38.0,
+        15.0,
+        3.0,
+        palette::TEXT_DIM,
     );
 }
 

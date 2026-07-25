@@ -133,6 +133,10 @@ impl Game {
         sound.set_volume(session.preferences.sfx_volume());
         let mut music = music;
         music.set_volume(session.preferences.music_volume());
+        // Text size (§5.38). Set once at boot and again whenever it changes;
+        // the toolkit applies it to drawing and measurement together, so the
+        // layout audit measures what the player actually sees.
+        macroquad_toolkit::ui::set_ui_text_scale(session.preferences.text_scale());
 
         let ledger = crate::state::ledger::Ledger::load(&data.config);
         let hints = crate::state::hints::HintBook::load(&data.config)

@@ -267,6 +267,13 @@ impl Game {
                 self.show_waveforms = true;
                 self.show_vision = true;
                 self.reality_check = true;
+                // DRAGONS_HOARD_TEXT_SCALE lets the audit run at every size the
+                // settings panel offers (§5.38) without a scene per size.
+                if let Ok(scale) = std::env::var("DRAGONS_HOARD_TEXT_SCALE") {
+                    if let Ok(scale) = scale.parse::<f32>() {
+                        macroquad_toolkit::ui::set_ui_text_scale(scale);
+                    }
+                }
                 macroquad_toolkit::ui::begin_audit();
             }
             "rules" => self.show_rules = true,

@@ -1798,6 +1798,50 @@ The audit covers the fifteen bounded regions: every overlay, the header, the
 footer and the wager panel. The gamble, the Vault Pick board and the respin round
 draw from session state rather than a flag and are not yet in the scene.
 
+### 5.38 Text size — the accessibility leg that was missing (post-v1)
+
+The accessibility work so far covers colour (§5.24, §5.25), motor (§5.27),
+cognitive (§5.28, §5.29) and harm reduction (§5.30). **Visual acuity was the one
+leg with nothing under it** — the game drew at one size and offered no way to make
+it bigger.
+
+The mechanism turned out to already exist and be unused, exactly as
+`music_volume` was before §5.31: the toolkit has `set_ui_text_scale`, and
+`TextStyle::params()` runs every size through it, so **every draw in the game
+already honoured a scale nobody was setting**. Wiring the preference was a
+morning's work.
+
+**The reason this could not be done before §5.37 is the whole point.** Making text
+bigger inside a layout of fixed rectangles breaks things, and it breaks them
+invisibly — a sentence is simply cut off. Guessing which panels would suffer, at
+which size, across fifteen overlays, is not a job anyone does well. With the
+layout audit it is a list:
+
+```
+=== scale 1.15 ===
+layout audit: 94px past the edge — "Each machine keeps its own balance, hoard..."
+=== scale 1.30 ===
+layout audit: 234px past the edge — "Each machine keeps its own balance, hoard..."
+layout audit: 7px past the edge — "Settings are kept separately from your save..."
+layout audit: 26px past the edge — "Prices come from what each feature actually pays..."
+```
+
+Three findings, all of them the same mistake: a long footnote set as **one
+unwrapped line** rather than a wrapping block. At the design size each fitted by
+a comfortable margin, which is why none had ever been noticed. All three are
+`draw_text_block` now and reflow instead of insisting on their width — which is
+what a low-priority footnote should have done from the start.
+
+The audit runs at every offered size through `DRAGONS_HOARD_TEXT_SCALE`, so
+adding a size to the list means re-running it rather than hoping.
+
+**Three sizes, not a slider.** 100%, 115% and 130%, and every one is a size the
+panels have actually been measured at. A continuous control would let a player
+pick a size nobody ever laid the game out for, and the failure would be silent.
+The list only goes **up**: the design size is the floor, because anything smaller
+fails the legibility standard §5.25 holds the art to, and it is the default, so a
+player who never opens settings sees exactly what was drawn for them.
+
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
 - Winning lines: pulse highlight (`blink`/`pulse`), floating win amounts
@@ -2398,6 +2442,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
+| Making text bigger silently breaking panels | The layout audit runs at every offered size, so a text-size setting is a checklist rather than a guess (§5.38). It found three unwrapped footnotes at 130%. |
 | Text that runs past its panel | A `Region` guard bounds each panel and every text draw inside reports what did not fit, measured with the real font in the capture harness (§5.37). Four such defects shipped and were caught by eye. |
 | A test scoped to one machine | The art baseline guard read only the first cabinet, so nine new shapes slipped past the check written to catch them (§5.36). Every art gate walks all six now. |
 | A new cabinet shipping unexplained | Adding a win model failed the build until it had prose and a name (§5.29, §5.34), and the soak harness validated its payouts untouched (§5.33). |
@@ -2439,7 +2484,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus thirty-two post-v1 systems
+## 15. Current State — v1 shipped, plus thirty-three post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
@@ -2450,11 +2495,11 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) and a layout audit (§5.37). The game is
+navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) and a text-size setting (§5.38). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-422 tests pass here and 216 in `macroquad-toolkit`; `cargo fmt --check`,
+427 tests pass here and 216 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
 release build are clean. Every `.rs` file is under the 800-line limit, `data.rs`
 (748) and `ui/reels.rs` (734) the largest — `state/spin.rs` dropped from 615 to
