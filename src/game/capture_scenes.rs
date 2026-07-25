@@ -16,7 +16,8 @@ impl Game {
     /// ahead, then hands over to the normal loop.
     ///
     /// Scenes: `idle`, `spin` (reels mid-flight), `win`, `freespins`,
-    /// `paytable`, `settings`, `feature_card`, `hatch`, `autospin`, `anticipation`.
+    /// `paytable`, `settings`, `feature_card`, `hatch`, `autospin`, `anticipation`,
+    /// `wrath`.
     pub fn begin_capture_scene(&mut self, scene: &str) {
         // A fixed seed keeps every capture reproducible run to run.
         self.session = GameSession::new(&self.data, 0xD2A6_0F1E);
@@ -78,9 +79,39 @@ impl Game {
                 self.session = GameSession::new(&self.data, 0xD2A6_0F1E);
                 self.fast_forward_to(|session| session.last_win > 0);
             }
+            "wrath" => self.hold_a_wrath_round(),
             "settings" => self.show_settings = true,
             "anticipation" => self.hold_a_near_miss(),
             _ => {}
+        }
+    }
+
+    /// Stop on an open Dragon's Wrath board, part-way through (§5.12).
+    ///
+    /// The trigger is roughly one spin in two thousand, so this searches rather
+    /// than waits, then takes a few respins so the capture shows a board in play
+    /// instead of the five eggs it opened with.
+    fn hold_a_wrath_round(&mut self) {
+        for _ in 0..200_000 {
+            self.session.balance = self.data.config.starting_balance;
+            self.session.celebrations.clear();
+            if self.session.spin_leaving_bonus(&self.data).is_err() {
+                break;
+            }
+            // The hoard can fill on the same grid; resolve it so the respin board
+            // is what the capture is actually of.
+            self.session.auto_play_bonus(&self.data);
+
+            if self.session.holdspin.is_some() {
+                self.session.celebrations.clear();
+                for _ in 0..3 {
+                    if self.session.holdspin.is_none() {
+                        break;
+                    }
+                    self.session.update_spin(&self.data, 2.0);
+                }
+                return;
+            }
         }
     }
 
@@ -156,6 +187,13 @@ impl Game {
                 .observe(self.data.machine_id(), &resolution, self.session.balance);
 
             if reached(&self.session) {
+                return;
+            }
+
+            // A Dragon's Wrath round is not waiting on anyone, so it is resolved
+            // rather than left open — without this a fast-forward stalls the
+            // moment a clutch of eggs lands.
+            if self.session.auto_play_holdspin(&self.data).is_some() && reached(&self.session) {
                 return;
             }
 

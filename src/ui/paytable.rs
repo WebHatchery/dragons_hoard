@@ -1,6 +1,6 @@
 //! The paytable overlay: what every symbol pays, and the rules in prose.
 
-use crate::state::{bonus, jackpot};
+use crate::state::{bonus, holdspin, jackpot};
 use crate::ui::{
     palette, symbols, virtual_button, UiAction, UiContext, LOGICAL_HEIGHT, LOGICAL_WIDTH,
 };
@@ -19,7 +19,10 @@ pub fn draw(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>) {
         Color::new(0.0, 0.0, 0.0, 0.72),
     );
 
-    let rect = Rect::new(180.0, 70.0, 920.0, 580.0);
+    // Tall enough for four paragraphs of rules under nine symbol rows. The
+    // Dragon's Wrath note (§5.12) overflowed the old 580 and spilled onto the
+    // footer behind the overlay.
+    let rect = Rect::new(180.0, 44.0, 920.0, 632.0);
     draw_surface(
         rect,
         &SurfaceStyle::new(palette::STONE)
@@ -89,17 +92,23 @@ pub fn draw(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>) {
         &format!(
             "Wins pay left to right from reel 1 on all 20 lines. The Dragon is wild and pays the best reading of a line. Dragon Fire scatters pay anywhere and 3+ award free spins with expanding wilds.\n\
              Progressives: {}% of every stake feeds the four pots, which pay at random on any paid spin. Bigger stakes win them proportionally more often, so the return per credit is the same at every bet — worth {:.1}% of all play.
-             The Vault Pick: filling the hoard deals {} chests. Keep picking until {} come up empty; each prize is a share of the hoard, and a board is worth about {:.0}% of it.",
+             The Vault Pick: filling the hoard deals {} chests. Keep picking until {} come up empty; each prize is a share of the hoard, and a board is worth about {:.0}% of it.
+             The Dragon's Wrath: {} dragon eggs on one grid lock as coins worth {:.1}x total bet on average and grant {} respins. Every coin that lands restores them in full; fill all {} cells for {}x total bet on top.",
             ctx.data.jackpots.contribution_permille as f32 / 10.0,
             jackpot::expected_rtp(&ctx.data.jackpots) * 100.0,
             ctx.data.bonus.board_size,
             ctx.data.bonus.blanks,
             bonus::expected_permille(&ctx.data.bonus) / 10.0,
+            ctx.data.holdspin.trigger_eggs,
+            holdspin::mean_coin_multiple(&ctx.data.holdspin),
+            ctx.data.holdspin.respins,
+            ctx.data.config.reel_count * ctx.data.config.row_count,
+            ctx.data.holdspin.full_board_multiple,
         ),
         rect.x + 20.0,
         y + 6.0,
         rect.w - 40.0,
-        92.0,
+        126.0,
         15.0,
         4.0,
         palette::TEXT_DIM,

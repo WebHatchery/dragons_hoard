@@ -27,17 +27,20 @@ pub enum Sfx {
     WinBig,
     Scatter,
     Hatch,
+    /// A coin locking into a Dragon's Wrath cell (§5.12).
+    CoinLock,
     Click,
 }
 
 impl Sfx {
-    pub const ALL: [Sfx; 7] = [
+    pub const ALL: [Sfx; 8] = [
         Sfx::SpinStart,
         Sfx::ReelStop,
         Sfx::WinSmall,
         Sfx::WinBig,
         Sfx::Scatter,
         Sfx::Hatch,
+        Sfx::CoinLock,
         Sfx::Click,
     ];
 }
@@ -239,6 +242,20 @@ fn voices_for(sfx: Sfx) -> Vec<Voice> {
             Voice::tone(0.0, 0.45, 2000.0, 0.16)
                 .wave(Wave::Noise)
                 .glide(400.0),
+        ],
+        // Metal on stone: a bright strike that rings briefly. Deliberately
+        // short — in a full round this fires up to fifteen times in a second,
+        // so anything with a tail would smear into a wash.
+        Sfx::CoinLock => vec![
+            Voice::tone(0.0, 0.10, 1568.0, 0.34)
+                .wave(Wave::Triangle)
+                .attack(0.005),
+            Voice::tone(0.0, 0.16, 2349.0, 0.18)
+                .wave(Wave::Triangle)
+                .attack(0.005),
+            Voice::tone(0.0, 0.03, 3200.0, 0.14)
+                .wave(Wave::Noise)
+                .attack(0.005),
         ],
         // A soft blip for buttons and bet changes.
         Sfx::Click => vec![Voice::tone(0.0, 0.05, 1200.0, 0.35)

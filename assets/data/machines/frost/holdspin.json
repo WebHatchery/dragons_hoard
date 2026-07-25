@@ -1,0 +1,17 @@
+{
+  "trigger_eggs": 4,
+  "respins": 3,
+  "coin_chance_permille": 48,
+  "coin_values": [
+    { "multiple": 1, "weight": 340 },
+    { "multiple": 2, "weight": 250 },
+    { "multiple": 3, "weight": 160 },
+    { "multiple": 5, "weight": 110 },
+    { "multiple": 8, "weight": 70 },
+    { "multiple": 12, "weight": 40 },
+    { "multiple": 20, "weight": 20 },
+    { "multiple": 50, "weight": 8 },
+    { "multiple": 100, "weight": 2 }
+  ],
+  "full_board_multiple": 250
+}

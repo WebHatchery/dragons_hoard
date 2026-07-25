@@ -17,6 +17,11 @@ pub struct SessionStats {
     pub free_spins_played: u64,
     #[serde(default)]
     pub jackpots: u32,
+    /// Dragon's Wrath rounds played. `default` so a save written before the
+    /// feature existed still loads (§5.9's rule: adding content must never
+    /// strand a player).
+    #[serde(default)]
+    pub wrath_rounds: u32,
 }
 
 /// What lands on disk. Deliberately excludes the grid and any in-flight spin or

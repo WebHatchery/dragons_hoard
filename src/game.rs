@@ -196,7 +196,48 @@ impl Game {
             SpinEvent::PayoutFinished => self.autosave(),
             SpinEvent::AutoSpinReady => self.events.push(UiAction::Spin),
             SpinEvent::CelebrationOpened(kind) => self.celebrate(&kind),
+            SpinEvent::HoldSpinRespun => self.report_respin(),
+            // The round credits itself; what is left is the noise it makes and
+            // a line in the log, since the card only shows the headline figure.
+            SpinEvent::HoldSpinFinished(outcome) => {
+                self.add_trauma(0.6);
+                self.sound.play(Sfx::CoinLock);
+                self.notifications.info(format!(
+                    "The Dragon's Wrath — {} coins over {} respins for {} credits{}",
+                    outcome.coins,
+                    outcome.respins_used,
+                    outcome.credits,
+                    if outcome.full_board {
+                        ", the full board"
+                    } else {
+                        ""
+                    }
+                ));
+            }
         }
+    }
+
+    /// One respin landed. Any coins that locked get a thud and a puff; a dry
+    /// respin gets the quieter reel-stop tick, so the two are told apart by ear.
+    fn report_respin(&mut self) {
+        let locked = self
+            .session
+            .holdspin
+            .as_ref()
+            .map(|round| {
+                (0..round.cell_count())
+                    .filter(|i| round.just_locked(*i))
+                    .count()
+            })
+            .unwrap_or(0);
+
+        if locked == 0 {
+            self.sound.play_at(Sfx::ReelStop, 0.6);
+            return;
+        }
+        self.add_trauma(0.1 + 0.06 * locked as f32);
+        self.sound
+            .play_at(Sfx::CoinLock, 0.9 + 0.05 * locked as f32);
     }
 
     /// Screen shake, unless the player turned it off. Motion sensitivity is a
@@ -325,6 +366,15 @@ impl Game {
                 self.add_trauma(0.9);
                 self.sound.play(Sfx::Hatch);
                 self.spawn_hatch_burst();
+            }
+            // A full board is the top of the feature and is dressed like it.
+            CelebrationKind::Wrath { full_board, .. } => {
+                self.add_trauma(if *full_board { 1.0 } else { 0.8 });
+                self.sound.play(Sfx::Hatch);
+                self.spawn_hatch_burst();
+                if *full_board {
+                    self.spawn_hatch_burst();
+                }
             }
             CelebrationKind::FreeSpinsEntry { .. } => {
                 self.add_trauma(0.7);

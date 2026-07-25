@@ -4,7 +4,9 @@ pub mod achievements;
 pub mod autospin;
 pub mod bonus;
 pub mod celebration;
+pub mod features;
 pub mod hoard;
+pub mod holdspin;
 pub mod jackpot;
 pub mod preferences;
 pub mod save;
@@ -13,8 +15,9 @@ pub mod spin;
 use crate::data::GameData;
 use crate::engine::{self, Grid, SpinMode, SpinOutcome, SpinResult};
 use autospin::{AutospinState, AutospinStop};
-use bonus::{BonusOutcome, BonusRound};
+use bonus::BonusRound;
 use celebration::{CelebrationKind, CelebrationQueue};
+use holdspin::HoldSpinRound;
 use jackpot::{JackpotState, JackpotWin};
 use macroquad_toolkit::rng::SeededRng;
 use macroquad_toolkit::timing::Timer;
@@ -27,6 +30,13 @@ pub use save::{migrate_save_value, SaveData, SessionStats};
 
 /// Beat between automatic spins, free or autospun.
 const AUTO_SPIN_PAUSE: f32 = 0.5;
+/// Beat between respins in an open Dragon's Wrath round. Slower than a spin's
+/// auto-pause on purpose: each respin is its own little reveal, and running them
+/// at auto-spin speed would blur the feature into one event.
+const HOLD_SPIN_BEAT: f32 = 0.75;
+/// A longer pause before the first respin, so the locked eggs are read as coins
+/// before anything moves.
+const HOLD_SPIN_OPEN_PAUSE: f32 = 1.1;
 
 /// Active free-spin feature. `line_bet` is frozen at the triggering bet.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -49,6 +59,10 @@ pub struct SpinResolution {
     pub hatch_credits: i64,
     /// A progressive that landed on this spin. Independent of the reels.
     pub jackpot: Option<JackpotWin>,
+    /// The Dragon's Wrath round this spin opened, once it has been played out
+    /// (§5.12). Zero while a round is still on screen, for the same reason
+    /// `hatch_credits` is.
+    pub wrath_credits: i64,
 }
 
 impl SpinResolution {
@@ -57,7 +71,7 @@ impl SpinResolution {
     }
 
     pub fn total_credits(&self) -> i64 {
-        self.spin_credits + self.hatch_credits + self.jackpot_credits()
+        self.spin_credits + self.hatch_credits + self.jackpot_credits() + self.wrath_credits
     }
 
     pub fn outcome(&self) -> &SpinOutcome {
@@ -88,6 +102,8 @@ struct SpinHighlights {
     was_free_spin: bool,
     /// The hoard filled and dealt a board; the run must stop for it.
     opened_bonus: bool,
+    /// A clutch of eggs woke the dragon (§5.12).
+    opened_holdspin: bool,
 }
 
 /// A spin that has been paid for and decided but not yet revealed.
@@ -100,6 +116,22 @@ struct PendingSpin {
     result: SpinResult,
     was_free_spin: bool,
     line_bet: i64,
+}
+
+/// Flat cell indices, row-major over reels, where the hoard symbol landed.
+///
+/// Row-major by reel matches how the UI walks the grid, so a coin locks in the
+/// cell the egg was actually sitting in rather than a transposed one.
+fn egg_cells(data: &GameData, grid: &Grid) -> Vec<usize> {
+    let Some(hoard) = data.symbols.hoard() else {
+        return Vec::new();
+    };
+    let rows = grid.row_count();
+    (0..grid.reel_count())
+        .flat_map(|reel| (0..rows).map(move |row| (reel, row)))
+        .filter(|(reel, row)| grid.at(*reel, *row) == hoard)
+        .map(|(reel, row)| reel * rows + row)
+        .collect()
 }
 
 /// Scatters landing on each reel of a decided grid.
@@ -135,7 +167,11 @@ pub struct GameSession {
     pub celebrations: CelebrationQueue,
     /// An open Vault Pick. Holds the game exactly as a celebration card does —
     /// it is waiting on the player.
+    holdspin_beat: Timer,
     pub bonus: Option<BonusRound>,
+    /// An open Dragon's Wrath round (§5.12). Holds the game like a card does,
+    /// but advances on a beat rather than on a pick.
+    pub holdspin: Option<HoldSpinRound>,
     pub autospin: Option<AutospinState>,
     /// Player preferences. Deliberately *not* part of `SaveData` — volume and
     /// spin speed belong to the player, not to a save slot, so a New Game or a
@@ -164,7 +200,9 @@ impl GameSession {
             rng: SeededRng::new(seed),
             phase: SpinPhase::Idle,
             celebrations: CelebrationQueue::default(),
+            holdspin_beat: Timer::new(HOLD_SPIN_BEAT),
             bonus: None,
+            holdspin: None,
             autospin: None,
             preferences: Preferences::with_defaults(&data.config),
             reel_stops: vec![0; data.reels.len()],
@@ -191,7 +229,9 @@ impl GameSession {
             rng: save.rng,
             phase: SpinPhase::Idle,
             celebrations: CelebrationQueue::default(),
+            holdspin_beat: Timer::new(HOLD_SPIN_BEAT),
             bonus: None,
+            holdspin: None,
             autospin: None,
             preferences: Preferences::with_defaults(&data.config),
             reel_stops: vec![0; data.reels.len()],
@@ -228,38 +268,12 @@ impl GameSession {
     }
 
     /// Nothing in flight: no reels turning, no payout counting, no card showing,
-    /// no bonus board waiting on a pick.
+    /// no bonus board waiting on a pick and no respin round in flight.
     pub fn is_settled(&self) -> bool {
-        self.phase.is_idle() && !self.celebrations.is_active() && self.bonus.is_none()
-    }
-
-    /// Turn a chest over. Credits the balance and raises the Hatch card when
-    /// the round ends.
-    pub fn pick_bonus(&mut self, index: usize, data: &GameData) -> Option<BonusOutcome> {
-        let outcome = self.bonus.as_mut()?.pick(index)?;
-        self.finish_bonus(&outcome, data);
-        Some(outcome)
-    }
-
-    /// Play an open board out without a player — the headless spin path, the
-    /// sim and the capture harness.
-    pub fn auto_play_bonus(&mut self, data: &GameData) -> Option<BonusOutcome> {
-        let round = self.bonus.as_mut()?;
-        let outcome = bonus::auto_play(round);
-        self.finish_bonus(&outcome, data);
-        Some(outcome)
-    }
-
-    fn finish_bonus(&mut self, outcome: &BonusOutcome, data: &GameData) {
-        self.bonus = None;
-        self.balance += outcome.credits;
-        self.stats.total_won += outcome.credits;
-        self.stats.biggest_win = self.stats.biggest_win.max(outcome.credits);
-        self.last_win += outcome.credits;
-        self.celebrations.push(CelebrationKind::Hatch {
-            credits: outcome.credits,
-            eggs: data.config.hoard_capacity,
-        });
+        self.phase.is_idle()
+            && !self.celebrations.is_active()
+            && self.bonus.is_none()
+            && self.holdspin.is_none()
     }
 
     fn can_afford_spin(&self, data: &GameData) -> bool {
@@ -342,6 +356,11 @@ impl GameSession {
         if let Some(outcome) = self.auto_play_bonus(data) {
             resolution.hatch_credits += outcome.credits;
         }
+        // Likewise the respin round — without this the sim would measure a game
+        // that triggers the Dragon's Wrath and never pays it (§5.12).
+        if let Some(outcome) = self.auto_play_holdspin(data) {
+            resolution.wrath_credits += outcome.credits;
+        }
         Ok(resolution)
     }
 
@@ -400,6 +419,14 @@ impl GameSession {
         // game is waiting on the player, and the auto-chain must not run on
         // underneath it.
         if self.bonus.is_some() {
+            return events;
+        }
+        // A respin round holds the reels too, but unlike the pick board it is
+        // not waiting on the player — it advances itself on a beat.
+        if self.holdspin.is_some() {
+            if let Some(event) = self.tick_holdspin(data, dt) {
+                events.push(event);
+            }
             return events;
         }
 
@@ -516,6 +543,22 @@ impl GameSession {
         }
         let hatch_credits = 0;
 
+        // A clutch of eggs wakes the dragon (§5.12). Checked against the same
+        // egg count that fed the hoard, so one grid can do both — the eggs are
+        // banked *and* they open the round.
+        if result.outcome.egg_count >= data.holdspin.trigger_eggs {
+            let total_bet = data.total_bet(line_bet);
+            let seeds = egg_cells(data, &result.grid);
+            self.holdspin = Some(HoldSpinRound::new(
+                data.config.reel_count * data.config.row_count,
+                &seeds,
+                total_bet,
+                &data.holdspin,
+                &mut self.rng,
+            ));
+            self.holdspin_beat = Timer::new(HOLD_SPIN_OPEN_PAUSE * self.preferences.time_scale());
+        }
+
         // Only a paid spin rolls for a progressive: a free spin staked nothing,
         // so it fed nothing into the pots and cannot draw from them.
         let jackpot = if was_free_spin {
@@ -554,6 +597,7 @@ impl GameSession {
             jackpot: jackpot.clone(),
             was_free_spin,
             opened_bonus: self.bonus.is_some(),
+            opened_holdspin: self.holdspin.is_some(),
         };
         self.queue_celebrations(data, &highlights);
         self.check_autospin(data, &highlights);
@@ -564,6 +608,7 @@ impl GameSession {
             spin_credits,
             hatch_credits,
             jackpot,
+            wrath_credits: 0,
         }
     }
 
@@ -617,6 +662,11 @@ impl GameSession {
             Some(AutospinStop::JackpotWon)
         } else if highlights.awarded > 0 {
             Some(AutospinStop::FeatureTriggered)
+        } else if highlights.opened_holdspin {
+            // The respin round holds the game on its own, but the run has to be
+            // torn down too — otherwise it resumes the moment the round ends and
+            // the player never gets the board back.
+            Some(AutospinStop::WrathWoken)
         } else if highlights.opened_bonus {
             Some(AutospinStop::Hatched)
         } else if highlights.credited >= self.big_win_threshold(data) {

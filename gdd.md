@@ -412,6 +412,69 @@ cannot be photographed by waiting. The `anticipation` capture scene searches for
 a spin that raises it and freezes at the moment the held reels are the only ones
 still turning.
 
+### 5.12 The Dragon's Wrath — hold and spin (post-v1)
+
+The one modern slot mechanic the game was missing. Four or five Dragon Eggs on
+one grid wake the dragon: those eggs lock in place as coins, each stamped with a
+credit value, and the player gets three respins. Every respin rolls only the
+cells still empty, and **any coin that lands restores the allowance in full** —
+so the round is not three spins, it is "three spins without a coin". Fill all
+fifteen cells and a large flat bonus pays on top.
+
+**The trigger reuses the egg rather than adding a coin symbol.** Hold-and-spin
+normally wants a dedicated symbol on the strips, and the strips *are* the RTP
+(§4) — adding one means re-cutting all five and retuning everything downstream.
+The egg is already on the strips, already the game's collectible (§5.2), and
+already rare in quantity. It now feeds the hoard *and* opens the round from the
+same grid.
+
+**It adds EV, and the paytable pays for it.** This is the jackpot bargain (§5.6),
+not the Vault Pick one (§5.10): a genuinely new prize, measured by the sim and
+absorbed by the JSON. The first tuning pass shows why the sim is not optional —
+at a four-egg trigger the feature was worth **0.367 of turnover** and took RTP to
+**1.32**. Raising the trigger, trimming the coin chance and scaling both
+paytables ~2–3% down landed it back at 0.9612 and 0.9450.
+
+**The config had to become per-machine, and the sim is what proved it.** It
+started shared like `bonus.json` — every value is a multiple of total bet, so it
+looked machine-independent. It is not: the *trigger* reads the strips, and Frost
+Wyrm's strips carry fewer eggs. At a five-egg trigger Frost fired the feature
+**23 times in a million spins** — a player would never once have seen it. The
+Vault Pick can be shared precisely because it is triggered by something already
+normalised (a full hoard); anything triggered off the reels cannot be.
+
+| | Dragon's Hoard | Frost Wyrm |
+|---|---|---|
+| Trigger | 5 eggs | 4 eggs |
+| Rounds per 1M spins | 548 (1 in 1,825) | 942 (1 in 1,062) |
+| Share of turnover | 0.0161 | 0.0250 |
+
+**Awarding the Grand on a full board was considered and rejected.** It is the
+iconic version of the mechanic, and the game already has progressives. But the
+jackpot layer's return is asserted against a closed form assuming one bet-fair
+trigger per credit wagered (§5.6); a second route into the same pot would
+invalidate that check. Losing a test that can catch a contribution bug costs more
+than the moment is worth, so the full board pays a configured multiple of total
+bet instead.
+
+**The round advances itself.** Unlike the Vault Pick there is nothing to click,
+so it runs on a beat (`HOLD_SPIN_BEAT`) rather than waiting on input, and
+`ui/holdspin.rs` returns no `UiAction` at all. It still *holds* the game exactly
+as a card or an open board does — `is_settled()` gained a fourth clause — and it
+tears down an autospin run rather than merely pausing it, or the run would
+resume the instant the round ended and take the board away.
+
+It renders **into the reel window itself** rather than as a second screen, so the
+coins sit in the cells their eggs landed in and the round visibly grew out of the
+spin. `state/features.rs` now holds the resolve-and-pay tail of both second-screen
+features side by side, which is where the shape they share is easiest to see.
+
+The feature has **no closed form** — the coin count is a Markov process with
+resets — so it is pinned by measurement instead: a 20,000-round test asserts the
+band (a round pays 20–80× total bet; the shipped table gives 32.7× over 8.1
+coins, filling 0.4% of the time) and a separate test checks the coin table's
+weighted mean, which *is* closed-form.
+
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
 - Winning lines: pulse highlight (`blink`/`pulse`), floating win amounts
@@ -779,6 +842,19 @@ and a Project Roost deployment record. Verified live — see §15.
   in hit frequency (a reskin fails), must not share a save slot (sharing one
   would silently overwrite a balance and hoard), must not share a symbol set,
   and an unknown machine id falls back to the first rather than failing.
+- **The Dragon's Wrath (`state/holdspin.rs`, `state/tests/holdspin.rs`):** the
+  triggering eggs open already locked; every locked coin holds a value from the
+  table; **a coin restores the full respin allowance** and a dry board runs out;
+  a full board pays its bonus on top; respinning a finished round is ignored;
+  auto-play terminates even on a hand-edited config that never runs dry; the same
+  seed replays the same round; a bigger stake pays proportionally more; the coin
+  table's weighted mean matches what rolling it produces; and a 20,000-round run
+  holds the feature to its designed 20–80× band. End to end: a clutch of eggs
+  opens a round covering the whole reel window, an open round holds the game and
+  refuses a spin without taking a stake, the round advances on its own beat and
+  credits exactly once, waking the dragon stops an autospin run, `spin()` resolves
+  its own round so the sim never stalls, and a round is deliberately not saved
+  while its counter is.
 - **The Vault Pick (`state/bonus.rs`, `state/tests/bonus.rs`):** the board holds
   exactly the configured blanks; **nothing is visible before it is picked** (the
   renderer only ever sees `revealed_cell`); a round ends on the last blank and
@@ -838,8 +914,9 @@ and a Project Roost deployment record. Verified live — see §15.
 | A second Spin press mid-spin taking a second stake | `begin_spin` refuses with `SpinBlocked::Busy` before touching the balance; covered by a test that asserts the balance is untouched. |
 | A feature firing unseen underneath its own auto-chain | A showing celebration card holds the reels, the payout and the auto-chain (§8.2.1); tested. Autospin also stops on every notable outcome. |
 | Autospin quietly draining the balance | It stops on features, hatches, big wins and an empty balance, each with its own message; the bet ladder is locked for the run. |
-| Files growing past 800 lines | Four splits so far: `state.rs` into siblings, `ui.rs`'s paytable into `ui/paytable.rs`, `state/tests.rs` (793) into `tests/{jackpots,preferences,machines}.rs`, and `game.rs` (779) into `game/capture_scenes.rs`. **`ui.rs` (643) is now the one to watch.** |
+| Files growing past 800 lines | Five splits so far: `state.rs` into siblings, `ui.rs`'s paytable into `ui/paytable.rs`, `state/tests.rs` (793) into `tests/{jackpots,preferences,machines}.rs`, `game.rs` (779) into `game/capture_scenes.rs`, and `state.rs` (812) into `state/features.rs`. **`state.rs` (742) is still the one to watch.** |
 | A presentation bug hiding behind uniform test data | Reels 2 and 4 landed twenty symbols from their stop for five iterations because every landing test used an even reel index (§5.11). Tests over an indexed family must sweep the whole family, not a representative member. |
+| A feature the second machine can never see | The Dragon's Wrath fired 23 times per million spins on Frost Wyrm under a shared config, because the trigger reads strips that differ per cabinet (§5.12). Anything triggered off the reels must be per-machine data and must be measured on **every** machine, not just the one that boots. |
 | A new machine shipping at the wrong RTP | The sim iterates `MACHINES`; a cabinet cannot be added without being measured (§5.8). |
 | Two machines sharing a save slot | Slots are `<machine>_<slot>`; a test asserts they are distinct. |
 | Jackpots exploitable by bet-switching | Odds are per credit wagered, so the trigger is bet-fair by construction (§5.6) and tested. The bet-ladder sim test excludes jackpots deliberately — they are too high-variance to compare over 20k spins — and their return is checked against its closed form instead. |
@@ -872,28 +949,30 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus six post-v1 systems
+## 15. Current State — v1 shipped, plus seven post-v1 systems
 
-**All five phases are done, every item in §14 is met**, and six systems have
+**All five phases are done, every item in §14 is met**, and seven systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
-machines (§5.8), achievements (§5.9), the Vault Pick (§5.10) and the reel-feel
-pass (§5.11). The game is
+machines (§5.8), achievements (§5.9), the Vault Pick (§5.10), the reel-feel pass
+(§5.11) and the Dragon's Wrath (§5.12). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-172 tests pass; `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`
+189 tests pass; `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`
 and the `wasm32-unknown-unknown` release build are clean. Every `.rs` file is
-under the 800-line limit; `game.rs` reached 779 and its capture-scene harness was
-split into `game/capture_scenes.rs`, leaving `ui.rs` (643) the largest.
+under the 800-line limit; `state.rs` reached 812 adding the Dragon's Wrath and
+its second-screen feature tail was split into `state/features.rs`, leaving it the
+largest at 742.
 
-Measured RTP over 1,000,000 spins: Dragon's Hoard **0.9591** at **0.411** hit
-frequency, Frost Wyrm **0.9475** at **0.258**.
+Measured RTP over 1,000,000 spins: Dragon's Hoard **0.9612** at **0.411** hit
+frequency, Frost Wyrm **0.9450** at **0.258**. Both paytables were scaled ~2–3%
+down to make room for the Dragon's Wrath (§5.12).
 
 Captures in `docs/verification/`: `ui_idle`, `ui_spin`, `ui_win`, `ui_freespins`,
 `ui_paytable`, `ui_settings`, `ui_machines`, `ui_frost`, `ui_achievements`,
 `ui_bonus`, `ui_feature_card`, `ui_hatch`, `ui_jackpot`, `ui_autospin`,
-`ui_anticipation`. The catalog card image at the project root is produced by the
-same harness. `ui_spin` is captured at 20 frames rather than 150 — at the default
+`ui_anticipation`, `ui_wrath`. The catalog card image at the project root is
+produced by the same harness. `ui_spin` is captured at 20 frames rather than 150 — at the default
 the spin has already finished, so the blur it is meant to show is not there.
 
 ### Verified, and not
@@ -902,8 +981,12 @@ Tested and seen: the maths, the spin lifecycle, the features, and every screen
 above — the art was reviewed from real captures and revised twice off them (the
 gems read as kites, the coin stack as a blob, the egg as a teardrop).
 
-Reviewed from captures again this iteration: the first motion-blur attempt
-bleached the reels to near-white, which no test would ever have caught.
+Reviewed from captures again this iteration: the Dragon's Wrath banner rendered
+its respin counter as tofu (a rotation arrow — macroquad's default font has no
+arrows, the same trap §7.1 records for emoji), and the paytable's fourth rules
+paragraph spilled out through the bottom of its panel. Before that, the first
+motion-blur attempt bleached the reels to near-white. None of the three is
+something a test would have caught.
 
 **Not verified: how the sound actually sounds.** The synthesis is covered by unit
 tests — well-formed header, correct rate and bit depth, audible peak, no clipping,
@@ -928,3 +1011,7 @@ accruing. That closes the gap this section previously listed.
   blur/bounce/anticipation work in `state/spin.rs` — none of it is specific to a
   slot machine beyond the anticipation trigger, and any game with a spinning or
   scrolling strip would want it.
+- **The `CoinLock` effect has never been heard either**, and it is the one that
+  most needs to be: in a full round it fires up to fifteen times inside a second,
+  so if it has any tail at all it will smear into a wash. It was written short on
+  that theory alone.

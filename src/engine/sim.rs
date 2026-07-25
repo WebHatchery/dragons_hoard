@@ -41,11 +41,13 @@ pub struct SimReport {
     pub free_spin_won: i64,
     pub hatch_won: i64,
     pub jackpot_won: i64,
+    pub wrath_won: i64,
     pub scatter_won: i64,
     /// Paid spins that returned anything at all.
     pub hits: u64,
     pub features_triggered: u64,
     pub hatches: u64,
+    pub wrath_rounds: u64,
     pub biggest_win: i64,
 }
 
@@ -88,7 +90,7 @@ impl SimReport {
 
     pub fn summary(&self) -> String {
         format!(
-            "spins {} (+{} free) | RTP {:.4} | hit {:.3} | base {:.4} free {:.4} hatch {:.4} jackpot {:.4} scatter {:.4} | features {} hatches {} | max win {}",
+            "spins {} (+{} free) | RTP {:.4} | hit {:.3} | base {:.4} free {:.4} hatch {:.4} jackpot {:.4} wrath {:.4} scatter {:.4} | features {} hatches {} wrath {} | max win {}",
             self.paid_spins,
             self.free_spins,
             self.rtp(),
@@ -97,9 +99,11 @@ impl SimReport {
             self.contribution(self.free_spin_won),
             self.contribution(self.hatch_won),
             self.contribution(self.jackpot_won),
+            self.contribution(self.wrath_won),
             self.contribution(self.scatter_won),
             self.features_triggered,
             self.hatches,
+            self.wrath_rounds,
             self.biggest_win,
         )
     }
@@ -144,6 +148,7 @@ fn accumulate(report: &mut SimReport, resolution: &crate::state::SpinResolution,
     report.biggest_win = report.biggest_win.max(credits);
     report.hatch_won += resolution.hatch_credits;
     report.jackpot_won += resolution.jackpot_credits();
+    report.wrath_won += resolution.wrath_credits;
     report.scatter_won += resolution.outcome().scatter_credits;
 
     if free {
@@ -155,6 +160,9 @@ fn accumulate(report: &mut SimReport, resolution: &crate::state::SpinResolution,
         }
     }
 
+    if resolution.wrath_credits > 0 {
+        report.wrath_rounds += 1;
+    }
     if resolution.hatch_credits > 0 {
         report.hatches += 1;
     }

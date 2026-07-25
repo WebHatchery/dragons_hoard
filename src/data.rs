@@ -35,6 +35,7 @@ pub struct MachineDef {
     paylines: &'static str,
     freespins: &'static str,
     jackpots: &'static str,
+    holdspin: &'static str,
 }
 
 macro_rules! machine {
@@ -52,6 +53,7 @@ macro_rules! machine {
             paylines: include_str!(concat!("../assets/data/machines/", $dir, "/paylines.json")),
             freespins: include_str!(concat!("../assets/data/machines/", $dir, "/freespins.json")),
             jackpots: include_str!(concat!("../assets/data/machines/", $dir, "/jackpots.json")),
+            holdspin: include_str!(concat!("../assets/data/machines/", $dir, "/holdspin.json")),
         }
     };
 }
@@ -281,6 +283,32 @@ pub struct BonusConfig {
     pub prizes_permille: Vec<i64>,
 }
 
+/// The Dragon's Wrath hold-and-spin round (§5.12).
+///
+/// Shared by both machines like `bonus.json`, because every value here is a
+/// multiple of *total bet* rather than a credit figure — the cabinet's own bet
+/// ladder already scales it.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HoldSpinConfig {
+    /// Eggs on one grid that wake the dragon.
+    pub trigger_eggs: usize,
+    /// Respins granted, and restored in full by every coin that lands.
+    pub respins: usize,
+    /// Per-cell chance a coin lands on a respin, in permille.
+    pub coin_chance_permille: usize,
+    pub coin_values: Vec<CoinValue>,
+    /// Paid on top when every cell fills.
+    pub full_board_multiple: i64,
+}
+
+/// One rung of the coin table: a payout in multiples of total bet, and how
+/// often it is drawn relative to the others.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CoinValue {
+    pub multiple: i64,
+    pub weight: u32,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Payline {
     pub id: u32,
@@ -333,6 +361,7 @@ pub struct GameData {
     pub freespins: FreeSpinsConfig,
     pub jackpots: Jackpots,
     pub bonus: BonusConfig,
+    pub holdspin: HoldSpinConfig,
     pub texture_manifest: Vec<TextureConfig>,
 }
 
@@ -356,6 +385,8 @@ impl GameData {
             load_embedded_json_labeled(&label("freespins"), machine.freespins)?;
         let jackpots: Jackpots = load_embedded_json_labeled(&label("jackpots"), machine.jackpots)?;
         let bonus: BonusConfig = load_embedded_json_labeled("bonus", BONUS_JSON)?;
+        let holdspin: HoldSpinConfig =
+            load_embedded_json_labeled(&label("holdspin"), machine.holdspin)?;
         let texture_manifest = load_embedded_json(TEXTURE_MANIFEST_JSON)?;
 
         let reels = resolve_strips(&symbols, &strips)?;
@@ -368,6 +399,7 @@ impl GameData {
             freespins,
             jackpots,
             bonus,
+            holdspin,
             texture_manifest,
         };
         data.validate()?;
@@ -476,6 +508,30 @@ impl GameData {
         }
         if self.bonus.blanks >= self.bonus.board_size {
             return Err("bonus blanks must leave room for at least one prize".to_owned());
+        }
+        if self.holdspin.coin_values.is_empty() {
+            return Err("holdspin.json declared no coin values".to_owned());
+        }
+        if self
+            .holdspin
+            .coin_values
+            .iter()
+            .all(|value| value.weight == 0)
+        {
+            return Err("holdspin coin values must carry some weight".to_owned());
+        }
+        if self.holdspin.respins == 0 {
+            return Err("a hold-and-spin round with no respins would end at once".to_owned());
+        }
+        // A trigger the grid cannot hold would make the feature unreachable, and
+        // nothing else would notice — the sim would simply measure a game
+        // without it.
+        let cells = self.config.reel_count * self.config.row_count;
+        if self.holdspin.trigger_eggs == 0 || self.holdspin.trigger_eggs > cells {
+            return Err(format!(
+                "holdspin trigger_eggs ({}) must fit on a {}-cell grid",
+                self.holdspin.trigger_eggs, cells
+            ));
         }
         Ok(())
     }

@@ -14,6 +14,8 @@ pub enum AutospinStop {
     Completed,
     FeatureTriggered,
     Hatched,
+    /// A clutch of eggs opened the Dragon's Wrath (§5.12).
+    WrathWoken,
     JackpotWon,
     BigWin,
     OutOfCredits,
@@ -26,6 +28,7 @@ impl AutospinStop {
             AutospinStop::Completed => "Autospin finished",
             AutospinStop::FeatureTriggered => "Autospin stopped — free spins!",
             AutospinStop::Hatched => "Autospin stopped — the hoard hatched",
+            AutospinStop::WrathWoken => "Autospin stopped — the dragon wakes",
             AutospinStop::JackpotWon => "Autospin stopped — jackpot!",
             AutospinStop::BigWin => "Autospin stopped — big win",
             AutospinStop::OutOfCredits => "Autospin stopped — out of credits",

@@ -348,6 +348,10 @@ pub enum SpinEvent {
     AutoSpinReady,
     /// A full-screen card just came up — time for its particles and shake.
     CelebrationOpened(super::celebration::CelebrationKind),
+    /// A respin landed in an open Dragon's Wrath round (§5.12).
+    HoldSpinRespun,
+    /// The round ended and has been credited.
+    HoldSpinFinished(super::holdspin::HoldSpinOutcome),
 }
 
 #[cfg(test)]

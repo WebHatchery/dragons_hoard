@@ -19,12 +19,34 @@ const FADE_TIME: f32 = 0.2;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CelebrationKind {
-    FreeSpinsEntry { spins: u32, scatters: usize },
-    FreeSpinsRetrigger { spins: u32 },
-    FreeSpinsSummary { spins: u32, won: i64 },
-    Hatch { credits: i64, eggs: u32 },
-    Jackpot { name: String, credits: i64 },
-    BigWin { credits: i64 },
+    FreeSpinsEntry {
+        spins: u32,
+        scatters: usize,
+    },
+    FreeSpinsRetrigger {
+        spins: u32,
+    },
+    FreeSpinsSummary {
+        spins: u32,
+        won: i64,
+    },
+    Hatch {
+        credits: i64,
+        eggs: u32,
+    },
+    Jackpot {
+        name: String,
+        credits: i64,
+    },
+    BigWin {
+        credits: i64,
+    },
+    /// The Dragon's Wrath respin round paid out (§5.12).
+    Wrath {
+        credits: i64,
+        coins: usize,
+        full_board: bool,
+    },
 }
 
 impl CelebrationKind {
@@ -36,6 +58,13 @@ impl CelebrationKind {
             CelebrationKind::Hatch { .. } => 2.8,
             CelebrationKind::Jackpot { .. } => 3.4,
             CelebrationKind::BigWin { .. } => 1.9,
+            CelebrationKind::Wrath { full_board, .. } => {
+                if *full_board {
+                    3.6
+                } else {
+                    2.8
+                }
+            }
         }
     }
 
@@ -47,6 +76,7 @@ impl CelebrationKind {
             CelebrationKind::Hatch { credits, .. } => format!("{} CREDITS", credits),
             CelebrationKind::Jackpot { credits, .. } => format!("{} CREDITS", credits),
             CelebrationKind::BigWin { credits } => format!("{} CREDITS", credits),
+            CelebrationKind::Wrath { credits, .. } => format!("{} CREDITS", credits),
         }
     }
 
@@ -58,6 +88,13 @@ impl CelebrationKind {
             CelebrationKind::Hatch { .. } => "THE HOARD HATCHES",
             CelebrationKind::Jackpot { .. } => "JACKPOT",
             CelebrationKind::BigWin { .. } => "BIG WIN",
+            CelebrationKind::Wrath { full_board, .. } => {
+                if *full_board {
+                    "THE HOARD IS YOURS"
+                } else {
+                    "THE DRAGON'S WRATH"
+                }
+            }
         }
     }
 
@@ -73,6 +110,15 @@ impl CelebrationKind {
             CelebrationKind::Hatch { eggs, .. } => format!("{} dragon eggs cashed in", eggs),
             CelebrationKind::Jackpot { name, .. } => format!("the {} progressive falls", name),
             CelebrationKind::BigWin { .. } => "The vault gives up its gold".to_owned(),
+            CelebrationKind::Wrath {
+                coins, full_board, ..
+            } => {
+                if *full_board {
+                    "every cell filled — the full board bonus".to_owned()
+                } else {
+                    format!("{} coins locked from the dragon's hoard", coins)
+                }
+            }
         }
     }
 }

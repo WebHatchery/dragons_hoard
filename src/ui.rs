@@ -3,6 +3,7 @@
 pub mod achievements;
 pub mod bonus;
 pub mod celebration;
+pub mod holdspin;
 pub mod machines;
 pub mod paytable;
 pub mod reels;
@@ -108,6 +109,11 @@ pub fn draw_game_ui(ctx: UiContext<'_>) -> Vec<UiAction> {
             mouse,
             &mut actions,
         );
+    }
+
+    // The respin board takes over the reel window while a round is open.
+    if let Some(round) = ctx.session.holdspin.as_ref() {
+        holdspin::draw(ctx.data, round, ctx.ui_time);
     }
 
     // The bonus board sits over the game but under a card, so the Hatch card
