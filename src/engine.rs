@@ -1,11 +1,13 @@
 //! Slot engine: strips → grid → outcome. Stateless; every entry point takes the
 //! data it needs and returns a result rather than mutating session state.
 
+pub mod cascade;
 pub mod evaluate;
 pub mod reels;
 #[cfg(test)]
 pub mod sim;
 
+pub use cascade::CascadeStep;
 pub use evaluate::{evaluate, expand_wilds, EvalContext, SpinOutcome};
 pub use reels::{grid_from_stops, pick_stops, resting_grid, Grid};
 
@@ -26,9 +28,24 @@ pub struct SpinResult {
     /// Per-reel strip stop index. The reel animation is handed these up front so
     /// it can decelerate onto the right symbol; it never influences them.
     pub stops: Vec<usize>,
-    /// The grid as evaluated — already wild-expanded during free spins.
+    /// The grid as evaluated — already wild-expanded during free spins. On a
+    /// cascading cabinet this is the *landing* grid, the one the reels reveal;
+    /// the chain that follows is in `cascades`.
     pub grid: Grid,
+    /// Features and scatters as read from the landing grid, plus the **total**
+    /// credits across every cascade step. Everything downstream of the engine
+    /// reads this and needs to know nothing about cascades.
     pub outcome: SpinOutcome,
+    /// The decided cascade chain (§5.15). One step on a cabinet that does not
+    /// cascade, so consumers do not branch.
+    pub cascades: Vec<CascadeStep>,
+}
+
+impl SpinResult {
+    /// The grid the reels come to rest showing — the last in the chain.
+    pub fn resting_grid(&self) -> &Grid {
+        self.cascades.last().map_or(&self.grid, |step| &step.grid)
+    }
 }
 
 pub fn spin(data: &GameData, rng: &mut SeededRng, line_bet: i64, mode: SpinMode) -> SpinResult {
@@ -47,11 +64,35 @@ pub fn spin(data: &GameData, rng: &mut SeededRng, line_bet: i64, mode: SpinMode)
         }
     };
 
-    let outcome = evaluate(data, &grid, &ctx);
+    let mut outcome = evaluate(data, &grid, &ctx);
+
+    // A cascading cabinet resolves its whole chain here, at commit, so the
+    // animation reveals a decided sequence and consumes no randomness (§8.2).
+    let cascades = match data.cascade.as_ref() {
+        Some(config) => cascade::resolve(data, config, &grid, &stops, &ctx),
+        None => vec![CascadeStep {
+            grid: grid.clone(),
+            cleared: Vec::new(),
+            multiplier: 1,
+            credits: outcome.win_credits,
+            outcome: outcome.clone(),
+        }],
+    };
+
+    // Wins are summed across the chain; features stay as the landing grid read
+    // them, so scatters cannot arrive on a refill.
+    outcome.win_credits = cascade::total_credits(&cascades);
+    outcome.wins = cascades
+        .iter()
+        .flat_map(|step| step.outcome.wins.iter().cloned())
+        .collect();
+    outcome.total_credits = outcome.win_credits + outcome.scatter_credits;
+
     SpinResult {
         stops,
         grid,
         outcome,
+        cascades,
     }
 }
 

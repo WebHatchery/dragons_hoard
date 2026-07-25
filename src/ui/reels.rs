@@ -123,15 +123,19 @@ pub fn draw_reels(data: &GameData, session: &GameSession, shake: Vec2, ui_time: 
 
     let bounds = grid_rect().offset(shake);
     let highlights = winning_cells(data, session);
+    let clearing = session.cascade_clearing();
     let pulse = 0.55 + 0.45 * (ui_time * PULSE_RATE).sin();
 
     for reel in 0..data.config.reel_count {
         match spinning_position(session, reel) {
             Some(position) => draw_spinning_reel(data, session, reel, position, shake, bounds),
-            None => draw_resting_reel(data, session, reel, &highlights, pulse, shake),
+            None => draw_resting_reel(data, session, reel, &highlights, pulse, shake, clearing),
         }
     }
 
+    // After the cells, not before — drawn first it sat *underneath* the top-right
+    // symbol and was invisible.
+    draw_cascade_badge(session, shake);
     draw_win_summary(data, session, bounds);
 }
 
@@ -234,6 +238,7 @@ fn draw_resting_reel(
     highlights: &[bool],
     pulse: f32,
     shake: Vec2,
+    clearing: &[usize],
 ) {
     // `display_grid`, not `grid`: a reel that has landed shows what it landed
     // on even while its neighbours are still turning.
@@ -243,12 +248,23 @@ fn draw_resting_reel(
         let cell = cell_slot(data, reel, row as f32)
             .offset(shake)
             .inset(CELL_PADDING);
-        let winning = highlights.get(reel * rows + row).copied().unwrap_or(false);
+        let index = reel * rows + row;
+        // Mid-cascade the cells about to be cleared are lit at full brightness
+        // rather than pulsed: they are on their way out, and a pulse would read
+        // as "still in play" (§5.15).
+        let doomed = clearing.contains(&index);
+        let winning = highlights.get(index).copied().unwrap_or(false);
         draw_symbol_cell(
             data,
             cell,
             grid.at(reel, row),
-            if winning { pulse } else { 0.0 },
+            if doomed {
+                1.0
+            } else if winning {
+                pulse
+            } else {
+                0.0
+            },
             true,
         );
     }
@@ -513,6 +529,29 @@ fn draw_win_summary(data: &GameData, session: &GameSession, rect: Rect) {
         strip.w,
         strip.h,
         TextStyle::new(16.0, palette::TEXT_DIM),
+    );
+}
+
+/// The climbing multiplier over a cascading board (§5.15). Absent at x1, so a
+/// chain that has not yet built shows nothing rather than a badge saying x1.
+fn draw_cascade_badge(session: &GameSession, shake: Vec2) {
+    let Some(multiplier) = session.cascade_multiplier() else {
+        return;
+    };
+    let grid = grid_rect().offset(shake);
+    let badge = Rect::new(grid.right() - 104.0, grid.y + 8.0, 96.0, 40.0);
+
+    draw_surface(
+        badge,
+        &SurfaceStyle::new(Color::new(0.34, 0.12, 0.02, 0.95)).with_border(2.0, palette::EMBER),
+    );
+    draw_text_centered_in_box_ex(
+        &format!("x{}", multiplier),
+        badge.x,
+        badge.y,
+        badge.w,
+        badge.h,
+        TextStyle::new(26.0, palette::GOLD_BRIGHT),
     );
 }
 

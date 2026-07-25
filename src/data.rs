@@ -36,6 +36,7 @@ pub struct MachineDef {
     freespins: &'static str,
     jackpots: &'static str,
     holdspin: &'static str,
+    cascade: Option<&'static str>,
     featurebuy: &'static str,
 }
 
@@ -60,6 +61,23 @@ macro_rules! machine {
                 $dir,
                 "/featurebuy.json"
             )),
+            cascade: None,
+        }
+    };
+}
+
+/// A cabinet whose reels cascade (§5.15). Same fields as `machine!`, plus the
+/// cascade config — a separate macro so the three that do not cascade carry no
+/// mention of it.
+macro_rules! cascading_machine {
+    ($id:literal, $dir:literal, $blurb:literal) => {
+        MachineDef {
+            cascade: Some(include_str!(concat!(
+                "../assets/data/machines/",
+                $dir,
+                "/cascade.json"
+            ))),
+            ..machine!($id, $dir, $blurb)
         }
     };
 }
@@ -79,6 +97,11 @@ pub static MACHINES: &[MachineDef] = &[
         "ways",
         "ways",
         "243 ways to win — no paylines. Symbols pay from the left wherever they land."
+    ),
+    cascading_machine!(
+        "avalanche",
+        "avalanche",
+        "Cascading 243 ways. Winners are cleared, the grid refills, and the multiplier climbs."
     ),
 ];
 
@@ -342,6 +365,30 @@ pub struct CoinValue {
     pub weight: u32,
 }
 
+/// Cascading reels (§5.15). Absent on a cabinet whose reels do not cascade,
+/// which is why it is an `Option` on `GameData` rather than a flag.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CascadeConfig {
+    /// Multiplier per step of the chain. The last value repeats, so a ladder
+    /// does not have to be as long as `max_steps`.
+    pub multipliers: Vec<i64>,
+    /// Hard cap on chain length. A strip that refilled into a win every time
+    /// would otherwise never terminate.
+    pub max_steps: usize,
+}
+
+impl CascadeConfig {
+    /// Multiplier at a step, holding the top of the ladder once it is reached.
+    pub fn multiplier_at(&self, step: usize) -> i64 {
+        self.multipliers
+            .get(step)
+            .or_else(|| self.multipliers.last())
+            .copied()
+            .unwrap_or(1)
+            .max(1)
+    }
+}
+
 /// The Feature Buy menu (§5.13).
 ///
 /// Per-machine, and necessarily so: a tier's price is derived from the expected
@@ -427,6 +474,8 @@ pub struct GameData {
     pub bonus: BonusConfig,
     pub holdspin: HoldSpinConfig,
     pub featurebuy: FeatureBuyConfig,
+    /// `Some` only on a cascading cabinet (§5.15).
+    pub cascade: Option<CascadeConfig>,
     pub texture_manifest: Vec<TextureConfig>,
 }
 
@@ -454,6 +503,10 @@ impl GameData {
             load_embedded_json_labeled(&label("holdspin"), machine.holdspin)?;
         let featurebuy: FeatureBuyConfig =
             load_embedded_json_labeled(&label("featurebuy"), machine.featurebuy)?;
+        let cascade: Option<CascadeConfig> = machine
+            .cascade
+            .map(|raw| load_embedded_json_labeled(&label("cascade"), raw))
+            .transpose()?;
         let texture_manifest = load_embedded_json(TEXTURE_MANIFEST_JSON)?;
 
         let reels = resolve_strips(&symbols, &strips)?;
@@ -468,6 +521,7 @@ impl GameData {
             bonus,
             holdspin,
             featurebuy,
+            cascade,
             texture_manifest,
         };
         data.validate()?;
@@ -621,6 +675,17 @@ impl GameData {
         // without it.
         let cells = self.config.reel_count * self.config.row_count;
         crate::state::featurebuy::validate(&self.featurebuy, cells)?;
+        if let Some(cascade) = &self.cascade {
+            if cascade.max_steps == 0 {
+                return Err("a cascade capped at zero steps would pay nothing".to_owned());
+            }
+            if cascade.multipliers.is_empty() {
+                return Err("cascade.json declared no multipliers".to_owned());
+            }
+            if cascade.multipliers.iter().any(|value| *value < 1) {
+                return Err("a cascade multiplier below 1 would shrink a win".to_owned());
+            }
+        }
         if self.holdspin.trigger_eggs == 0 || self.holdspin.trigger_eggs > cells {
             return Err(format!(
                 "holdspin trigger_eggs ({}) must fit on a {}-cell grid",

@@ -260,9 +260,10 @@ synthesised (§7.1) and have never been listened to.
 
 ### 5.8 Multiple machines (post-v1)
 
-The catalog ships three cabinets. For the first two the whole difference is JSON;
-the third (§5.14) changes the evaluator as well, which is what makes it a
-different game rather than a different tuning.
+The catalog ships four cabinets. For the first two the whole difference is JSON;
+the third (§5.14) changes the evaluator and the fourth (§5.15) changes what a
+spin *is*, which is what makes them different games rather than different
+tunings.
 
 | | Dragon's Hoard | Frost Wyrm |
 |---|---|---|
@@ -626,6 +627,76 @@ filler symbol isolates a single payline; on ways it is worse, because any filler
 forms its own genuine run — that *is* the mechanic. The all-wild test walls its
 run off with a column of scatters, the only symbol that cannot be substituted for
 and cannot be run into.
+
+### 5.15 Cascading reels, and a fourth cabinet (post-v1)
+
+§5.14 changed what counts as a win. This changes what a *spin* is. On
+**Avalanche** a win is not the end: the winning symbols clear, everything above
+falls into the gap, fresh symbols drop in, and the new grid is evaluated again.
+While each grid pays the chain continues, and a multiplier ladder climbs with
+it — 1, 2, 3, 5, 8.
+
+**The whole chain is decided at commit, and that was the hard part.** The
+obvious implementation draws fresh symbols from the RNG whenever a grid clears.
+That would break §8.2's invariant outright: the reveal would consume randomness,
+and the animated and headless paths would diverge on the second grid. So refills
+are **not rolled**. Each reel keeps reading *up* its own strip from where it
+stopped — the symbols that drop in are the ones that were already above the
+window, exactly as a physical cascade would show. The entire chain is therefore
+a function of the stop indices alone, and a test spins both paths from one seed
+and asserts they come to rest on the same grid with the same balance.
+
+**Features are read from the landing grid; only payouts cascade.** A scatter
+arriving on a refill would make the free-spin award depend on how long a chain
+ran, and the Dragon's Wrath (§5.12) would open from symbols the reels never
+landed. Keeping features on the first grid leaves every other system in the game
+reading exactly what it read before.
+
+**A new phase.** `SpinPhase` gained `Cascading(CascadeReveal)`, a cursor into the
+decided chain that advances on a beat. It holds no symbols of its own — it cannot
+change what was decided. `display_grid()` (added a section earlier for an
+unrelated bug) already knew how to show a grid other than the settled one, so
+mid-cascade it returns whichever grid the chain has reached.
+
+The reveal exposed a presentation bug of its own on the first run: the chain
+settled the *instant* it reached its last grid, so that grid never had a beat as
+part of the chain. `CascadeReveal` now tracks a separate `done` flag, set when
+the final grid's beat elapses rather than when it is reached.
+
+**A cascading cabinet cannot reuse a ways cabinet's maths.** Emberfall pays on
+62% of grids, and on a cascading machine every paying grid starts another one.
+The first measurement was **RTP 17.18**. Isolating the ladder by flattening it to
+×1 gave **1.05** — so the chain itself only adds about 10%, and the multipliers
+were contributing a factor of three. That is the number that told me what to fix:
+not the chain, the ladder, and the paytable that has to make room for it.
+
+Avalanche therefore pays the low and mid symbols only from **four**, not three.
+That is the single biggest lever on how often a grid pays at all, and it keeps a
+chain to a handful of steps. Strips are 44 long rather than 50, so the catalog
+cannot mistake it for a reskin. The base paytable is held at 8× its intended
+magnitude in the generator, because the scale factor the sim asked for (0.0322)
+would otherwise have rounded the whole table onto the same two integers.
+
+| | Dragon's Hoard | Frost Wyrm | Emberfall | Avalanche |
+|---|---|---|---|---|
+| Model | 20 lines | 20 lines | 243 ways | 243 ways, cascading |
+| Lows pay from | 4 | 4 | 3 | **4** |
+| Strip length | 40 | 50 | 50/51 | 44 |
+| Hit frequency | 0.411 | 0.258 | 0.622 | 0.475 |
+| Measured RTP | 0.9612 | 0.9450 | 0.9596 | 0.9429 |
+| Biggest win in 1M | 44,904 | 66,211 | 51,629 | **84,645** |
+
+The largest single win in the catalog is Avalanche's, which is what a multiplier
+ladder is for.
+
+**The Feature Buy caught it again.** Avalanche inherited Emberfall's prices and
+`feature_buy_prices_are_exact` (§5.13) failed with the answers printed: 30× and
+59× rather than 46× and 92×, because a bought free spin on a cascading machine is
+worth much more per spin and the price has to come *down* relative to a stake
+that buys a chain.
+
+`state.rs` reached 843 lines and the spin lifecycle — commit, reveal, settle —
+moved to `state/lifecycle.rs`.
 
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
@@ -994,6 +1065,18 @@ and a Project Roost deployment record. Verified live — see §15.
   in hit frequency (a reskin fails), must not share a save slot (sharing one
   would silently overwrite a balance and hoard), must not share a symbol set,
   and an unknown machine id falls back to the first rather than failing.
+- **Cascades (`engine/cascade.rs`, `state/tests/cascade.rs`):** a chain always
+  has at least the landing grid; it **ends on a grid that cleared nothing** (one
+  that stopped mid-collapse would leave holes on screen); every step but the last
+  actually paid; the multiplier follows the ladder and climbs; **a chain is a
+  function of the stops alone** — the invariant the design rests on; survivors
+  fall and keep their order; a refill comes from the strip above the stop; a
+  chain cannot run forever; and a step pays its wins times its multiplier. End to
+  end: a chain is revealed grid by grid and **nothing is credited until it
+  finishes**; the board comes to rest on the last grid; the animated and headless
+  paths agree on a cascading machine; the credit is the sum of the steps; a
+  non-cascading cabinet still produces exactly one step so consumers never
+  branch; and a spin mid-chain never reads as settled.
 - **Ways evaluation (`engine/evaluate/ways.rs`):** one of each across three reels
   is a single way; ways multiply across reels and the payout multiplies with
   them; a run must start on reel 1; **several symbols pay at once** (the mechanic
@@ -1099,6 +1182,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | A feature the second machine can never see | The Dragon's Wrath fired 23 times per million spins on Frost Wyrm under a shared config, because the trigger reads strips that differ per cabinet (§5.12). Anything triggered off the reels must be per-machine data and must be measured on **every** machine, not just the one that boots. |
 | A bought feature priced away from its value | `feature_buy_prices_are_exact` buys every tier 200,000 times and asserts the return matches the machine (§5.13). Mispricing downward makes never spinning the optimal strategy, and nothing else in the suite would notice. |
 | A new evaluation model quietly breaking the old one | `evaluation` defaults to `lines`, so existing data needed no edit, and both models are asserted present in the catalog (§5.14). Wins carry their own cells, so no consumer branches on the model. |
+| A reveal that consumes randomness | A cascade refills from each reel's own strip rather than rolling (§5.15), so the chain is a function of the stops. Tested by running the animated and headless paths from one seed on the cascading cabinet. |
 | A new machine shipping at the wrong RTP | The sim iterates `MACHINES`; a cabinet cannot be added without being measured (§5.8). |
 | Two machines sharing a save slot | Slots are `<machine>_<slot>`; a test asserts they are distinct. |
 | Jackpots exploitable by bet-switching | Odds are per credit wagered, so the trigger is bet-fair by construction (§5.6) and tested. The bet-ladder sim test excludes jackpots deliberately — they are too high-variance to compare over 20k spins — and their return is checked against its closed form instead. |
@@ -1131,23 +1215,25 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus nine post-v1 systems
+## 15. Current State — v1 shipped, plus ten post-v1 systems
 
-**All five phases are done, every item in §14 is met**, and nine systems have
+**All five phases are done, every item in §14 is met**, and ten systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
 machines (§5.8), achievements (§5.9), the Vault Pick (§5.10), the reel-feel pass
-(§5.11), the Dragon's Wrath (§5.12), the Feature Buy (§5.13) and ways-to-win
-(§5.14). The game is
+(§5.11), the Dragon's Wrath (§5.12), the Feature Buy (§5.13), ways-to-win
+(§5.14) and cascading reels (§5.15). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-222 tests pass; `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`
+238 tests pass; `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`
 and the `wasm32-unknown-unknown` release build are clean. Every `.rs` file is
-under the 800-line limit, `state.rs` still the largest at 758.
+under the 800-line limit; `state.rs` reached 843 adding cascades and its spin
+lifecycle was split into `state/lifecycle.rs`, leaving `data.rs` (785) the one to
+watch.
 
 Measured RTP over 1,000,000 spins: Dragon's Hoard **0.9612** at **0.411** hit
 frequency, Frost Wyrm **0.9450** at **0.258**, Emberfall **0.9596** at **0.622**
-(§5.14). Both paytables were scaled ~2–3%
+(§5.14), Avalanche **0.9429** at **0.475** (§5.15). Both paytables were scaled ~2–3%
 down to make room for the Dragon's Wrath (§5.12). The Feature Buy (§5.13) moved
 neither, by construction — it is a second door into features that already
 existed, priced to return exactly what the reels return.
@@ -1155,8 +1241,8 @@ existed, priced to return exactly what the reels return.
 Captures in `docs/verification/`: `ui_idle`, `ui_spin`, `ui_win`, `ui_freespins`,
 `ui_paytable`, `ui_settings`, `ui_machines`, `ui_frost`, `ui_achievements`,
 `ui_bonus`, `ui_feature_card`, `ui_hatch`, `ui_jackpot`, `ui_autospin`,
-`ui_anticipation`, `ui_wrath`, `ui_featurebuy`, `ui_ways`. The catalog card image
-at the project root is produced by the same harness. `ui_spin` is captured at 20 frames rather than 150 — at the default
+`ui_anticipation`, `ui_wrath`, `ui_featurebuy`, `ui_ways`, `ui_cascade`. The
+catalog card image at the project root is produced by the same harness. `ui_spin` is captured at 20 frames rather than 150 — at the default
 the spin has already finished, so the blur it is meant to show is not there.
 
 ### Verified, and not
@@ -1211,6 +1297,9 @@ accruing. That closes the gap this section previously listed.
   blur/bounce/anticipation work in `state/spin.rs` — none of it is specific to a
   slot machine beyond the anticipation trigger, and any game with a spinning or
   scrolling strip would want it.
+- The cascade multiplier badge overlaps the top-right symbol. It is transient
+  and only appears above ×1, but a real cabinet would find it somewhere of its
+  own rather than over a cell.
 - The buy menu is a plain list. A real cabinet would show each feature's
   volatility or a sample of what it pays; the price alone tells a player what it
   costs but not what to expect for it.

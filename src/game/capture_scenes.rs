@@ -74,6 +74,13 @@ impl Game {
                     Some(CelebrationKind::Jackpot { .. })
                 )
             }),
+            "cascade" => {
+                // Mid-chain, at a step where the multiplier has climbed —
+                // a resting Avalanche board looks like any other cabinet.
+                self.data = GameData::load_machine(&crate::data::MACHINES[3]).unwrap();
+                self.session = GameSession::new(&self.data, 0xD2A6_0F1E);
+                self.hold_a_cascade();
+            }
             "ways" => {
                 // The 243-ways cabinet (§5.14). Fast-forwarded to a win, because
                 // a resting board says nothing about how differently it pays.
@@ -96,6 +103,48 @@ impl Game {
             "settings" => self.show_settings = true,
             "anticipation" => self.hold_a_near_miss(),
             _ => {}
+        }
+    }
+
+    /// Freeze a cascading spin part-way through its chain (§5.15).
+    ///
+    /// Searches for a chain of at least three grids so the capture shows a
+    /// multiplier above x1, then steps to the second collapse.
+    fn hold_a_cascade(&mut self) {
+        for _ in 0..4_000 {
+            self.session.balance = 1_000_000;
+            self.session.celebrations.clear();
+            if self.session.begin_spin(&self.data).is_err() {
+                break;
+            }
+            if self.session.pending_cascade_len() >= 3 {
+                // Wait for the chain to be *running* and to have taken a step.
+                // Asking `map_or(usize::MAX, ..)` for "not cascading yet" and
+                // then testing `>= 1` returned on the very first frame, and the
+                // capture photographed a spin that had not landed.
+                for _ in 0..2_000 {
+                    if self
+                        .session
+                        .phase
+                        .cascade()
+                        .is_some_and(|reveal| reveal.step() >= 1)
+                    {
+                        return;
+                    }
+                    // A card holds `update_spin` outright (§8.2.1), so the reels
+                    // would never advance.
+                    self.session.celebrations.clear();
+                    self.session.update_spin(&self.data, 1.0 / 60.0);
+                }
+                return;
+            }
+            for _ in 0..3_000 {
+                if self.session.phase.is_idle() {
+                    break;
+                }
+                self.session.celebrations.clear();
+                self.session.update_spin(&self.data, 1.0 / 60.0);
+            }
         }
     }
 

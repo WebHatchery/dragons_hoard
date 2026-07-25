@@ -202,6 +202,18 @@ impl Game {
             SpinEvent::AutoSpinReady => self.events.push(UiAction::Spin),
             SpinEvent::CelebrationOpened(kind) => self.celebrate(&kind),
             SpinEvent::HoldSpinRespun => self.report_respin(),
+            // One collapse. The pitch climbs with the chain, so a long run is
+            // heard building rather than repeating.
+            SpinEvent::Cascaded => {
+                let step = self
+                    .session
+                    .phase
+                    .cascade()
+                    .map_or(0, |reveal| reveal.step());
+                self.add_trauma(0.10 + 0.04 * step as f32);
+                self.sound.play_at(Sfx::ReelStop, 0.75 + 0.10 * step as f32);
+                self.spawn_cascade_dust();
+            }
             // The round credits itself; what is left is the noise it makes and
             // a line in the log, since the card only shows the headline figure.
             SpinEvent::HoldSpinFinished(outcome) => {
@@ -243,6 +255,27 @@ impl Game {
         self.add_trauma(0.1 + 0.06 * locked as f32);
         self.sound
             .play_at(Sfx::CoinLock, 0.9 + 0.05 * locked as f32);
+    }
+
+    /// A puff from each cell a collapse is clearing, so the symbols read as
+    /// being knocked out rather than simply replaced.
+    fn spawn_cascade_dust(&mut self) {
+        let rows = self.data.config.row_count.max(1);
+        for cell in self.session.cascade_clearing().to_vec() {
+            let position = ui::reels::cell_center(&self.data, cell / rows, cell % rows);
+            self.burst(
+                position,
+                8,
+                &BurstConfig {
+                    speed: (40.0, 130.0),
+                    size: (1.2, 2.8),
+                    life: (0.25, 0.55),
+                    colors: vec![palette::GOLD_BRIGHT, palette::GOLD],
+                    gravity: 260.0,
+                    ..Default::default()
+                },
+            );
+        }
     }
 
     /// Screen shake, unless the player turned it off. Motion sensitivity is a

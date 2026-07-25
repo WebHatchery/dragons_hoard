@@ -3,6 +3,7 @@
 
 use super::*;
 use crate::state::preferences::{Preferences, SpinSpeed};
+use crate::state::spin::SpinEvent;
 
 fn data() -> GameData {
     GameData::load().unwrap()
@@ -475,6 +476,7 @@ fn a_legacy_save_migrates_to_the_current_shape() {
 }
 
 mod bonus;
+mod cascade;
 mod featurebuy;
 mod holdspin;
 mod jackpots;

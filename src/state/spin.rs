@@ -24,6 +24,10 @@ const REEL_STAGGER: f32 = 0.30;
 const SPIN_REVOLUTIONS: usize = 2;
 /// Seconds the win count-up takes.
 const PAYOUT_TIME: f32 = 0.75;
+/// Beat between cascade collapses. Slower than a reel stop on purpose — each
+/// collapse is its own small reveal, and running them faster turns a chain into
+/// a flicker.
+const CASCADE_BEAT: f32 = 0.55;
 /// A reel slower than this many symbols per second is drawn crisply rather than
 /// blurred.
 const BLUR_SPEED: f32 = 6.0;
@@ -140,6 +144,59 @@ impl ReelAnimation {
 
     fn tick(&mut self, dt: f32) {
         self.elapsed = (self.elapsed + dt).min(self.duration);
+    }
+}
+
+/// Steps through a decided cascade chain so the player sees each collapse
+/// rather than the last grid appearing all at once.
+///
+/// Holds no symbols of its own — the chain lives on the pending spin, and this
+/// is only a cursor into it. Nothing here can change what was decided (§8.2).
+#[derive(Debug, Clone)]
+pub struct CascadeReveal {
+    step: usize,
+    steps: usize,
+    /// Set when the *last* grid has had its beat, not when it is reached.
+    /// Without this the final grid of a chain settled the instant the reveal
+    /// arrived at it and was never shown as part of the chain at all.
+    done: bool,
+    beat: Timer,
+    scale: f32,
+}
+
+impl CascadeReveal {
+    pub fn new(steps: usize, scale: f32) -> Self {
+        Self {
+            step: 0,
+            steps,
+            done: false,
+            beat: Timer::new(CASCADE_BEAT * scale),
+            scale,
+        }
+    }
+
+    pub fn step(&self) -> usize {
+        self.step
+    }
+
+    /// Advance on the beat. Returns `true` on the tick that moves to a new grid,
+    /// so the orchestrator can make a noise exactly once per collapse.
+    pub fn tick(&mut self, dt: f32) -> bool {
+        if self.done || !self.beat.tick(dt) {
+            return false;
+        }
+        if self.step + 1 >= self.steps {
+            // The last grid has now had its beat; the chain is over.
+            self.done = true;
+            return false;
+        }
+        self.step += 1;
+        self.beat = Timer::new(CASCADE_BEAT * self.scale);
+        true
+    }
+
+    pub fn finished(&self) -> bool {
+        self.done
     }
 }
 
@@ -304,6 +361,8 @@ impl PayoutCounter {
 pub enum SpinPhase {
     Idle,
     Spinning(ReelSpinner),
+    /// Walking a decided cascade chain, one grid per beat (§5.15).
+    Cascading(CascadeReveal),
     Payout(PayoutCounter),
     /// Brief beat before the next automatic free spin.
     AutoPause(Timer),
@@ -318,6 +377,14 @@ impl SpinPhase {
     /// intent must be ignored rather than queued.
     pub fn is_busy(&self) -> bool {
         !self.is_idle()
+    }
+
+    /// The cascade cursor, while a chain is being revealed.
+    pub fn cascade(&self) -> Option<&CascadeReveal> {
+        match self {
+            SpinPhase::Cascading(reveal) => Some(reveal),
+            _ => None,
+        }
     }
 
     pub fn spinner(&self) -> Option<&ReelSpinner> {
@@ -352,6 +419,8 @@ pub enum SpinEvent {
     HoldSpinRespun,
     /// The round ended and has been credited.
     HoldSpinFinished(super::holdspin::HoldSpinOutcome),
+    /// A cascade collapsed into the next grid (§5.15).
+    Cascaded,
 }
 
 #[cfg(test)]
