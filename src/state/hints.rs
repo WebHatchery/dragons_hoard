@@ -59,6 +59,8 @@ pub enum Counter {
     MachinesPlayed,
     /// Times the ledger has been opened (§5.18).
     LedgerOpened,
+    /// Times the rules panel has been opened (§5.29).
+    RulesOpened,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -83,6 +85,7 @@ pub struct HintProgress {
     pub gambles: i64,
     pub buys: i64,
     pub ledger_opened: i64,
+    pub rules_opened: i64,
 }
 
 /// Everything the hint system knows, and what it has already said.
@@ -161,6 +164,7 @@ impl HintBook {
             Counter::Gambles => self.progress.gambles,
             Counter::Buys => self.progress.buys,
             Counter::LedgerOpened => self.progress.ledger_opened,
+            Counter::RulesOpened => self.progress.rules_opened,
         }
     }
 }
@@ -304,6 +308,7 @@ mod tests {
             Counter::Gambles => counters.gambles = hint.until,
             Counter::Buys => counters.buys = hint.until,
             Counter::LedgerOpened => counters.ledger_opened = hint.until,
+            Counter::RulesOpened => counters.rules_opened = hint.until,
             _ => return, // Satisfied from elsewhere; the dismiss test covers it.
         }
 

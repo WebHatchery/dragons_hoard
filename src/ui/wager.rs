@@ -221,6 +221,20 @@ fn draw_spin_button(
     let secondary_y = below - 12.0 - 38.0;
     let spin_y = secondary_y - 10.0 - 70.0;
 
+    // The rules panel (§5.29) gets its own full-width button in the gap above
+    // the spin block, and gets it because R alone is not an affordance — a
+    // shortcut nobody is told about is the problem the panel exists to fix.
+    if virtual_button(
+        Rect::new(content.x, spin_y - 46.0, content.w, 34.0),
+        &format!("How {} plays", ctx.data.config.display_name),
+        true,
+        ButtonTone::Secondary,
+        mouse,
+        nav,
+    ) {
+        actions.push(UiAction::ToggleRules);
+    }
+
     let label = if ctx.session.phase.is_busy() {
         "SPINNING"
     } else if ctx.session.in_free_spins() {

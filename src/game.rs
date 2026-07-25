@@ -2,6 +2,7 @@
 
 mod capture_scenes;
 mod feedback;
+mod persistence;
 
 use crate::actions::{self, ActionOutcome, SessionRequest};
 use crate::audio::{Sfx, SoundBank};
@@ -12,7 +13,7 @@ use crate::state::featurebuy::BuyBlocked;
 use crate::state::gamble::GambleBlocked;
 use crate::state::preferences::Preferences;
 use crate::state::spin::SpinEvent;
-use crate::state::{migrate_save_value, GameSession, SaveData, SpinBlocked, SpinResolution};
+use crate::state::{GameSession, SpinBlocked, SpinResolution};
 use crate::ui::{self, palette, UiAction, UiContext};
 use macroquad::prelude::*;
 use macroquad_toolkit::assets::AssetManager;
@@ -21,9 +22,6 @@ use macroquad_toolkit::events::EventBus;
 use macroquad_toolkit::fx::{BurstConfig, FloatingTextLayer, ParticleSystem, ScreenShake};
 use macroquad_toolkit::notifications::{
     NotificationAnchor, NotificationManager, NotificationRenderConfig,
-};
-use macroquad_toolkit::persistence::{
-    delete_slot, load_from_slot_with_migration, save_to_slot_with_version, slot_exists,
 };
 use macroquad_toolkit::prelude::{begin_virtual_ui_frame, end_virtual_ui_frame};
 use macroquad_toolkit::rng::random_u64;
@@ -46,6 +44,8 @@ pub struct Game {
     show_achievements: bool,
     show_featurebuy: bool,
     show_ledger: bool,
+    /// The rules panel (§5.29).
+    show_rules: bool,
     show_waveforms: bool,
     show_vision: bool,
     /// Which control the keyboard is on (§5.27). Lives here because the index
@@ -134,6 +134,7 @@ impl Game {
             show_achievements: false,
             show_featurebuy: false,
             show_ledger: false,
+            show_rules: false,
             show_waveforms: false,
             show_vision: false,
             nav: ui::nav::Nav::default(),
@@ -161,7 +162,7 @@ impl Game {
             self.handle_spin_event(event);
         }
 
-        for action in ui::actions_from_keys(self.session.celebrations.is_active()) {
+        for action in ui::shortcuts::actions_from_keys(self.session.celebrations.is_active()) {
             self.events.push(action);
         }
         if is_key_pressed(KeyCode::Escape) {
@@ -171,6 +172,7 @@ impl Game {
             self.show_achievements = false;
             self.show_featurebuy = false;
             self.show_ledger = false;
+            self.show_rules = false;
             self.show_waveforms = false;
             self.show_vision = false;
         }
@@ -197,11 +199,18 @@ impl Game {
                 show_featurebuy: self.show_featurebuy,
                 ledger: &self.ledger,
                 show_ledger: self.show_ledger,
+                show_rules: self.show_rules,
                 show_waveforms: self.show_waveforms,
                 show_vision: self.show_vision,
-                hint: self
-                    .hints
-                    .current(self.achievements.progress(), &self.ledger),
+                // Not while a panel is up (§5.28). A hint offers something to
+                // do next, and behind a modal there is nothing to do next — it
+                // also drew across the bottom edge of the panel covering it.
+                hint: if self.any_overlay_open() {
+                    None
+                } else {
+                    self.hints
+                        .current(self.achievements.progress(), &self.ledger)
+                },
                 profiles: &self.profiles,
                 achievements: &self.achievements,
                 shake: self.shake.offset(),
@@ -406,6 +415,23 @@ impl Game {
     /// target's — it is closer to walking to a different machine than to
     /// changing a theme. Refused mid-spin: the stake on the current machine is
     /// already committed.
+    /// Any panel that takes over the screen. Used to hold hints back, and it
+    /// lists every overlay on purpose: one added without a line here is one a
+    /// hint would draw over.
+    fn any_overlay_open(&self) -> bool {
+        self.show_paytable
+            || self.show_rules
+            || self.show_settings
+            || self.show_machines
+            || self.show_achievements
+            || self.show_featurebuy
+            || self.show_ledger
+            || self.show_waveforms
+            || self.show_vision
+            || self.session.bonus.is_some()
+            || self.session.gamble.is_some()
+    }
+
     fn switch_machine(&mut self, index: usize) {
         let Some(machine) = crate::data::MACHINES.get(index) else {
             return;
@@ -422,7 +448,9 @@ impl Game {
 
         self.autosave();
 
-        let data = match GameData::load_machine(machine) {
+        let data = match GameData::load_machine(machine)
+            .and_then(|data| crate::state::rules::validate(&data).map(|()| data))
+        {
             Ok(data) => data,
             Err(err) => {
                 self.notifications
@@ -452,22 +480,6 @@ impl Game {
 
         self.notifications
             .success(format!("Now playing {}", self.data.config.display_name));
-    }
-
-    /// The target machine's saved session, or a fresh one if it has never been
-    /// played.
-    fn load_machine_session(&mut self) -> GameSession {
-        let loaded: Result<SaveData, String> = load_from_slot_with_migration(
-            &self.data.config.game_name,
-            &self.data.save_slot(),
-            &self.data.config.version,
-            |version, value| migrate_save_value(version, value, &self.data),
-        );
-
-        match loaded {
-            Ok(save) => GameSession::from_save(&self.data, save),
-            Err(_) => GameSession::new(&self.data, random_u64()),
-        }
     }
 
     /// Fold a settled spin into the player's lifetime progress and announce
@@ -569,6 +581,13 @@ impl Game {
                 }
                 self.sound.play(Sfx::Click);
             }
+            ActionOutcome::RulesToggled => {
+                self.show_rules = !self.show_rules;
+                if self.show_rules {
+                    self.note_hint_progress(|counters| counters.rules_opened += 1);
+                }
+                self.sound.play(Sfx::Click);
+            }
             ActionOutcome::LedgerToggled => {
                 self.show_ledger = !self.show_ledger;
                 if self.show_ledger {
@@ -665,78 +684,6 @@ impl Game {
             SessionRequest::Load => self.load_game(),
             SessionRequest::DeleteSave => self.delete_save(),
         }
-    }
-
-    /// Autosave once a spin has fully resolved. Mid-feature state is not saved:
-    /// a reload lands back in the base game.
-    fn autosave(&mut self) {
-        if self.session.in_free_spins() {
-            return;
-        }
-        let save = self.session.to_save(&self.data.config.version);
-        if save_to_slot_with_version(
-            &self.data.config.game_name,
-            &self.data.save_slot(),
-            &save,
-            &self.data.config.version,
-        )
-        .is_ok()
-        {
-            self.save_exists = true;
-        }
-    }
-
-    fn save_game(&mut self) {
-        let save = self.session.to_save(&self.data.config.version);
-        match save_to_slot_with_version(
-            &self.data.config.game_name,
-            &self.data.save_slot(),
-            &save,
-            &self.data.config.version,
-        ) {
-            Ok(()) => {
-                self.notifications.success("Hoard recorded");
-                self.refresh_save_state();
-            }
-            Err(err) => self.notifications.danger(format!("Save failed: {}", err)),
-        }
-    }
-
-    fn load_game(&mut self) {
-        let loaded: Result<SaveData, String> = load_from_slot_with_migration(
-            &self.data.config.game_name,
-            &self.data.save_slot(),
-            &self.data.config.version,
-            |version, value| migrate_save_value(version, value, &self.data),
-        );
-
-        match loaded {
-            Ok(save) => {
-                let preferences = self.session.preferences.clone();
-                self.session = GameSession::from_save(&self.data, save);
-                self.session.preferences = preferences;
-                self.particles.clear();
-                self.floating.clear();
-                self.session.celebrations.clear();
-                self.notifications.success("Hoard restored");
-                self.refresh_save_state();
-            }
-            Err(err) => self.notifications.warning(format!("Load failed: {}", err)),
-        }
-    }
-
-    fn delete_save(&mut self) {
-        match delete_slot(&self.data.config.game_name, &self.data.save_slot()) {
-            Ok(()) => {
-                self.notifications.info("Save slot cleared");
-                self.refresh_save_state();
-            }
-            Err(err) => self.notifications.danger(format!("Delete failed: {}", err)),
-        }
-    }
-
-    fn refresh_save_state(&mut self) {
-        self.save_exists = slot_exists(&self.data.config.game_name, &self.data.save_slot());
     }
 }
 

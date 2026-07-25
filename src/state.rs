@@ -15,6 +15,7 @@ pub mod ledger;
 pub mod lifecycle;
 pub mod preferences;
 pub mod profile;
+pub mod rules;
 pub mod save;
 pub mod spin;
 

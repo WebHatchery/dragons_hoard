@@ -173,6 +173,20 @@ impl Game {
                 self.show_ledger = true;
                 self.profiles.request(self.data.machine_id(), &self.data);
             }
+            // Two cabinets, because the panel's whole claim is that it
+            // describes the one in front of the player (§5.29): Avalanche
+            // cascades and Frost refines, and neither used to be mentioned
+            // anywhere in the game.
+            "rules" => self.show_rules = true,
+            "rules_avalanche" => {
+                self.data =
+                    GameData::load_machine(crate::data::machine_by_id("avalanche")).unwrap();
+                self.show_rules = true;
+            }
+            "rules_frost" => {
+                self.data = GameData::load_machine(crate::data::machine_by_id("frost")).unwrap();
+                self.show_rules = true;
+            }
             "waveforms" => self.show_waveforms = true,
             "vision" => self.show_vision = true,
             "hint" => {

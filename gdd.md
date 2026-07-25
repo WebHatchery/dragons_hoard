@@ -1305,6 +1305,65 @@ showing it takes that space rather than fighting it for room.
 
 `ui.rs` reached 803 lines and the wager panel moved to `ui/wager.rs`.
 
+### 5.29 Rules — what this cabinet does, derived from what it is (post-v1)
+
+§5.28 told the player the panels existed. This one makes the panels tell the
+truth.
+
+**The paytable described a game we stopped shipping.** Its rules were four
+hardcoded paragraphs written when there were two cabinets and both played the
+same way. Since then Emberfall grew 243 ways (§5.14), Avalanche grew cascades
+(§5.15), Wyrmspire grew reels that change height every spin (§5.20) and Frost
+grew free spins that burn symbols off the strips (§5.21). The paragraphs never
+changed. So a player on Avalanche watched symbols vanish from the grid with
+nothing anywhere in the game to say why — and the gamble and the buy menu were
+never explained on any cabinet at all.
+
+**Writing five paragraphs would work until the sixth cabinet**, which is exactly
+how this happened the first time. The problem was never that the text was wrong;
+it is that nothing could *tell* it was wrong.
+
+So the config is read twice, by two functions that share no code:
+
+- `Topic::present` asks which mechanics a cabinet **has**, from config presence
+  alone — a `cascade.json` exists, `reel_heights` is set, the award table is not
+  empty.
+- `rules` produces the prose that **explains** them.
+
+A test asserts the two agree for every machine, and `validate` runs the same
+check when a cabinet is loaded. Add a machine with a mechanic and forget to
+describe it and the build fails naming the topic. That is the failure that
+should have fired three iterations ago and could not.
+
+Deriving prose from config also settles the numbers: every figure is read from
+the data the engine pays out of, so a rule cannot quote a trigger of three
+scatters at a cabinet that wants four.
+
+**Layout is measured, not guessed.** A cabinet produces nine to eleven rules and
+a sixth could produce more, so the whole set is measured and the type size
+chosen to fit two columns — everything on screen at once, no scroll bar. Because
+`wrap_text` needs a loaded font, the measurement is injected: the game passes the
+real font, the tests pass a deliberately pessimistic estimate, so a layout that
+fits under test has room to spare in the game.
+
+**The keyboard became a table too** (`ui/shortcuts.rs`). The bindings were twenty
+`is_key_pressed` branches and the footer listing them was a hand-written string.
+They drifted, and then they collided: `L` opened the Ledger **and** triggered
+Load, so pressing it to read the statistics discarded the bankroll they
+described. Two branches, each individually correct, and nothing able to see the
+pair. Now one table drives the key handling, generates the footer line, and is
+asserted collision-free. Load moved to `K`.
+
+Two affordances follow from §5.28's own lesson — a shortcut nobody is told about
+is not an affordance: a full-width **"How <cabinet> plays"** button above the
+spin block, and a rules hint placed first in `hints.json` so it is the first
+thing a new player is told. Hints are now suppressed while any overlay is open;
+a hint offers something to do next, and behind a modal there is nothing to do
+next.
+
+The paytable keeps the symbol table and points at `R`. `game.rs` reached 801
+lines and the save/load block moved to `game/persistence.rs`.
+
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
 - Winning lines: pulse highlight (`blink`/`pulse`), floating win amounts
@@ -1905,6 +1964,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
+| Rules that describe a different game | The panel is generated from the cabinet's own config, and a test asserts every mechanic a machine has is explained (§5.29). Hand-written prose drifted silently across four new cabinets. |
 | A new machine shipping at the wrong RTP | The sim iterates `MACHINES`; a cabinet cannot be added without being measured (§5.8). |
 | Two machines sharing a save slot | Slots are `<machine>_<slot>`; a test asserts they are distinct. |
 | Jackpots exploitable by bet-switching | Odds are per credit wagered, so the trigger is bet-fair by construction (§5.6) and tested. The bet-ladder sim test excludes jackpots deliberately — they are too high-variance to compare over 20k spins — and their return is checked against its closed form instead. |
@@ -1937,7 +1997,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus twenty-three post-v1 systems
+## 15. Current State — v1 shipped, plus twenty-four post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
@@ -1948,14 +2008,14 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27) and hints (§5.28). The game is
+navigation (§5.27), hints (§5.28) and generated rules (§5.29). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-307 tests pass here and 169 in `macroquad-toolkit`; `cargo fmt --check`,
+329 tests pass here and 169 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
 release build are clean. Every `.rs` file is under the 800-line limit, `data.rs`
-(741) and `ui/reels.rs` (738) the largest — `state/spin.rs` dropped from 615 to
+(741) and `ui/reels.rs` (734) the largest — `state/spin.rs` dropped from 615 to
 298 when its motion moved to the toolkit.
 
 Measured RTP over 1,000,000 spins: Dragon's Hoard **0.9612** at **0.411** hit

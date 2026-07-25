@@ -13,7 +13,9 @@ pub mod machines;
 pub mod nav;
 pub mod paytable;
 pub mod reels;
+pub mod rules;
 pub mod settings;
+pub mod shortcuts;
 pub mod symbols;
 pub mod vision;
 pub mod wager;
@@ -26,8 +28,8 @@ use crate::state::GameSession;
 use crate::ui::nav::Nav;
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::{
-    draw_badge, draw_surface, draw_text_centered_in_box_ex, draw_ui_text_ex, meter, ButtonStyle,
-    ButtonTone, RectExt, SurfaceStyle, TextStyle, VirtualUi,
+    draw_badge, draw_surface, draw_text_block, draw_text_centered_in_box_ex, draw_ui_text_ex,
+    meter, ButtonStyle, ButtonTone, RectExt, SurfaceStyle, TextStyle, VirtualUi,
 };
 
 pub const LOGICAL_WIDTH: f32 = 1280.0;
@@ -64,6 +66,8 @@ pub enum UiAction {
     ToggleFeatureBuy,
     /// Open or close the Ledger panel (§5.18).
     ToggleLedger,
+    /// Open or close the rules panel (§5.29).
+    ToggleRules,
     /// Put the current hint away for good (§5.28).
     DismissHint,
     /// Open or close the waveform inspector (§5.19).
@@ -108,6 +112,7 @@ pub struct UiContext<'a> {
     pub profiles: &'a crate::state::profile::ProfileBook,
     pub ledger: &'a crate::state::ledger::Ledger,
     pub show_ledger: bool,
+    pub show_rules: bool,
     pub show_waveforms: bool,
     pub show_vision: bool,
     /// The hint on offer, if any (§5.28).
@@ -132,6 +137,9 @@ pub fn draw_game_ui(ctx: UiContext<'_>, nav: &mut Nav) -> Vec<UiAction> {
 
     if ctx.show_paytable {
         paytable::draw(&ctx, mouse, &mut actions, nav);
+    }
+    if ctx.show_rules {
+        rules::draw(&ctx, mouse, &mut actions, nav);
     }
     if ctx.show_achievements {
         achievements::draw(ctx.achievements, mouse, &mut actions, nav);
@@ -353,11 +361,19 @@ fn draw_footer(ctx: &UiContext<'_>) {
     // A hint (§5.28) takes this line while it is showing. The two say the same
     // sort of thing and only one of them gets read.
     if ctx.hint.is_none() {
-        draw_ui_text_ex(
-            "Space spins · Up/Down bet · M max · A autospin · G gamble · B buy · L ledger · P paytable · O settings · C machines · V awards",
-            rect.x + 470.0,
-            rect.y + 56.0,
-            TextStyle::new(15.0, palette::TEXT_DIM).params(),
+        // Sized to fit rather than set at 15: the line is generated from the
+        // shortcut table now (§5.29), so adding a binding lengthens it and a
+        // fixed size would quietly clip the last one off the right edge.
+        let left = rect.x + 470.0;
+        draw_text_block(
+            &shortcuts::footer_line(),
+            left,
+            rect.y + 42.0,
+            rect.right() - left - 8.0,
+            18.0,
+            15.0,
+            0.0,
+            palette::TEXT_DIM,
         );
     }
 }
@@ -411,60 +427,4 @@ fn virtual_button(
     );
 
     activated
-}
-
-/// Keyboard shortcuts, mapped to the same intents the buttons produce.
-///
-/// While a celebration is showing, the spin key dismisses it instead — one key
-/// to move the game forward, whatever it is currently waiting on.
-pub fn actions_from_keys(celebrating: bool) -> Vec<UiAction> {
-    let mut actions = Vec::new();
-    if is_key_pressed(KeyCode::Space) || is_key_pressed(KeyCode::Enter) {
-        actions.push(if celebrating {
-            UiAction::DismissCelebration
-        } else {
-            UiAction::Spin
-        });
-    }
-    if is_key_pressed(KeyCode::A) {
-        actions.push(UiAction::ToggleAutospin);
-    }
-    if is_key_pressed(KeyCode::Up) || is_key_pressed(KeyCode::Equal) {
-        actions.push(UiAction::BetUp);
-    }
-    if is_key_pressed(KeyCode::Down) || is_key_pressed(KeyCode::Minus) {
-        actions.push(UiAction::BetDown);
-    }
-    if is_key_pressed(KeyCode::M) {
-        actions.push(UiAction::MaxBet);
-    }
-    if is_key_pressed(KeyCode::P) {
-        actions.push(UiAction::TogglePaytable);
-    }
-    if is_key_pressed(KeyCode::O) {
-        actions.push(UiAction::ToggleSettings);
-    }
-    if is_key_pressed(KeyCode::C) {
-        actions.push(UiAction::ToggleMachines);
-    }
-    if is_key_pressed(KeyCode::V) {
-        actions.push(UiAction::ToggleAchievements);
-    }
-    if is_key_pressed(KeyCode::B) {
-        actions.push(UiAction::ToggleFeatureBuy);
-    }
-    if is_key_pressed(KeyCode::L) {
-        actions.push(UiAction::ToggleLedger);
-    }
-    if is_key_pressed(KeyCode::G) {
-        actions.push(UiAction::OfferGamble);
-    }
-    if is_key_pressed(KeyCode::S) {
-        actions.push(UiAction::Save);
-    }
-    if is_key_pressed(KeyCode::L) {
-        actions.push(UiAction::Load);
-    }
-
-    actions
 }

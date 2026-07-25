@@ -1,5 +1,13 @@
 [
   {
+    "id": "rules",
+    "text": "Press R for how this cabinet plays — its win model, its features, and what each of them is worth.",
+    "when": "spins",
+    "after": 5,
+    "earns": "rules_opened",
+    "until": 1
+  },
+  {
     "id": "gamble",
     "text": "Won something? Press G to stake it on the turn of a scale — double or nothing, at even odds.",
     "when": "wins",

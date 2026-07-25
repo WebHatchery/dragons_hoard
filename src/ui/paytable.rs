@@ -1,6 +1,5 @@
 //! The paytable overlay: what every symbol pays, and the rules in prose.
 
-use crate::state::{bonus, holdspin, jackpot};
 use crate::ui::nav::Nav;
 use crate::ui::{
     palette, symbols, virtual_button, UiAction, UiContext, LOGICAL_HEIGHT, LOGICAL_WIDTH,
@@ -89,41 +88,22 @@ pub fn draw(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>, nav: 
         y += 46.0;
     }
 
+    // The rules used to be four hardcoded paragraphs here, and they described
+    // a two-cabinet game we stopped shipping three cabinets ago (§5.29). They
+    // live in `state::rules` now, derived from this machine's own config.
     draw_text_block(
         &format!(
-            "{}\n\
-             Progressives: {}% of every stake feeds the four pots, which pay at random on any paid spin. Bigger stakes win them proportionally more often, so the return per credit is the same at every bet — worth {:.1}% of all play.
-             The Vault Pick: filling the hoard deals {} chests. Keep picking until {} come up empty; each prize is a share of the hoard, and a board is worth about {:.0}% of it.
-             The Dragon's Wrath: {} dragon eggs on one grid lock as coins worth {:.1}x total bet on average and grant {} respins. Every coin that lands restores them in full; fill all {} cells for {}x total bet on top.",
-            // The rules paragraph is per-model: a ways cabinet has no line
-            // to read, so describing one would be describing another game.
-            match ctx.data.ways_count() {
-                Some(ways) => format!(
-                    "Wins pay from reel 1 across all {} ways — a symbol pays wherever it lands on each reel, and every path that forms it is paid. Several symbols can pay at once. The Dragon is wild.",
-                    ways
-                ),
-                None => format!(
-                    "Wins pay left to right from reel 1 on all {} lines. The Dragon is wild and pays the best reading of a line.",
-                    ctx.data.paylines.len()
-                ),
-            },
-            ctx.data.jackpots.contribution_permille as f32 / 10.0,
-            jackpot::expected_rtp(&ctx.data.jackpots) * 100.0,
-            ctx.data.bonus.board_size,
-            ctx.data.bonus.blanks,
-            bonus::expected_permille(&ctx.data.bonus) / 10.0,
-            ctx.data.holdspin.trigger_eggs,
-            holdspin::mean_coin_multiple(&ctx.data.holdspin),
-            ctx.data.holdspin.respins,
-            ctx.data.config.reel_count * ctx.data.config.row_count,
-            ctx.data.holdspin.full_board_multiple,
+            "Every payout above is a multiple of the line bet, at the {} line bet you have set.
+             Press R for how {} plays — its win model, its features, and what each of them is worth.",
+            ctx.session.line_bet(ctx.data),
+            ctx.data.config.display_name,
         ),
         rect.x + 20.0,
-        y + 6.0,
+        y + 10.0,
         rect.w - 40.0,
-        126.0,
-        15.0,
-        4.0,
+        56.0,
+        16.0,
+        6.0,
         palette::TEXT_DIM,
     );
 
