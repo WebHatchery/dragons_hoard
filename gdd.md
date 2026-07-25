@@ -1700,6 +1700,52 @@ into the Buy button, the wager panel read `Lines: 0` on a machine that has none,
 and the win line ran its parts together — `cluster of 6 Gold Coins cluster of 6`
 — because three spaces are not a separator.
 
+### 5.36 A second symbol set — and the gate that was not one (post-v1)
+
+§5.35 shipped Tidepool with a genuinely new win model and Dragon's Hoard's
+symbols: a machine named for a rock pool showing treasure chests and a dragon.
+Six cabinets drawing the same nine shapes was the weakest thing about the game to
+look at, and the part with least to do with what any of them actually did.
+
+So Tidepool has its own nine: **a spiral shell, a pearl, a starfish, a sea
+urchin, an anemone, a crab, coral, a kraken and a breaking wave**, drawn from the
+same canvas primitives on the same contract — one colour in the JSON, [`Shades`]
+derives the rest. `symbols.rs` was split into `symbols/hoard.rs` and
+`symbols/tidepool.rs` on the obvious seam: everything in both takes a canvas and
+some shades and draws, and neither knows what a symbol or a machine is.
+
+**The real find was a guard that could not guard.** §5.25 has a fingerprint
+baseline so a change to the art has to be a deliberate one, and a companion test
+named `the_baseline_covers_every_art_routine` whose comment reads *"a new shape
+added without a baseline entry would slip past the test above entirely"*. It read
+`GameData::load()` — the **first** cabinet. So nine new routines arrived on the
+sixth, none of them baselined, and the test written to catch exactly that passed
+without comment. A gate scoped to one machine is not a gate on a game with six;
+it and the two beside it now walk every cabinet.
+
+Widening it surfaced a second thing: **a single baseline per art id had never
+been valid**. Cabinets give the same routine different colours — Frost Wyrm's
+coin is not Dragon's Hoard's — so a fingerprint taken from the shipped colour is
+six numbers for one shape, and pinning one fails the other five. The baseline
+renders on a fixed neutral grey now, because it is about the **routine**; what a
+colour change should trip is the dichromacy gate, which is a different test
+asking a different question. Every fingerprint was regenerated.
+
+The two art gates that already ran per cabinet did their job the moment the file
+existed: no two symbols may look alike at the smallest cell the game draws, and
+any two sharing a shape must separate under three simulated dichromacies. A
+tidepool wants to be blue and green, and blue-green is the axis a deuteranope
+loses — so the silhouettes carry the difference and the palette runs from sand
+through coral to deep water rather than sitting in one band.
+
+**The capture caught the one thing the tests could not.** The scatter — a circle
+with a darker circle inside it and a triangle on top — read unmistakably as a
+flying saucer. It passed every gate, because "distinct from the other eight" and
+"looks like a wave" are different claims and only the first is measurable. A wave
+is not a round thing with a dome; it is a **hook**. Rebuilt as a rising flank, a
+crest thrown forward past its own base, and the lip falling back inside the
+curve.
+
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
 - Winning lines: pulse highlight (`blink`/`pulse`), floating win amounts
@@ -2300,6 +2346,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
+| A test scoped to one machine | The art baseline guard read only the first cabinet, so nine new shapes slipped past the check written to catch them (§5.36). Every art gate walks all six now. |
 | A new cabinet shipping unexplained | Adding a win model failed the build until it had prose and a name (§5.29, §5.34), and the soak harness validated its payouts untouched (§5.33). |
 | A code in place of a name | Symbol short codes are a rendering fallback and a test now keeps them out of prose (§5.34). They read as correct at every individual call site, which is why they lasted twenty-eight iterations. |
 | The sim measuring a game nobody plays | The interactive path is driven headless and held to conservation laws, then compared against the sim on the same seed (§5.33). Features resolve through different functions on the two paths. |
@@ -2339,7 +2386,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus thirty post-v1 systems
+## 15. Current State — v1 shipped, plus thirty-one post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
@@ -2350,7 +2397,7 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) and a cluster-pays cabinet (§5.35). The game is
+navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) and its own symbol set (§5.36). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 

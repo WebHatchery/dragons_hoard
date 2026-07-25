@@ -1,111 +1,111 @@
 [
   {
-    "id": "copper",
-    "name": "Copper Coin",
+    "id": "shell",
+    "name": "Spiral Shell",
     "tier": "low",
-    "short": "CPR",
-    "art": "coin",
-    "texture": "sym_copper",
+    "short": "SHL",
+    "art": "shell",
+    "texture": "sym_shell",
     "color": [
-      0.72,
-      0.45,
-      0.22
+      0.86,
+      0.74,
+      0.52
     ],
     "pays": {
       "5": 6
     }
   },
   {
-    "id": "gold",
-    "name": "Gold Coins",
+    "id": "pearl",
+    "name": "Pearl",
     "tier": "low",
-    "short": "GLD",
-    "art": "coin_stack",
-    "texture": "sym_gold",
+    "short": "PRL",
+    "art": "pearl",
+    "texture": "sym_pearl",
     "color": [
-      0.88,
-      0.7,
-      0.24
+      0.93,
+      0.87,
+      0.9
     ],
     "pays": {
       "5": 9
     }
   },
   {
-    "id": "jade",
-    "name": "Green Gem",
+    "id": "starfish",
+    "name": "Starfish",
     "tier": "low",
-    "short": "JAD",
-    "art": "gem",
-    "texture": "sym_jade",
+    "short": "STR",
+    "art": "starfish",
+    "texture": "sym_starfish",
     "color": [
-      0.32,
-      0.72,
-      0.45
+      0.96,
+      0.52,
+      0.28
     ],
     "pays": {
       "5": 13
     }
   },
   {
-    "id": "sapphire",
-    "name": "Blue Gem",
+    "id": "urchin",
+    "name": "Sea Urchin",
     "tier": "mid",
-    "short": "SAP",
-    "art": "gem_round",
-    "texture": "sym_sapphire",
+    "short": "URC",
+    "art": "urchin",
+    "texture": "sym_urchin",
     "color": [
-      0.34,
-      0.55,
-      0.9
+      0.44,
+      0.24,
+      0.58
     ],
     "pays": {
       "5": 19
     }
   },
   {
-    "id": "ruby",
-    "name": "Ruby",
+    "id": "anemone",
+    "name": "Anemone",
     "tier": "mid",
-    "short": "RBY",
-    "art": "gem_step",
-    "texture": "sym_ruby",
+    "short": "ANM",
+    "art": "anemone",
+    "texture": "sym_anemone",
     "color": [
-      0.86,
-      0.26,
-      0.36
+      0.93,
+      0.34,
+      0.62
     ],
     "pays": {
       "5": 29
     }
   },
   {
-    "id": "chest",
-    "name": "Treasure Chest",
+    "id": "crab",
+    "name": "Crab",
     "tier": "high",
-    "short": "CHS",
-    "art": "chest",
-    "texture": "sym_chest",
+    "short": "CRB",
+    "art": "crab",
+    "texture": "sym_crab",
     "color": [
-      0.78,
-      0.56,
-      0.24
+      0.86,
+      0.27,
+      0.17
     ],
     "pays": {
       "5": 62
     }
   },
   {
-    "id": "egg",
-    "name": "Dragon Egg",
+    "id": "coral",
+    "name": "Coral",
     "tier": "high",
-    "short": "EGG",
-    "art": "egg",
-    "texture": "sym_egg",
+    "short": "CRL",
+    "art": "coral",
+    "texture": "sym_coral",
     "color": [
-      0.86,
-      0.84,
-      0.72
+      0.22,
+      0.74,
+      0.6
     ],
     "pays": {
       "5": 83
@@ -113,16 +113,16 @@
     "is_hoard": true
   },
   {
-    "id": "dragon",
-    "name": "Dragon",
+    "id": "kraken",
+    "name": "Kraken",
     "tier": "high",
-    "short": "DRG",
-    "art": "dragon",
-    "texture": "sym_dragon",
+    "short": "KRK",
+    "art": "kraken",
+    "texture": "sym_kraken",
     "color": [
-      0.62,
-      0.28,
-      0.82
+      0.32,
+      0.34,
+      0.76
     ],
     "pays": {
       "5": 125
@@ -130,16 +130,16 @@
     "is_wild": true
   },
   {
-    "id": "fire",
-    "name": "Dragon Fire",
+    "id": "wave",
+    "name": "Breaking Wave",
     "tier": "high",
-    "short": "FIR",
-    "art": "flame",
-    "texture": "sym_fire",
+    "short": "WAV",
+    "art": "wave",
+    "texture": "sym_wave",
     "color": [
-      0.95,
-      0.45,
-      0.15
+      0.36,
+      0.8,
+      0.94
     ],
     "pays": {
       "4": 1,
