@@ -1,0 +1,706 @@
+//! Immediate-mode UI. Pure view layer: it reads state and returns intents.
+
+pub mod celebration;
+pub mod reels;
+pub mod settings;
+pub mod symbols;
+
+use crate::data::GameData;
+use crate::state::{jackpot, GameSession};
+use macroquad::prelude::*;
+use macroquad_toolkit::ui::{
+    draw_badge, draw_surface, draw_text_block, draw_text_centered_in_box_ex, draw_text_right,
+    draw_ui_text_ex, meter, ButtonStyle, ButtonTone, RectExt, SurfaceStyle, TextStyle, VirtualUi,
+};
+
+pub const LOGICAL_WIDTH: f32 = 1280.0;
+pub const LOGICAL_HEIGHT: f32 = 720.0;
+
+/// Gold-on-stone theme.
+pub mod palette {
+    use macroquad::prelude::Color;
+
+    pub const BACKGROUND: Color = Color::new(0.045, 0.038, 0.052, 1.0);
+    pub const STONE: Color = Color::new(0.098, 0.086, 0.098, 0.97);
+    pub const STONE_HEADER: Color = Color::new(0.14, 0.118, 0.125, 1.0);
+    pub const GOLD: Color = Color::new(0.90, 0.74, 0.36, 1.0);
+    pub const GOLD_BRIGHT: Color = Color::new(1.0, 0.88, 0.52, 1.0);
+    pub const GOLD_DIM: Color = Color::new(0.52, 0.41, 0.20, 0.85);
+    pub const EMBER: Color = Color::new(0.93, 0.45, 0.18, 1.0);
+    pub const TEXT_BRIGHT: Color = Color::new(0.96, 0.93, 0.88, 1.0);
+    pub const TEXT: Color = Color::new(0.84, 0.80, 0.74, 1.0);
+    pub const TEXT_DIM: Color = Color::new(0.62, 0.57, 0.52, 1.0);
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UiAction {
+    Spin,
+    BetUp,
+    BetDown,
+    MaxBet,
+    ToggleAutospin,
+    TogglePaytable,
+    ToggleSettings,
+    VolumeUp,
+    VolumeDown,
+    CycleSpinSpeed,
+    CycleAutospinLength,
+    ToggleShake,
+    ToggleParticles,
+    /// Cut the showing celebration card short.
+    DismissCelebration,
+    NewGame,
+    Save,
+    Load,
+    DeleteSave,
+}
+
+pub struct UiContext<'a> {
+    pub data: &'a GameData,
+    pub session: &'a GameSession,
+    pub save_exists: bool,
+    pub show_paytable: bool,
+    pub show_settings: bool,
+    /// Screen-shake displacement, applied to the reels panel only.
+    pub shake: Vec2,
+    /// Accumulated in-game seconds, used for pulsing highlights. Comes from the
+    /// game loop rather than the wall clock so captures stay deterministic.
+    pub ui_time: f32,
+    pub ui: &'a VirtualUi,
+}
+
+pub fn draw_game_ui(ctx: UiContext<'_>) -> Vec<UiAction> {
+    let mut actions = Vec::new();
+    let mouse = ctx.ui.mouse_position();
+
+    draw_header(&ctx, mouse, &mut actions);
+    reels::draw_reels(ctx.data, ctx.session, ctx.shake, ctx.ui_time);
+    draw_control_panel(&ctx, mouse, &mut actions);
+    draw_footer(&ctx);
+
+    if ctx.show_paytable {
+        draw_paytable_overlay(&ctx, mouse, &mut actions);
+    }
+    if ctx.show_settings {
+        settings::draw(
+            &ctx.data.config,
+            &ctx.session.preferences,
+            mouse,
+            &mut actions,
+        );
+    }
+
+    // The card sits over everything, including the paytable.
+    if let Some(card) = ctx.session.celebrations.active() {
+        celebration::draw(card);
+        if is_mouse_button_released(MouseButton::Left) {
+            actions.push(UiAction::DismissCelebration);
+        }
+    }
+
+    actions
+}
+
+fn draw_header(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>) {
+    let rect = Rect::new(18.0, 16.0, LOGICAL_WIDTH - 36.0, 64.0);
+    draw_surface(
+        rect,
+        &SurfaceStyle::new(palette::STONE_HEADER)
+            .with_border(1.0, palette::GOLD_DIM)
+            .with_top_highlight(2.0, palette::GOLD),
+    );
+
+    draw_ui_text_ex(
+        &ctx.data.config.display_name,
+        rect.x + 18.0,
+        rect.y + 41.0,
+        TextStyle::new(31.0, palette::GOLD_BRIGHT).params(),
+    );
+
+    // The header has the only spare width on screen, and settings should be
+    // reachable from anywhere rather than buried in the wager panel.
+    if virtual_button(
+        Rect::new(rect.right() - 592.0, rect.y + 18.0, 108.0, 28.0),
+        "Settings",
+        true,
+        ButtonTone::Secondary,
+        mouse,
+    ) {
+        actions.push(UiAction::ToggleSettings);
+    }
+
+    let hoard = &ctx.session.hoard;
+    draw_badge(
+        Rect::new(rect.right() - 470.0, rect.y + 18.0, 200.0, 28.0),
+        &format!(
+            "Hoard {}/{}  pot {}",
+            hoard.count, ctx.data.config.hoard_capacity, hoard.pot
+        ),
+        Color::new(0.22, 0.16, 0.10, 1.0),
+        palette::TEXT,
+    );
+    draw_badge(
+        Rect::new(rect.right() - 258.0, rect.y + 18.0, 152.0, 28.0),
+        &format!("Balance {}", ctx.session.balance),
+        Color::new(0.16, 0.20, 0.13, 1.0),
+        palette::TEXT_BRIGHT,
+    );
+    draw_badge(
+        Rect::new(rect.right() - 96.0, rect.y + 18.0, 78.0, 28.0),
+        &format!("v{}", ctx.data.config.version),
+        Color::new(0.18, 0.15, 0.22, 1.0),
+        palette::TEXT_DIM,
+    );
+}
+
+fn draw_control_panel(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>) {
+    let rect = Rect::new(852.0, 96.0, 410.0, 520.0);
+    draw_surface(
+        rect,
+        &SurfaceStyle::new(palette::STONE)
+            .with_border(1.0, palette::GOLD_DIM)
+            .with_header(44.0, palette::STONE_HEADER)
+            .with_header_divider(1.0, palette::GOLD_DIM),
+    );
+    draw_ui_text_ex(
+        if ctx.session.in_free_spins() {
+            "Free Spins"
+        } else {
+            "Wager"
+        },
+        rect.x + 18.0,
+        rect.y + 30.0,
+        TextStyle::new(19.0, palette::GOLD).params(),
+    );
+
+    // The wager readout flows from the top and the buttons are anchored to the
+    // bottom, so the free-spin banner can claim the space between them without
+    // pushing anything off the panel.
+    let content = rect.inset(18.0);
+    let mut y = content.y + 44.0;
+    y = draw_win_readout(ctx, content, y);
+    y = draw_bet_controls(ctx, content, y, mouse, actions);
+    draw_feature_banner(ctx, content, y);
+
+    let buttons_top = draw_session_buttons(ctx, content, mouse, actions);
+    draw_spin_button(ctx, content, buttons_top, mouse, actions);
+}
+
+fn draw_win_readout(ctx: &UiContext<'_>, content: Rect, y: f32) -> f32 {
+    let rect = Rect::new(content.x, y, content.w, 62.0);
+    draw_surface(
+        rect,
+        &SurfaceStyle::new(Color::new(0.07, 0.06, 0.05, 1.0)).with_border(1.0, palette::GOLD_DIM),
+    );
+    draw_ui_text_ex(
+        "WIN",
+        rect.x + 14.0,
+        rect.y + 38.0,
+        TextStyle::new(18.0, palette::TEXT_DIM).params(),
+    );
+    let win = ctx.session.displayed_win();
+    draw_text_right(
+        &win.to_string(),
+        rect.right() - 14.0,
+        rect.y + 42.0,
+        TextStyle::new(
+            30.0,
+            if win > 0 {
+                palette::GOLD_BRIGHT
+            } else {
+                palette::TEXT_DIM
+            },
+        ),
+    );
+    y + 76.0
+}
+
+fn draw_bet_controls(
+    ctx: &UiContext<'_>,
+    content: Rect,
+    y: f32,
+    mouse: Vec2,
+    actions: &mut Vec<UiAction>,
+) -> f32 {
+    let line_bet = ctx.session.line_bet(ctx.data);
+    let enabled = !ctx.session.bet_locked();
+
+    draw_ui_text_ex(
+        "Line Bet",
+        content.x,
+        y + 24.0,
+        TextStyle::new(18.0, palette::TEXT).params(),
+    );
+
+    let button = 38.0;
+    if virtual_button(
+        Rect::new(content.right() - button * 2.0 - 92.0, y, button, button),
+        "-",
+        enabled,
+        ButtonTone::Secondary,
+        mouse,
+    ) {
+        actions.push(UiAction::BetDown);
+    }
+    draw_text_centered_in_box_ex(
+        &line_bet.to_string(),
+        content.right() - button - 92.0,
+        y,
+        92.0,
+        button,
+        TextStyle::new(22.0, palette::GOLD_BRIGHT),
+    );
+    if virtual_button(
+        Rect::new(content.right() - button, y, button, button),
+        "+",
+        enabled,
+        ButtonTone::Secondary,
+        mouse,
+    ) {
+        actions.push(UiAction::BetUp);
+    }
+
+    let y = y + 48.0;
+    draw_text_block(
+        &format!(
+            "Lines: {}   (all active)\nTotal Bet: {}",
+            ctx.data.paylines.len(),
+            ctx.data.total_bet(line_bet)
+        ),
+        content.x,
+        y,
+        content.w,
+        46.0,
+        17.0,
+        4.0,
+        palette::TEXT_DIM,
+    );
+
+    y + 54.0
+}
+
+/// Free spins take the banner slot; an autospin run gets it when they are not
+/// running, so the panel always says what is driving the reels.
+fn draw_feature_banner(ctx: &UiContext<'_>, content: Rect, y: f32) {
+    let banner = match ctx.session.free_spins.as_ref() {
+        Some(free_spins) => Some((
+            Color::new(0.24, 0.11, 0.04, 1.0),
+            palette::EMBER,
+            format!("{} free spins left", free_spins.remaining),
+            format!(
+                "x{} wilds expand  |  won {}",
+                ctx.data.freespins.multiplier, free_spins.total_won
+            ),
+        )),
+        None if ctx.session.autospin_remaining() > 0 => Some((
+            Color::new(0.09, 0.14, 0.19, 1.0),
+            palette::GOLD,
+            format!("Autospin — {} left", ctx.session.autospin_remaining()),
+            "Stops on a feature, a hatch or a big win".to_owned(),
+        )),
+        None => None,
+    };
+
+    let Some((fill, accent, title, subtitle)) = banner else {
+        return;
+    };
+
+    let rect = Rect::new(content.x, y, content.w, 58.0);
+    draw_surface(
+        rect,
+        &SurfaceStyle::new(fill)
+            .with_border(2.0, accent)
+            .with_left_accent(4.0, palette::GOLD_BRIGHT),
+    );
+    draw_ui_text_ex(
+        &title,
+        rect.x + 14.0,
+        rect.y + 26.0,
+        TextStyle::new(19.0, palette::GOLD_BRIGHT).params(),
+    );
+    draw_ui_text_ex(
+        &subtitle,
+        rect.x + 14.0,
+        rect.y + 46.0,
+        TextStyle::new(15.0, palette::TEXT).params(),
+    );
+}
+
+/// Spin block, sitting immediately above the bottom-anchored session buttons.
+fn draw_spin_button(
+    ctx: &UiContext<'_>,
+    content: Rect,
+    below: f32,
+    mouse: Vec2,
+    actions: &mut Vec<UiAction>,
+) {
+    let secondary_y = below - 12.0 - 38.0;
+    let spin_y = secondary_y - 10.0 - 70.0;
+
+    let label = if ctx.session.phase.is_busy() {
+        "SPINNING"
+    } else if ctx.session.in_free_spins() {
+        "FREE SPIN"
+    } else {
+        "S P I N"
+    };
+    if virtual_button(
+        Rect::new(content.x, spin_y, content.w, 70.0),
+        label,
+        ctx.session.can_spin(ctx.data),
+        ButtonTone::Positive,
+        mouse,
+    ) {
+        actions.push(UiAction::Spin);
+    }
+
+    let third = (content.w - 16.0) / 3.0;
+    if virtual_button(
+        Rect::new(content.x, secondary_y, third, 38.0),
+        "Max Bet",
+        !ctx.session.bet_locked(),
+        ButtonTone::Primary,
+        mouse,
+    ) {
+        actions.push(UiAction::MaxBet);
+    }
+
+    let running = ctx.session.autospin_remaining();
+    let (auto_label, auto_tone) = if running > 0 {
+        (format!("Stop {}", running), ButtonTone::Danger)
+    } else {
+        (
+            format!(
+                "Auto {}",
+                ctx.session.preferences.autospin_spins(&ctx.data.config)
+            ),
+            ButtonTone::Secondary,
+        )
+    };
+    if virtual_button(
+        Rect::new(content.x + third + 8.0, secondary_y, third, 38.0),
+        &auto_label,
+        // Stopping is always allowed; starting needs a settled, affordable game.
+        running > 0 || (ctx.session.can_spin(ctx.data) && !ctx.session.in_free_spins()),
+        auto_tone,
+        mouse,
+    ) {
+        actions.push(UiAction::ToggleAutospin);
+    }
+
+    if virtual_button(
+        Rect::new(content.x + (third + 8.0) * 2.0, secondary_y, third, 38.0),
+        "Paytable",
+        true,
+        ButtonTone::Secondary,
+        mouse,
+    ) {
+        actions.push(UiAction::TogglePaytable);
+    }
+}
+
+/// Save/load/new/delete, anchored to the bottom of the panel. Returns the top
+/// of the block so the spin controls can sit on top of it.
+fn draw_session_buttons(
+    ctx: &UiContext<'_>,
+    content: Rect,
+    mouse: Vec2,
+    actions: &mut Vec<UiAction>,
+) -> f32 {
+    let half = (content.w - 10.0) / 2.0;
+    let bottom_row = content.bottom() - 34.0;
+    let top_row = bottom_row - 42.0;
+
+    // Saving mid-feature would bank a session whose free spins are not
+    // persisted, and loading mid-spin would strand a committed stake.
+    let storage_ready = ctx.session.is_settled() && !ctx.session.in_free_spins();
+
+    if virtual_button(
+        Rect::new(content.x, top_row, half, 34.0),
+        "Save",
+        storage_ready,
+        ButtonTone::Positive,
+        mouse,
+    ) {
+        actions.push(UiAction::Save);
+    }
+    if virtual_button(
+        Rect::new(content.x + half + 10.0, top_row, half, 34.0),
+        "Load",
+        storage_ready && ctx.save_exists,
+        ButtonTone::Primary,
+        mouse,
+    ) {
+        actions.push(UiAction::Load);
+    }
+    if virtual_button(
+        Rect::new(content.x, bottom_row, half, 34.0),
+        "New Game",
+        ctx.session.phase.is_idle(),
+        ButtonTone::Secondary,
+        mouse,
+    ) {
+        actions.push(UiAction::NewGame);
+    }
+    if virtual_button(
+        Rect::new(content.x + half + 10.0, bottom_row, half, 34.0),
+        "Delete Save",
+        ctx.session.phase.is_idle() && ctx.save_exists,
+        ButtonTone::Danger,
+        mouse,
+    ) {
+        actions.push(UiAction::DeleteSave);
+    }
+
+    top_row
+}
+
+/// Bottom strip: hoard progress and session stats. The far right is left clear
+/// for the notification stack, which anchors bottom-right.
+fn draw_footer(ctx: &UiContext<'_>) {
+    let rect = Rect::new(18.0, 632.0, LOGICAL_WIDTH - 36.0, 70.0);
+    draw_surface(
+        rect,
+        &SurfaceStyle::new(Color::new(0.07, 0.06, 0.07, 0.96)).with_border(1.0, palette::GOLD_DIM),
+    );
+
+    let hoard = &ctx.session.hoard;
+    meter(
+        Rect::new(rect.x + 18.0, rect.y + 14.0, 420.0, 22.0),
+        hoard.count as f32,
+        ctx.data.config.hoard_capacity as f32,
+        palette::EMBER,
+        Some(&format!(
+            "Dragon's Hoard {}/{}",
+            hoard.count, ctx.data.config.hoard_capacity
+        )),
+    );
+    draw_ui_text_ex(
+        &format!(
+            "Fill the hoard to hatch a prize worth {}x the banked pot ({}).",
+            ctx.data.config.hatch_pot_multiplier, hoard.pot
+        ),
+        rect.x + 18.0,
+        rect.y + 56.0,
+        TextStyle::new(15.0, palette::TEXT_DIM).params(),
+    );
+
+    let stats = &ctx.session.stats;
+    draw_ui_text_ex(
+        &format!(
+            "Spins {}   Best win {}   Free spins played {}   Hatches {}",
+            stats.total_spins, stats.biggest_win, stats.free_spins_played, stats.hatches
+        ),
+        rect.x + 470.0,
+        rect.y + 30.0,
+        TextStyle::new(16.0, palette::TEXT).params(),
+    );
+    draw_ui_text_ex(
+        "Space spins  ·  Up/Down bet  ·  M max  ·  A autospin  ·  P paytable  ·  O settings",
+        rect.x + 470.0,
+        rect.y + 56.0,
+        TextStyle::new(15.0, palette::TEXT_DIM).params(),
+    );
+}
+
+fn draw_paytable_overlay(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>) {
+    draw_rectangle(
+        0.0,
+        0.0,
+        LOGICAL_WIDTH,
+        LOGICAL_HEIGHT,
+        Color::new(0.0, 0.0, 0.0, 0.72),
+    );
+
+    let rect = Rect::new(180.0, 70.0, 920.0, 580.0);
+    draw_surface(
+        rect,
+        &SurfaceStyle::new(palette::STONE)
+            .with_border(2.0, palette::GOLD)
+            .with_header(48.0, palette::STONE_HEADER)
+            .with_header_divider(1.0, palette::GOLD_DIM),
+    );
+    draw_ui_text_ex(
+        "Paytable — multipliers of the line bet",
+        rect.x + 20.0,
+        rect.y + 32.0,
+        TextStyle::new(21.0, palette::GOLD_BRIGHT).params(),
+    );
+
+    let mut y = rect.y + 76.0;
+    for (index, def) in ctx.data.symbols.iter() {
+        let row = Rect::new(rect.x + 20.0, y, rect.w - 40.0, 44.0);
+        let swatch = Rect::new(row.x, row.y - 2.0, 46.0, 42.0);
+        let tint = Color::new(def.color[0], def.color[1], def.color[2], 1.0);
+        draw_surface(
+            swatch,
+            &SurfaceStyle::new(Color::new(
+                0.055 + tint.r * 0.14,
+                0.05 + tint.g * 0.14,
+                0.065 + tint.b * 0.14,
+                1.0,
+            ))
+            .with_border(1.0, palette::GOLD_DIM),
+        );
+        if !symbols::draw(def, swatch, 0.0) {
+            draw_text_centered_in_box_ex(
+                &def.short,
+                swatch.x,
+                swatch.y,
+                swatch.w,
+                swatch.h,
+                TextStyle::new(18.0, palette::TEXT_BRIGHT),
+            );
+        }
+        draw_ui_text_ex(
+            &def.name,
+            row.x + 68.0,
+            row.y + 25.0,
+            TextStyle::new(18.0, palette::TEXT_BRIGHT).params(),
+        );
+        draw_ui_text_ex(
+            &symbol_note(ctx, index),
+            row.x + 270.0,
+            row.y + 25.0,
+            TextStyle::new(15.0, palette::TEXT_DIM).params(),
+        );
+        draw_text_right(
+            &format!(
+                "x3 {}    x4 {}    x5 {}",
+                pay_label(ctx, index, 3),
+                pay_label(ctx, index, 4),
+                pay_label(ctx, index, 5)
+            ),
+            row.right(),
+            row.y + 25.0,
+            TextStyle::new(17.0, palette::GOLD),
+        );
+        y += 46.0;
+    }
+
+    draw_text_block(
+        &format!(
+            "Wins pay left to right from reel 1 on all 20 lines. The Dragon is wild and pays the best reading of a line. Dragon Fire scatters pay anywhere and 3+ award free spins with expanding wilds.\n\
+             Progressives: {}% of every stake feeds the four pots, which pay at random on any paid spin. Bigger stakes win them proportionally more often, so the return per credit is the same at every bet — worth {:.1}% of all play.",
+            ctx.data.jackpots.contribution_permille as f32 / 10.0,
+            jackpot::expected_rtp(&ctx.data.jackpots) * 100.0,
+        ),
+        rect.x + 20.0,
+        y + 6.0,
+        rect.w - 40.0,
+        76.0,
+        15.0,
+        4.0,
+        palette::TEXT_DIM,
+    );
+
+    if virtual_button(
+        Rect::new(rect.right() - 130.0, rect.y + 10.0, 110.0, 30.0),
+        "Close",
+        true,
+        ButtonTone::Danger,
+        mouse,
+    ) {
+        actions.push(UiAction::TogglePaytable);
+    }
+}
+
+/// A run that does not pay reads as a dash, not a zero — the lowest symbols
+/// deliberately start at four of a kind.
+fn pay_label(ctx: &UiContext<'_>, index: usize, count: usize) -> String {
+    match ctx.data.symbols.pay(index, count) {
+        0 => "-".to_owned(),
+        value => value.to_string(),
+    }
+}
+
+fn symbol_note(ctx: &UiContext<'_>, index: usize) -> String {
+    let def = ctx.data.symbols.get(index);
+    if def.is_wild {
+        "Wild — substitutes for all but the scatter".to_owned()
+    } else if def.is_scatter {
+        "Scatter — pays total bet, anywhere".to_owned()
+    } else if def.is_hoard {
+        "Fills the Dragon's Hoard meter".to_owned()
+    } else {
+        format!("{} tier", def.tier)
+    }
+}
+
+fn virtual_button(rect: Rect, text: &str, enabled: bool, tone: ButtonTone, mouse: Vec2) -> bool {
+    let style = ButtonStyle::from_tone(tone);
+    let hovered = enabled && rect.contains_point(mouse);
+    let pressed = hovered && is_mouse_button_down(MouseButton::Left);
+    let activated = hovered && is_mouse_button_released(MouseButton::Left);
+    let fill = if !enabled {
+        style.disabled
+    } else if pressed {
+        style.pressed
+    } else if hovered {
+        style.hovered
+    } else {
+        style.normal
+    };
+
+    draw_surface(
+        rect,
+        &SurfaceStyle::new(fill).with_border(1.0, style.border),
+    );
+    draw_text_centered_in_box_ex(
+        text,
+        rect.x + 8.0,
+        rect.y + if pressed { 2.0 } else { 0.0 },
+        rect.w - 16.0,
+        rect.h,
+        TextStyle::new(
+            17.0,
+            if enabled {
+                style.text_color
+            } else {
+                palette::TEXT_DIM
+            },
+        ),
+    );
+
+    activated
+}
+
+/// Keyboard shortcuts, mapped to the same intents the buttons produce.
+///
+/// While a celebration is showing, the spin key dismisses it instead — one key
+/// to move the game forward, whatever it is currently waiting on.
+pub fn actions_from_keys(celebrating: bool) -> Vec<UiAction> {
+    let mut actions = Vec::new();
+    if is_key_pressed(KeyCode::Space) || is_key_pressed(KeyCode::Enter) {
+        actions.push(if celebrating {
+            UiAction::DismissCelebration
+        } else {
+            UiAction::Spin
+        });
+    }
+    if is_key_pressed(KeyCode::A) {
+        actions.push(UiAction::ToggleAutospin);
+    }
+    if is_key_pressed(KeyCode::Up) || is_key_pressed(KeyCode::Equal) {
+        actions.push(UiAction::BetUp);
+    }
+    if is_key_pressed(KeyCode::Down) || is_key_pressed(KeyCode::Minus) {
+        actions.push(UiAction::BetDown);
+    }
+    if is_key_pressed(KeyCode::M) {
+        actions.push(UiAction::MaxBet);
+    }
+    if is_key_pressed(KeyCode::P) {
+        actions.push(UiAction::TogglePaytable);
+    }
+    if is_key_pressed(KeyCode::O) {
+        actions.push(UiAction::ToggleSettings);
+    }
+    if is_key_pressed(KeyCode::S) {
+        actions.push(UiAction::Save);
+    }
+    if is_key_pressed(KeyCode::L) {
+        actions.push(UiAction::Load);
+    }
+    actions
+}

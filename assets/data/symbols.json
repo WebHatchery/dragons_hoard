@@ -1,0 +1,95 @@
+[
+  {
+    "id": "copper",
+    "name": "Copper Coin",
+    "tier": "low",
+    "short": "CPR",
+    "art": "coin",
+    "texture": "sym_copper",
+    "color": [0.78, 0.47, 0.26],
+    "pays": { "4": 11, "5": 40 }
+  },
+  {
+    "id": "gold",
+    "name": "Gold Coins",
+    "tier": "low",
+    "short": "GLD",
+    "art": "coin_stack",
+    "texture": "sym_gold",
+    "color": [0.92, 0.74, 0.28],
+    "pays": { "4": 19, "5": 58 }
+  },
+  {
+    "id": "jade",
+    "name": "Green Gem",
+    "tier": "low",
+    "short": "JAD",
+    "art": "gem",
+    "texture": "sym_jade",
+    "color": [0.32, 0.72, 0.45],
+    "pays": { "3": 8, "4": 29, "5": 76 }
+  },
+  {
+    "id": "sapphire",
+    "name": "Blue Gem",
+    "tier": "mid",
+    "short": "SAP",
+    "art": "gem",
+    "texture": "sym_sapphire",
+    "color": [0.31, 0.53, 0.86],
+    "pays": { "3": 14, "4": 46, "5": 115 }
+  },
+  {
+    "id": "ruby",
+    "name": "Ruby",
+    "tier": "mid",
+    "short": "RBY",
+    "art": "gem",
+    "texture": "sym_ruby",
+    "color": [0.82, 0.24, 0.32],
+    "pays": { "3": 17, "4": 71, "5": 144 }
+  },
+  {
+    "id": "chest",
+    "name": "Treasure Chest",
+    "tier": "high",
+    "short": "CHS",
+    "art": "chest",
+    "texture": "sym_chest",
+    "color": [0.66, 0.45, 0.18],
+    "pays": { "3": 36, "4": 142, "5": 384 }
+  },
+  {
+    "id": "egg",
+    "name": "Dragon Egg",
+    "tier": "high",
+    "short": "EGG",
+    "art": "egg",
+    "texture": "sym_egg",
+    "color": [0.85, 0.82, 0.68],
+    "is_hoard": true,
+    "pays": { "3": 44, "4": 192, "5": 480 }
+  },
+  {
+    "id": "dragon",
+    "name": "Dragon",
+    "tier": "wild",
+    "short": "DRG",
+    "art": "dragon",
+    "texture": "sym_dragon",
+    "color": [0.72, 0.32, 0.82],
+    "is_wild": true,
+    "pays": { "3": 88, "4": 374, "5": 960 }
+  },
+  {
+    "id": "fire",
+    "name": "Dragon Fire",
+    "tier": "scatter",
+    "short": "FIR",
+    "art": "flame",
+    "texture": "sym_fire",
+    "color": [0.95, 0.45, 0.15],
+    "is_scatter": true,
+    "pays": { "3": 2, "4": 10, "5": 50 }
+  }
+]

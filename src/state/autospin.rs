@@ -1,0 +1,83 @@
+//! Autospin: spin N times unattended, stopping early when something worth
+//! looking at happens.
+//!
+//! The stop conditions are the point of the feature. An autospin that ploughs
+//! through a free-spin trigger has taken the interesting moment away from the
+//! player, so anything that would raise a celebration also stops the run.
+
+use serde::{Deserialize, Serialize};
+
+/// Why an autospin run ended. Surfaced so the player is told, rather than the
+/// counter just quietly stopping.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AutospinStop {
+    Completed,
+    FeatureTriggered,
+    Hatched,
+    JackpotWon,
+    BigWin,
+    OutOfCredits,
+    Cancelled,
+}
+
+impl AutospinStop {
+    pub fn message(self) -> &'static str {
+        match self {
+            AutospinStop::Completed => "Autospin finished",
+            AutospinStop::FeatureTriggered => "Autospin stopped — free spins!",
+            AutospinStop::Hatched => "Autospin stopped — the hoard hatched",
+            AutospinStop::JackpotWon => "Autospin stopped — jackpot!",
+            AutospinStop::BigWin => "Autospin stopped — big win",
+            AutospinStop::OutOfCredits => "Autospin stopped — out of credits",
+            AutospinStop::Cancelled => "Autospin cancelled",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct AutospinState {
+    remaining: u32,
+}
+
+impl AutospinState {
+    pub fn new(spins: u32) -> Self {
+        Self { remaining: spins }
+    }
+
+    pub fn remaining(&self) -> u32 {
+        self.remaining
+    }
+
+    /// Consume one spin from the run. Returns false when the run is spent.
+    pub fn take(&mut self) -> bool {
+        if self.remaining == 0 {
+            return false;
+        }
+        self.remaining -= 1;
+        self.remaining > 0
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_run_counts_down_and_reports_when_it_is_spent() {
+        let mut run = AutospinState::new(3);
+
+        assert!(run.take());
+        assert_eq!(run.remaining(), 2);
+        assert!(run.take());
+        assert!(!run.take(), "the third spin is the last one");
+        assert_eq!(run.remaining(), 0);
+    }
+
+    #[test]
+    fn a_spent_run_cannot_go_negative() {
+        let mut run = AutospinState::new(1);
+        assert!(!run.take());
+        assert!(!run.take());
+        assert_eq!(run.remaining(), 0);
+    }
+}

@@ -1,0 +1,37 @@
+[
+  [
+    "copper", "gold", "jade", "sapphire", "copper", "ruby", "chest", "gold",
+    "copper", "sapphire", "jade", "dragon", "gold", "copper", "ruby", "egg",
+    "sapphire", "jade", "copper", "gold", "chest", "copper", "sapphire", "ruby",
+    "jade", "gold", "copper", "egg", "sapphire", "copper", "jade", "copper",
+    "gold", "ruby", "chest", "sapphire", "copper", "egg", "jade", "fire"
+  ],
+  [
+    "gold", "copper", "sapphire", "jade", "chest", "copper", "ruby", "gold",
+    "jade", "copper", "dragon", "sapphire", "copper", "gold", "egg", "jade",
+    "ruby", "copper", "sapphire", "chest", "gold", "copper", "jade", "egg",
+    "ruby", "sapphire", "copper", "gold", "jade", "dragon", "copper", "sapphire",
+    "chest", "ruby", "gold", "copper", "egg", "jade", "sapphire", "fire"
+  ],
+  [
+    "jade", "copper", "gold", "ruby", "copper", "sapphire", "egg", "copper",
+    "chest", "gold", "jade", "copper", "dragon", "sapphire", "gold", "copper",
+    "ruby", "jade", "egg", "copper", "sapphire", "gold", "copper", "chest",
+    "jade", "ruby", "sapphire", "copper", "egg", "gold", "dragon", "jade",
+    "copper", "sapphire", "ruby", "chest", "gold", "jade", "sapphire", "fire"
+  ],
+  [
+    "sapphire", "copper", "jade", "gold", "chest", "copper", "ruby", "jade",
+    "copper", "egg", "gold", "sapphire", "copper", "dragon", "jade", "copper",
+    "ruby", "gold", "sapphire", "copper", "chest", "jade", "egg", "copper",
+    "gold", "ruby", "sapphire", "copper", "jade", "dragon", "gold", "copper",
+    "sapphire", "chest", "ruby", "jade", "egg", "gold", "sapphire", "fire"
+  ],
+  [
+    "copper", "ruby", "gold", "jade", "copper", "sapphire", "chest", "copper",
+    "gold", "ruby", "jade", "copper", "egg", "sapphire", "dragon", "copper",
+    "gold", "jade", "ruby", "copper", "sapphire", "chest", "gold", "copper",
+    "jade", "egg", "sapphire", "copper", "ruby", "gold", "jade", "jade",
+    "copper", "sapphire", "chest", "gold", "egg", "jade", "sapphire", "fire"
+  ]
+]

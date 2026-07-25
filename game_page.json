@@ -1,0 +1,26 @@
+{
+  "title": "Dragon's Hoard",
+  "wasm": "dragons_hoard",
+  "roost_slug": "rust_dragons_hoard",
+  "status": { "text": "In Development", "class": "wip" },
+  "canvas_rendering": "pixelated",
+  "about": [
+    "A five-reel, twenty-payline slot machine set in a dragon's treasure vault. Coins and gems pay small and often, treasure chests and dragon eggs pay big, and the Dragon itself is wild — it substitutes for everything but Dragon Fire and pays whichever reading of a line is worth most.",
+    "Three or more Dragon Fire scatters award free spins, where wilds expand to fill their reel and every line win is doubled. Every Dragon Egg that lands banks its stake into the Dragon's Hoard meter; fill the meter and the hoard hatches into an instant prize.",
+    "This is a play-money arcade slot. Credits are a local score — there are no purchases, no real currency, and nothing of value is wagered."
+  ],
+  "controls": [
+    { "key": "Space / Enter", "desc": "Spin the reels" },
+    { "key": "Up / Down", "desc": "Raise or lower the line bet" },
+    { "key": "M", "desc": "Max bet" },
+    { "key": "P", "desc": "Show the paytable" },
+    { "key": "S / L", "desc": "Save / load your hoard" }
+  ],
+  "details": [
+    { "label": "Genre", "value": "Casino / Slot (play money)" },
+    { "label": "Engine", "value": "Macroquad + Toolkit" },
+    { "label": "Platform", "value": "Browser, Windows" },
+    { "label": "Paylines", "value": "20, always active" },
+    { "label": "RTP", "value": "~96% (verified by simulation)" }
+  ]
+}

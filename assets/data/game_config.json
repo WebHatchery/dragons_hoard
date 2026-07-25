@@ -1,0 +1,18 @@
+{
+  "game_name": "dragons_hoard",
+  "display_name": "Dragon's Hoard",
+  "save_slot": "autosave",
+  "version": "1.0.0",
+  "starting_balance": 1000,
+  "reel_count": 5,
+  "row_count": 3,
+  "line_bets": [1, 2, 5, 10, 25],
+  "default_line_bet_index": 3,
+  "hoard_capacity": 15,
+  "hatch_pot_multiplier": 1,
+  "free_spin_multiplier": 2,
+  "autospin_choices": [10, 25, 50, 100],
+  "default_autospin_choice": 1,
+  "big_win_multiple": 10,
+  "sfx_volume": 0.5
+}
