@@ -5,6 +5,11 @@ pub mod cascade;
 pub mod evaluate;
 pub mod reels;
 pub mod sim;
+/// The interactive path, driven headless (§5.33). Test-only, like the parts of
+/// `sim` it is checked against: it exists to prove the shipped game pays what
+/// the published figures say, not to be part of the shipped game.
+#[cfg(test)]
+pub mod soak;
 
 pub use cascade::CascadeStep;
 pub use evaluate::{evaluate, expand_wilds, EvalContext, SpinOutcome};

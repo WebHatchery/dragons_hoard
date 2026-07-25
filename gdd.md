@@ -1535,6 +1535,64 @@ Unlike the ledger, this does not persist. It is a session in the same sense
 §5.30 means it, and a graph spanning six sittings would be a different and much
 less interesting picture.
 
+### 5.33 The conservation harness (post-v1)
+
+Every RTP figure in this document comes from `GameSession::spin` — the headless
+path the sim and the profiler drive. It settles a spin and then resolves any
+feature immediately through `auto_play_bonus` and `auto_play_holdspin`, because a
+Monte-Carlo run cannot wait for a beat timer.
+
+**Nobody plays that game.** A player goes through `begin_spin` and then
+`update_spin` a frame at a time, and their features resolve through `pick_bonus`
+and `tick_holdspin` instead. Four functions, two per feature, and until now
+nothing anywhere asserted the two pairs pay the same. If they ever diverged,
+twenty-seven sections of published figures would describe a game that is not the
+one being shipped — and no existing test would notice, because the sim would go
+on measuring itself, correctly, forever.
+
+So this drives the **interactive** path headless: whole rounds frame by frame at
+a fixed timestep, dismissing cards, picking chests, letting respin rounds beat
+themselves out, playing every free spin a round bought. And it holds the session
+to conservation laws while it does:
+
+- **The books balance.** `opening + won - wagered == balance`, exactly, after
+  every round. `total_won` and `total_wagered` are maintained by different code
+  from `balance`, so this is a cross-check rather than a tautology: any path that
+  moves credits without accounting for them breaks it.
+- Nothing goes negative, no round leaves the machine stuck, the hoard never
+  overfills, and a progressive pot only ever falls on a round that won.
+
+**Measured, over 200,000 rounds per cabinet, against the sim on the same seed:**
+
+| Cabinet | Interactive RTP | Sim RTP | Interactive hits | Sim hits |
+|---|---|---|---|---|
+| Dragon's Hoard | 0.9512 | 0.9370 | 0.4113 | 0.4099 |
+| Frost Wyrm | 0.9257 | 0.9123 | 0.2596 | 0.2584 |
+| Emberfall | 0.9655 | 0.9575 | 0.6247 | 0.6236 |
+| Wyrmspire | 0.9527 | 0.9520 | 0.6735 | 0.6723 |
+| Avalanche | 0.9480 | 0.9474 | 0.4763 | 0.4747 |
+
+Hit frequency is all but free of sampling noise at this scale, and the two paths
+agree on it to **0.0016 on every cabinet**. That is structural agreement rather
+than luck. Return still swings, being dominated by the rare enormous payouts —
+and the residual gaps rank in **volatility order**: Frost and Dragon's Hoard, the
+two with the fattest tails, sit about 1.4% apart, while Wyrmspire and Avalanche
+land within 0.1%. That is the signature of sampling error, not of a difference
+between the paths, which would not care how volatile the cabinet was.
+
+**Two things the harness taught on the way.** Its first version picked chest zero
+on every open board and hung on every round, because a chest already turned over
+cannot be picked again — the driver now takes the first unopened one, which is
+what a player clicking blind does. And the round-level hit rate turned out to
+equal the sim's spin-level counter exactly, for a reason worth knowing: the
+scatter pays from anywhere, so a round that awards free spins has **always
+already paid something**. There is no such thing here as a round that pays only
+inside its feature.
+
+The module is `#[cfg(test)]`, like the parts of `sim` it is checked against. It
+exists to prove the shipped game pays what the published figures say, not to be
+part of the shipped game.
+
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
 - Winning lines: pulse highlight (`blink`/`pulse`), floating win amounts
@@ -2135,6 +2193,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
+| The sim measuring a game nobody plays | The interactive path is driven headless and held to conservation laws, then compared against the sim on the same seed (§5.33). Features resolve through different functions on the two paths. |
 | A summary that hides the shape | The session graph draws the band between bucket extremes, and the toolkit series decimates by extremes rather than averages (§5.32). Averaging would smooth away the spikes the graph exists to show. |
 | Music that is inaudible or clips | Tracks are levelled against each other by test, and every mood's summed peak is checked at its real gains (§5.31). The panel found the arpeggio at a fifth of the bass. |
 | A session you lose track of | Three figures at a chosen interval, and caps that tighten now but loosen only next session (§5.30). A limit you can lift in the moment is a suggestion. |
@@ -2171,7 +2230,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus twenty-seven post-v1 systems
+## 15. Current State — v1 shipped, plus twenty-eight post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
@@ -2182,11 +2241,11 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31) and the session graph (§5.32). The game is
+navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-395 tests pass here and 194 in `macroquad-toolkit`; `cargo fmt --check`,
+402 tests pass here and 194 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
 release build are clean. Every `.rs` file is under the 800-line limit, `data.rs`
 (741) and `ui/reels.rs` (734) the largest — `state/spin.rs` dropped from 615 to
