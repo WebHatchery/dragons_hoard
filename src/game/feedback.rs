@@ -19,6 +19,22 @@ impl Game {
     /// Punch up a card as it opens. The card itself is drawn by the UI; this is
     /// the part you feel rather than read.
     pub(super) fn celebrate(&mut self, kind: &CelebrationKind) {
+        // A card is raised exactly when something worth pointing at happened,
+        // which makes this the right seam to mark the session graph (§5.32) —
+        // one place rather than five scattered through the spin handling.
+        use crate::state::history::Cause;
+        let cause = match kind {
+            CelebrationKind::Jackpot { .. } => Some(Cause::Jackpot),
+            CelebrationKind::Hatch { .. } => Some(Cause::Hatch),
+            CelebrationKind::Wrath { .. } => Some(Cause::Wrath),
+            CelebrationKind::FreeSpinsEntry { .. } => Some(Cause::Feature),
+            CelebrationKind::BigWin { .. } => Some(Cause::BigWin),
+            _ => None,
+        };
+        if let Some(cause) = cause {
+            self.history.mark(cause, self.session.balance);
+        }
+
         match kind {
             // The rarest event in the game gets the loudest presentation.
             CelebrationKind::Jackpot { .. } => {

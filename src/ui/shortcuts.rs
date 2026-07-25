@@ -98,6 +98,11 @@ pub static SHORTCUTS: &[Shortcut] = &[
         action: UiAction::ToggleSettings,
     },
     Shortcut {
+        keys: &[KeyCode::H],
+        label: Some("H session"),
+        action: UiAction::ToggleHistory,
+    },
+    Shortcut {
         keys: &[KeyCode::T],
         label: Some("T limits"),
         action: UiAction::ToggleLimits,

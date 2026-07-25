@@ -49,6 +49,9 @@ pub struct Game {
     limits: crate::state::limits::LimitState,
     limit_choices: crate::state::limits::LimitChoices,
     show_limits: bool,
+    /// The session graph (§5.32).
+    history: crate::state::history::History,
+    show_history: bool,
     reality_check: bool,
     show_waveforms: bool,
     show_vision: bool,
@@ -165,6 +168,8 @@ impl Game {
             limits,
             limit_choices,
             show_limits: false,
+            history: crate::state::history::History::default(),
+            show_history: false,
             reality_check: false,
             show_waveforms: false,
             show_vision: false,
@@ -238,6 +243,7 @@ impl Game {
             self.show_ledger = false;
             self.show_rules = false;
             self.show_limits = false;
+            self.show_history = false;
             self.show_waveforms = false;
             self.show_vision = false;
         }
@@ -268,6 +274,8 @@ impl Game {
                 limits: &self.limits,
                 limit_choices: &self.limit_choices,
                 show_limits: self.show_limits,
+                history: &self.history,
+                show_history: self.show_history,
                 reality_check: self.reality_check,
                 show_waveforms: self.show_waveforms,
                 music_levels: self.music.levels(),
@@ -429,6 +437,10 @@ impl Game {
         // The same round the ledger just took, against the session clock
         // (§5.30). Gamble winnings are excluded from both for the same reason.
         self.limits.clock.record(round.wagered, round.credits);
+        // And the bankroll itself, for the graph (§5.32). Recorded here rather
+        // than every frame so one point is one round — a per-frame sample would
+        // make the x axis a measure of how long the player stared at the reels.
+        self.history.record(self.session.balance);
         if let Some(breach) = self.limits.evaluate() {
             self.notifications.warning(breach.message());
         }
@@ -546,6 +558,7 @@ impl Game {
         self.show_paytable
             || self.show_rules
             || self.show_limits
+            || self.show_history
             || self.reality_check
             || self.show_settings
             || self.show_machines

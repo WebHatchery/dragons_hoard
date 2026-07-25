@@ -8,6 +8,7 @@ pub mod featurebuy;
 pub mod features;
 pub mod gamble;
 pub mod hints;
+pub mod history;
 pub mod hoard;
 pub mod holdspin;
 pub mod jackpot;

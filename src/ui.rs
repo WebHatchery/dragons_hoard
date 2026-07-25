@@ -6,6 +6,7 @@ pub mod celebration;
 pub mod featurebuy;
 pub mod gamble;
 pub mod hint;
+pub mod history;
 pub mod holdspin;
 pub mod ledger;
 pub mod legibility;
@@ -74,6 +75,8 @@ pub enum UiAction {
     ToggleRules,
     MusicVolumeUp,
     MusicVolumeDown,
+    /// Open or close the session graph (§5.32).
+    ToggleHistory,
     /// Open or close the session limits panel (§5.30).
     ToggleLimits,
     /// Step a cap to the next offering (§5.30).
@@ -129,6 +132,8 @@ pub struct UiContext<'a> {
     pub limits: &'a crate::state::limits::LimitState,
     pub limit_choices: &'a crate::state::limits::LimitChoices,
     pub show_limits: bool,
+    pub history: &'a crate::state::history::History,
+    pub show_history: bool,
     /// A reality check is waiting to be read (§5.30). Holds the game.
     pub reality_check: bool,
     pub show_waveforms: bool,
@@ -164,6 +169,9 @@ pub fn draw_game_ui(ctx: UiContext<'_>, nav: &mut Nav) -> Vec<UiAction> {
     }
     if ctx.show_limits {
         limits::draw(ctx.limits, ctx.limit_choices, mouse, &mut actions, nav);
+    }
+    if ctx.show_history {
+        history::draw(ctx.history, ctx.ledger, mouse, &mut actions, nav);
     }
     if ctx.show_achievements {
         achievements::draw(ctx.achievements, mouse, &mut actions, nav);

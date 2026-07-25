@@ -104,6 +104,10 @@ impl Game {
                 }
                 self.sound.play(Sfx::Click);
             }
+            ActionOutcome::HistoryToggled => {
+                self.show_history = !self.show_history;
+                self.sound.play(Sfx::Click);
+            }
             ActionOutcome::LimitsToggled => {
                 self.show_limits = !self.show_limits;
                 self.sound.play(Sfx::Click);
@@ -228,6 +232,7 @@ impl Game {
                 // is cleared, and any loosening the player filed lands (§5.30).
                 self.limits.new_session();
                 self.reality_check = false;
+                self.history.clear();
                 let preferences = self.session.preferences.clone();
                 self.session = GameSession::new(&self.data, random_u64());
                 self.session.preferences = preferences;

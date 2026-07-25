@@ -177,6 +177,54 @@ impl Game {
             // describes the one in front of the player (§5.29): Avalanche
             // cascades and Frost refines, and neither used to be mentioned
             // anywhere in the game.
+            "history" => {
+                // A real session: long enough to have a shape, and started from
+                // a bankroll the player could plausibly lose, so the graph shows
+                // the grind rather than a flat line at a million (§5.32).
+                self.history.clear();
+                self.session.balance = 20_000;
+                for _ in 0..600 {
+                    self.session.celebrations.clear();
+                    if self.session.balance < 1_000 {
+                        break;
+                    }
+                    if self.session.spin(&self.data).is_err() {
+                        break;
+                    }
+                    self.drain_finished_rounds();
+                    // The marks come from the cards the round raised, which is
+                    // where the interactive game takes them from too. Drained by
+                    // stepping the queue rather than read off it, since that is
+                    // the only way a card reports itself as opened.
+                    while let Some(card) = self.session.celebrations.update(9.0) {
+                        self.celebrate(&card);
+                    }
+                }
+                // The cards fired their bursts on the way through. In the
+                // game they would have faded long before the panel opened.
+                self.particles.clear();
+                self.session.celebrations.clear();
+                self.show_history = true;
+            }
+            // The same panel after enough rounds to decimate, which is the only
+            // state where the band between bucket extremes is visible.
+            "history_long" => {
+                self.history.clear();
+                for _ in 0..4_000 {
+                    self.session.balance = 1_000_000;
+                    self.session.celebrations.clear();
+                    if self.session.spin(&self.data).is_err() {
+                        break;
+                    }
+                    self.drain_finished_rounds();
+                    while let Some(card) = self.session.celebrations.update(9.0) {
+                        self.celebrate(&card);
+                    }
+                }
+                self.particles.clear();
+                self.session.celebrations.clear();
+                self.show_history = true;
+            }
             "rules" => self.show_rules = true,
             "limits" => {
                 // One cap tightened and one loosened, so the panel shows both

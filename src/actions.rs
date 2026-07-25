@@ -34,6 +34,7 @@ pub enum ActionOutcome {
     LedgerToggled,
     RulesToggled,
     LimitsToggled,
+    HistoryToggled,
     /// A cap or the reality-check interval was stepped (§5.30).
     LimitRequested(crate::state::limits::Cap),
     RealityCheckCycled,
@@ -99,6 +100,7 @@ pub fn apply(
         UiAction::ToggleLedger => ActionOutcome::LedgerToggled,
         UiAction::ToggleRules => ActionOutcome::RulesToggled,
         UiAction::ToggleLimits => ActionOutcome::LimitsToggled,
+        UiAction::ToggleHistory => ActionOutcome::HistoryToggled,
         UiAction::CycleLimit(cap) => ActionOutcome::LimitRequested(cap),
         UiAction::CycleRealityCheck => ActionOutcome::RealityCheckCycled,
         UiAction::AcknowledgeRealityCheck => ActionOutcome::RealityCheckAcknowledged,

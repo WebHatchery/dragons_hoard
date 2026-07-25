@@ -1472,6 +1472,69 @@ glance rather than one mix at a time.
 Music gets its own volume row, separate from the effects: it plays constantly and
 they do not, so a player who wants one quiet rarely wants both quiet.
 
+### 5.32 The session graph (post-v1)
+
+The profiler (§5.17) simulates twenty thousand rounds and reports a distribution.
+The ledger (§5.18) records what the player has actually seen and sets it beside
+that distribution. The reality check (§5.30) states the session totals. All three
+are **summaries**, and every one answers "how much" while carefully avoiding
+"what did it feel like".
+
+Which is the question a player is really asking. A hit frequency of 0.41 and a
+return of 95% describe a session perfectly and convey nothing about the forty
+spins that paid nothing followed by one that paid two hundred times. **That is
+the shape of the thing, and it is only visible over time.**
+
+So the bankroll is recorded after every round and drawn. The graph makes an
+argument no table can: the long grinding decline is the normal state, the spikes
+are where the money comes back, and the two are the same machine.
+
+**`macroquad-toolkit::series`** is what makes it affordable. A session is
+unbounded and memory is not, and both usual answers are wrong for a graph whose
+*point* is the variation:
+
+- A **ring buffer** drops the beginning — the player's first hour vanishes, and
+  with it any sense of where they started.
+- **Averaging into buckets** keeps the span and destroys the detail. `+40,000`
+  and `-200` average to a shrug. The spike *is* the information.
+
+Instead each slot holds the min, max and closing value over its span, and a full
+series merges adjacent pairs — min of mins, max of maxes, last of the later.
+Halving the count doubles the time per slot, and the merge is **lossless in the
+extremes**: however many times a series has decimated, its reported minimum and
+maximum are still exactly the smallest and largest ever pushed. Resolution
+decays; the envelope never does. The plot then draws the **band** between each
+bucket's extremes with the closing line over it, so a bucket covering hundreds of
+rounds still shows every spike at the height it reached rather than a tidy line
+implying a calm that never happened.
+
+The baseline is the **opening balance**, not zero and not the middle of the
+range, so "am I up or down" is answered without arithmetic and the reference is
+always kept in view.
+
+**Marks** give the spikes causes. Every feature, hatch, Wrath, jackpot and big
+win is recorded where it happened — taken from the celebration queue, since a
+card is raised exactly when something worth pointing at occurred, which is one
+seam rather than five scattered through the spin handling.
+
+**The capture found the flaw in the marks.** The first budget dropped the oldest
+when full, which is the obvious policy and looks broken: three hundred hatches
+over four thousand rounds meant the surviving sixty-four were all from the last
+few minutes, so the graph drew a wall against the right-hand edge and said
+nothing about the session it was describing. They are **halved** now, the same
+principle the series uses, which spreads coverage across the whole session at
+declining density. A jackpot is exempt — it is the rarest thing the game does —
+but the exemption yields to the budget, because a session of nothing but jackpots
+would otherwise keep every mark and grow without bound.
+
+Deepest fall is reported as **"at least"**: once buckets merge, a peak and the
+trough after it can share one and their order is no longer known, so the figure
+is an honest lower bound rather than a number pretending to be exact.
+
+Unlike the ledger, this does not persist. It is a session in the same sense
+§5.30 means it, and a graph spanning six sittings would be a different and much
+less interesting picture.
+
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
 - Winning lines: pulse highlight (`blink`/`pulse`), floating win amounts
@@ -2072,6 +2135,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
+| A summary that hides the shape | The session graph draws the band between bucket extremes, and the toolkit series decimates by extremes rather than averages (§5.32). Averaging would smooth away the spikes the graph exists to show. |
 | Music that is inaudible or clips | Tracks are levelled against each other by test, and every mood's summed peak is checked at its real gains (§5.31). The panel found the arpeggio at a fifth of the bass. |
 | A session you lose track of | Three figures at a chosen interval, and caps that tighten now but loosen only next session (§5.30). A limit you can lift in the moment is a suggestion. |
 | Rules that describe a different game | The panel is generated from the cabinet's own config, and a test asserts every mechanic a machine has is explained (§5.29). Hand-written prose drifted silently across four new cabinets. |
@@ -2107,7 +2171,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus twenty-six post-v1 systems
+## 15. Current State — v1 shipped, plus twenty-seven post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
@@ -2118,11 +2182,11 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30) and music (§5.31). The game is
+navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31) and the session graph (§5.32). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-372 tests pass here and 181 in `macroquad-toolkit`; `cargo fmt --check`,
+395 tests pass here and 194 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
 release build are clean. Every `.rs` file is under the 800-line limit, `data.rs`
 (741) and `ui/reels.rs` (734) the largest — `state/spin.rs` dropped from 615 to
