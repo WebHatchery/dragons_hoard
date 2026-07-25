@@ -1888,6 +1888,56 @@ thing it points at, which is the same lesson §5.37 learned from the opposite
 direction when its first clean run had to be disproved before it could be
 believed.
 
+### 5.40 Contrast — every button in the game was below the standard (post-v1)
+
+Picking UI colours is done by eye, on a good monitor, by the person who chose
+them and therefore already knows what they say. Contrast is one of the few things
+about a visual design that is genuinely **objective**, and this game had never
+measured it.
+
+`macroquad-toolkit::ui::contrast` is the WCAG figure: relative luminance of the
+lighter colour over the darker, 1.0 for identical colours and 21.0 for black on
+white. Two details matter more than the formula. Luminance is **weighted**, not
+averaged — averaging raw channels overstates blue by a factor of twelve. And a
+colour drawn at less than full alpha is **composited first**, because 40%-alpha
+white on black is grey; measuring the un-composited value would claim 21:1 for
+something barely legible.
+
+**§5.37's `Region` already knew where text was drawn; it now knows what it was
+drawn on.** `Region::on(rect, surface)` turns the layout audit into a check for
+both fit *and* legibility, reported the same way.
+
+The first useful run found **seventeen failures, and they were the buttons** —
+every one of them. White labels on the bright tones measured **2.1:1** where 4.5
+is asked for; the blue ones 3.0, the red 3.8. The fills had been chosen to look
+right against a dark panel rather than against the text on top of them, which is
+exactly the mistake the eye cannot catch.
+
+**The fix derives the fill from the requirement.** `darken_until` scales a
+background toward black only as far as its label needs — a legible pairing is
+returned untouched. Hand-picking a colour per tone would work until someone
+adjusted one; this way a fill **cannot** be unreadable, and the buttons stay
+recognisably green, blue and red because they are darkened by a step or two, not
+flattened.
+
+**One finding was the tool's fault and one was the fix being reported as the
+fault.** The 1.1:1 on the hoard meter's label turned out to be its *outline* —
+the same string drawn four times in near-black behind the label, which is
+precisely what makes it readable over a bright fill. `Decorative` marks draws
+that are not meant to be read. It is not for silencing an inconvenient finding:
+it says *this is a stroke, not a word*, and only something drawing twice should
+hold it.
+
+Widening the hook also closed a real coverage gap. `draw_text_block` and
+`draw_text_centered_in_box` go straight to macroquad rather than through
+`draw_ui_text_ex`, so **every button label and every wrapped paragraph in the
+game had been outside the audit** since §5.37 — which is why the first contrast
+run looked clean. That is twice now that a clean result has had to be disbelieved
+before it meant anything.
+
+The audit is clean at the design size, at 130% text (§5.38) and under
+pseudolocalisation (§5.39).
+
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
 - Winning lines: pulse highlight (`blink`/`pulse`), floating win amounts
@@ -2488,6 +2538,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
+| Text nobody can read off its background | Contrast is measured against the declared surface at every draw (§5.40), and button fills are derived from the requirement rather than picked by eye. Every button was below the standard. |
 | Panels laid out to the width of their English copy | Pseudolocalisation expands every string 40%, accents it and brackets it, and the layout audit measures the result (§5.39). Found the layout translation-ready and the font glyph-complete. |
 | Making text bigger silently breaking panels | The layout audit runs at every offered size, so a text-size setting is a checklist rather than a guess (§5.38). It found three unwrapped footnotes at 130%. |
 | Text that runs past its panel | A `Region` guard bounds each panel and every text draw inside reports what did not fit, measured with the real font in the capture harness (§5.37). Four such defects shipped and were caught by eye. |
@@ -2531,7 +2582,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus thirty-four post-v1 systems
+## 15. Current State — v1 shipped, plus thirty-five post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
@@ -2542,11 +2593,11 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) and pseudolocalisation (§5.39). The game is
+navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) and a contrast gate (§5.40). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-427 tests pass here and 228 in `macroquad-toolkit`; `cargo fmt --check`,
+427 tests pass here and 245 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
 release build are clean. Every `.rs` file is under the 800-line limit, `data.rs`
 (748) and `ui/reels.rs` (734) the largest — `state/spin.rs` dropped from 615 to

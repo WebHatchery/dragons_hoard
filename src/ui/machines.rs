@@ -35,7 +35,7 @@ pub fn draw(
     let height = 120.0 + MACHINES.len() as f32 * ROW_HEIGHT;
     let panel = Rect::new(280.0, (LOGICAL_HEIGHT - height) * 0.5, 720.0, height);
     // Everything drawn below is measured against this panel (§5.37).
-    let _region = Region::new(panel);
+    let _region = Region::on(panel, palette::STONE);
     draw_surface(
         panel,
         &SurfaceStyle::new(palette::STONE)

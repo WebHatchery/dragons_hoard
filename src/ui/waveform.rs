@@ -54,7 +54,7 @@ pub fn draw(
 
     let panel = Rect::new(150.0, 48.0, 980.0, 624.0);
     // Everything drawn below is measured against this panel (§5.37).
-    let _region = Region::new(panel);
+    let _region = Region::on(panel, palette::STONE);
     draw_surface(
         panel,
         &SurfaceStyle::new(palette::STONE)

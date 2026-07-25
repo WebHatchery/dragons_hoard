@@ -37,7 +37,7 @@ pub fn draw(
     // a hand's width of empty stone under the text.
     let panel = Rect::new(190.0, 92.0, 900.0, 516.0);
     // Everything drawn below is measured against this panel (§5.37).
-    let _region = Region::new(panel);
+    let _region = Region::on(panel, palette::STONE);
     draw_surface(
         panel,
         &SurfaceStyle::new(palette::STONE)

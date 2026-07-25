@@ -33,7 +33,7 @@ pub fn draw(
     // Sized to its content: four rows and the rule that governs them.
     let panel = Rect::new(300.0, 130.0, 680.0, 396.0);
     // Everything drawn below is measured against this panel (§5.37).
-    let _region = Region::new(panel);
+    let _region = Region::on(panel, palette::STONE);
     draw_surface(
         panel,
         &SurfaceStyle::new(palette::STONE)

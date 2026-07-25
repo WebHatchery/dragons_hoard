@@ -36,7 +36,7 @@ pub fn draw(clock: &SessionClock, mouse: Vec2, actions: &mut Vec<UiAction>, nav:
 
     let panel = Rect::new(340.0, 176.0, 600.0, 368.0);
     // Everything drawn below is measured against this panel (§5.37).
-    let _region = Region::new(panel);
+    let _region = Region::on(panel, palette::STONE);
     draw_surface(
         panel,
         &SurfaceStyle::new(palette::STONE)

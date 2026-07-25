@@ -321,18 +321,18 @@ impl Game {
         // because measuring text needs the real font. One frame is enough: the
         // panels redraw identically, and the recorder de-duplicates anyway.
         if macroquad_toolkit::ui::auditing() {
-            let overflows = macroquad_toolkit::ui::take_audit();
-            if overflows.is_empty() {
-                println!("layout audit: nothing overflowed");
+            let findings = macroquad_toolkit::ui::take_audit();
+            if findings.is_empty() {
+                println!("layout audit: clean");
             } else {
-                for overflow in &overflows {
+                for finding in &findings {
                     println!(
-                        "layout audit: {:.0}px past the edge — {:?}",
-                        overflow.excess(),
-                        overflow.text
+                        "layout audit: {} — {:?}",
+                        finding.describe(),
+                        finding.text()
                     );
                 }
-                println!("layout audit: {} findings", overflows.len());
+                println!("layout audit: {} findings", findings.len());
                 // A gate, not a report. A printout nobody reads is the state
                 // this replaced — four overflow defects shipped and were found
                 // by looking at screenshots (§5.37).

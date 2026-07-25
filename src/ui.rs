@@ -271,7 +271,7 @@ pub fn draw_game_ui(ctx: UiContext<'_>, nav: &mut Nav) -> Vec<UiAction> {
 fn draw_header(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>, nav: &mut Nav) {
     let rect = Rect::new(18.0, 16.0, LOGICAL_WIDTH - 36.0, 64.0);
     // The header, where the cabinet name ran into the Buy button (§5.35).
-    let _region = Region::new(rect);
+    let _region = Region::on(rect, palette::STONE_HEADER);
     draw_surface(
         rect,
         &SurfaceStyle::new(palette::STONE_HEADER)
@@ -367,7 +367,7 @@ fn draw_header(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>, na
 fn draw_footer(ctx: &UiContext<'_>) {
     let rect = Rect::new(18.0, 632.0, LOGICAL_WIDTH - 36.0, 70.0);
     // The footer, where the generated shortcut line clipped (§5.29).
-    let _region = Region::new(rect);
+    let _region = Region::on(rect, Color::new(0.07, 0.06, 0.07, 1.0));
     draw_surface(
         rect,
         &SurfaceStyle::new(Color::new(0.07, 0.06, 0.07, 0.96)).with_border(1.0, palette::GOLD_DIM),
@@ -453,6 +453,19 @@ fn virtual_button(
         style.normal
     };
 
+    // Darkened only as far as its label needs (§5.40). The audit found white on
+    // the bright tones at 2.1:1 — every button in the game was below the
+    // standard, and the fills had been chosen by eye against a dark panel rather
+    // than against the text on top of them.
+    let fill = macroquad_toolkit::ui::darken_until(
+        fill,
+        if enabled {
+            style.text_color
+        } else {
+            palette::TEXT_DIM
+        },
+        17.0,
+    );
     draw_surface(
         rect,
         &SurfaceStyle::new(fill).with_border(1.0, style.border),
@@ -460,6 +473,10 @@ fn virtual_button(
     if hit.focused {
         nav::focus_ring(rect);
     }
+    // A button's label sits on the button, not on the panel behind it — and the
+    // fill changes with hover and disabled state, which is exactly where a
+    // label goes quietly unreadable (§5.40).
+    let _label_region = Region::on(rect, fill);
     draw_text_centered_in_box_ex(
         text,
         rect.x + 8.0,

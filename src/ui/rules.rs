@@ -53,7 +53,7 @@ pub fn draw(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>, nav: 
         Color::new(0.0, 0.0, 0.0, 0.72),
     );
     // Everything drawn below is measured against this panel (§5.37).
-    let _region = Region::new(PANEL);
+    let _region = Region::on(PANEL, palette::STONE);
     draw_surface(
         PANEL,
         &SurfaceStyle::new(palette::STONE)

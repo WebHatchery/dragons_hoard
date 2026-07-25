@@ -28,7 +28,7 @@ pub fn draw(data: &GameData, mouse: Vec2, actions: &mut Vec<UiAction>, nav: &mut
 
     let panel = Rect::new(90.0, 96.0, 1100.0, 500.0);
     // Everything drawn below is measured against this panel (§5.37).
-    let _region = Region::new(panel);
+    let _region = Region::on(panel, palette::STONE);
     draw_surface(
         panel,
         &SurfaceStyle::new(palette::STONE)

@@ -23,7 +23,7 @@ pub fn draw_control_panel(
 ) {
     let rect = Rect::new(852.0, 96.0, 410.0, 520.0);
     // The wager panel (§5.37).
-    let _region = Region::new(rect);
+    let _region = Region::on(rect, palette::STONE);
     draw_surface(
         rect,
         &SurfaceStyle::new(palette::STONE)

@@ -25,7 +25,7 @@ pub fn draw(book: &AchievementBook, mouse: Vec2, actions: &mut Vec<UiAction>, na
     let height = 108.0 + book.defs().len() as f32 * ROW_HEIGHT;
     let panel = Rect::new(230.0, (LOGICAL_HEIGHT - height) * 0.5, 820.0, height);
     // Everything drawn below is measured against this panel (§5.37).
-    let _region = Region::new(panel);
+    let _region = Region::on(panel, palette::STONE);
     draw_surface(
         panel,
         &SurfaceStyle::new(palette::STONE)
