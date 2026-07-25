@@ -68,6 +68,8 @@ impl GameSession {
     fn finish_holdspin(&mut self, outcome: &HoldSpinOutcome) {
         self.holdspin = None;
         self.balance += outcome.credits;
+        self.open_round.credits += outcome.credits;
+        self.open_round.feature = true;
         self.stats.total_won += outcome.credits;
         self.stats.biggest_win = self.stats.biggest_win.max(outcome.credits);
         self.last_win += outcome.credits;
@@ -82,6 +84,9 @@ impl GameSession {
     fn finish_bonus(&mut self, outcome: &BonusOutcome, data: &GameData) {
         self.bonus = None;
         self.balance += outcome.credits;
+        // Part of the round that opened it (§5.18).
+        self.open_round.credits += outcome.credits;
+        self.open_round.feature = true;
         self.stats.total_won += outcome.credits;
         self.stats.biggest_win = self.stats.biggest_win.max(outcome.credits);
         self.last_win += outcome.credits;

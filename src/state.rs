@@ -10,6 +10,7 @@ pub mod gamble;
 pub mod hoard;
 pub mod holdspin;
 pub mod jackpot;
+pub mod ledger;
 pub mod lifecycle;
 pub mod preferences;
 pub mod profile;
@@ -24,6 +25,7 @@ use celebration::{CelebrationKind, CelebrationQueue};
 use gamble::GambleRound;
 use holdspin::HoldSpinRound;
 use jackpot::{JackpotState, JackpotWin};
+use ledger::OpenRound;
 use macroquad_toolkit::rng::SeededRng;
 use macroquad_toolkit::timing::Timer;
 use preferences::Preferences;
@@ -179,6 +181,14 @@ pub struct GameSession {
     pub holdspin: Option<HoldSpinRound>,
     /// An open Dragon's Gamble (§5.16). Holds the game while the player decides.
     pub gamble: Option<GambleRound>,
+    /// The round being played, for the Ledger (§5.18). One paid spin and
+    /// everything it led to, so it stays open across free spins, a bonus
+    /// board and a respin round.
+    pub open_round: OpenRound,
+    /// The round a new stake just ended, waiting to be written to the ledger.
+    /// The session cannot write it itself — the ledger spans every cabinet
+    /// and belongs to the orchestrator, like the achievements book.
+    pub closed_round: Option<OpenRound>,
     pub autospin: Option<AutospinState>,
     /// Player preferences. Deliberately *not* part of `SaveData` — volume and
     /// spin speed belong to the player, not to a save slot, so a New Game or a
@@ -211,6 +221,8 @@ impl GameSession {
             bonus: None,
             holdspin: None,
             gamble: None,
+            open_round: OpenRound::default(),
+            closed_round: None,
             autospin: None,
             preferences: Preferences::with_defaults(&data.config),
             reel_stops: vec![0; data.reels.len()],
@@ -241,6 +253,8 @@ impl GameSession {
             bonus: None,
             holdspin: None,
             gamble: None,
+            open_round: OpenRound::default(),
+            closed_round: None,
             autospin: None,
             preferences: Preferences::with_defaults(&data.config),
             reel_stops: vec![0; data.reels.len()],

@@ -6,6 +6,7 @@ pub mod celebration;
 pub mod featurebuy;
 pub mod gamble;
 pub mod holdspin;
+pub mod ledger;
 pub mod machines;
 pub mod paytable;
 pub mod reels;
@@ -54,6 +55,8 @@ pub enum UiAction {
     ToggleAchievements,
     /// Open or close the Feature Buy menu (§5.13).
     ToggleFeatureBuy,
+    /// Open or close the Ledger panel (§5.18).
+    ToggleLedger,
     /// Put the last win at risk (§5.16).
     OfferGamble,
     Gamble(crate::state::gamble::Scale),
@@ -90,6 +93,8 @@ pub struct UiContext<'a> {
     pub show_achievements: bool,
     pub show_featurebuy: bool,
     pub profiles: &'a crate::state::profile::ProfileBook,
+    pub ledger: &'a crate::state::ledger::Ledger,
+    pub show_ledger: bool,
     /// Screen-shake displacement, applied to the reels panel only.
     pub shake: Vec2,
     /// Accumulated in-game seconds, used for pulsing highlights. Comes from the
@@ -134,6 +139,10 @@ pub fn draw_game_ui(ctx: UiContext<'_>) -> Vec<UiAction> {
     // reels behind it are inert until it is made.
     if let Some(round) = ctx.session.gamble.as_ref() {
         gamble::draw(ctx.data, ctx.session, round, mouse, &mut actions);
+    }
+
+    if ctx.show_ledger {
+        ledger::draw(ctx.data, ctx.ledger, ctx.profiles, mouse, &mut actions);
     }
 
     if ctx.show_featurebuy {
@@ -602,7 +611,7 @@ fn draw_footer(ctx: &UiContext<'_>) {
         TextStyle::new(16.0, palette::TEXT).params(),
     );
     draw_ui_text_ex(
-        "Space spins · Up/Down bet · M max · A autospin · G gamble · B buy · P paytable · O settings · C machines · V awards",
+        "Space spins · Up/Down bet · M max · A autospin · G gamble · B buy · L ledger · P paytable · O settings · C machines · V awards",
         rect.x + 470.0,
         rect.y + 56.0,
         TextStyle::new(15.0, palette::TEXT_DIM).params(),
@@ -686,6 +695,9 @@ pub fn actions_from_keys(celebrating: bool) -> Vec<UiAction> {
     }
     if is_key_pressed(KeyCode::B) {
         actions.push(UiAction::ToggleFeatureBuy);
+    }
+    if is_key_pressed(KeyCode::L) {
+        actions.push(UiAction::ToggleLedger);
     }
     if is_key_pressed(KeyCode::G) {
         actions.push(UiAction::OfferGamble);

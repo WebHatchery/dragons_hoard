@@ -184,6 +184,13 @@ impl GameSession {
             if self.balance < total_bet {
                 return Err(SpinBlocked::InsufficientBalance);
             }
+            // Taking a stake is what ends the previous round and begins the
+            // next. Everything credited in between — free spins, a bonus
+            // board, a respin round — belonged to the round that paid for it.
+            if self.open_round.wagered > 0 {
+                self.closed_round = Some(std::mem::take(&mut self.open_round));
+            }
+            self.open_round.wagered = total_bet;
             self.balance -= total_bet;
             self.stats.total_wagered += total_bet;
             // Only paid spins feed the pots — free spins staked nothing.
@@ -253,11 +260,17 @@ impl GameSession {
         let jackpot_credits = jackpot.as_ref().map_or(0, |win| win.credits);
         let credited = spin_credits + hatch_credits + jackpot_credits;
         self.balance += credited;
+        // The round's return, for the Ledger (§5.18). Progressives are left out
+        // for the same reason the machine profile leaves them out (§5.17): one
+        // jackpot in a small sample says more about that event than about the
+        // cabinet, and the two columns have to be measuring the same thing.
+        self.open_round.credits += spin_credits + hatch_credits;
         self.stats.total_spins += 1;
         self.stats.total_won += credited;
         self.stats.biggest_win = self.stats.biggest_win.max(credited);
 
         let awarded = result.outcome.free_spins_awarded;
+        self.open_round.feature |= awarded > 0;
         let (retriggered, finished) = self.apply_free_spin_award(awarded, line_bet, spin_credits);
 
         self.reel_stops.clone_from(&result.stops);

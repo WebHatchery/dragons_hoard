@@ -129,6 +129,25 @@ impl Game {
                     }
                 }
             }
+            "ledger" => {
+                // From empty. The ledger persists to disk like preferences do,
+                // so without this each capture run added to the last one and the
+                // round count climbed every time — the harness is supposed to be
+                // reproducible run to run.
+                self.ledger = crate::state::ledger::Ledger::default();
+                // A few hundred rounds of real play, so the player's bar has a
+                // shape to compare against the machine's.
+                for _ in 0..400 {
+                    self.session.balance = 1_000_000;
+                    self.session.celebrations.clear();
+                    if self.session.spin(&self.data).is_err() {
+                        break;
+                    }
+                    self.drain_finished_rounds();
+                }
+                self.show_ledger = true;
+                self.profiles.request(self.data.machine_id(), &self.data);
+            }
             "settings" => self.show_settings = true,
             "anticipation" => self.hold_a_near_miss(),
             _ => {}

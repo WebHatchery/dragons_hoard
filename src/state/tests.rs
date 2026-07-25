@@ -481,6 +481,7 @@ mod featurebuy;
 mod gamble;
 mod holdspin;
 mod jackpots;
+mod ledger;
 mod machines;
 mod preferences;
 

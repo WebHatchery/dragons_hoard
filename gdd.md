@@ -821,6 +821,50 @@ the generator for any game that picked that seed — and a "nice" constant is
 exactly the sort of number someone reaches for. The guard fires only in that one
 case, and a test asserts every ordinary seed's stream is byte-identical to before.
 
+### 5.18 The Ledger (post-v1)
+
+§5.17 measures what a cabinet *does*. This measures what the player has *seen* —
+with the same `RoundStats`, so the two are directly comparable — and puts them
+one above the other.
+
+**The comparison is the feature, and it is meant to be uncomfortable.** A few
+hundred rounds will not look anything like the machine's own figures, and a
+player on a cold run will have a chart that looks like evidence. So the panel
+says what the gap actually is:
+
+> Over 749 rounds your return could plausibly sit 17 points either side of the
+> machine's, purely by chance. The gap between the two bars above is variance,
+> not the cabinet changing its mind. It narrows with the square root of how much
+> you play, which is slowly.
+
+That margin is the machine's own measured volatility over `sqrt(n)` — the
+standard error of the mean. It is the honest answer to "am I being cheated",
+and the game is in an unusually good position to give it, because it has just
+measured the machine itself.
+
+**A round is a paid spin and everything it led to.** Free spins cost nothing, so
+they belong to the round that bought them, as do a Vault Pick or a Dragon's Wrath
+that round opened. This is exactly the profiler's definition and has to be, or
+the two bars would answer different questions. The session tracks an `OpenRound`
+that a new stake closes — the moment a stake is taken is the only unambiguous
+boundary between one round and the next.
+
+**Two things are deliberately left out.** Progressives, for the reason §5.17
+established. And **the gamble (§5.16)**, because it is the player's decision
+rather than the machine's behaviour and the profile has none in it.
+
+The ledger is per cabinet — averaging four different games would describe none of
+them — and persists under its own key alongside preferences and achievements, so
+it is a record of what the player has seen rather than of one bankroll. The
+session cannot write it itself; it hands closed rounds to the orchestrator, which
+owns the book.
+
+**The capture harness caught its own reproducibility bug.** The ledger persists,
+so the first two capture runs of the panel showed 375 rounds and then 749 — each
+run adding to the last. The scene now starts from an empty ledger. Nothing else
+would have noticed; the harness is only reproducible because every other scene
+happens to be stateless.
+
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
 - Winning lines: pulse highlight (`blink`/`pulse`), floating win amounts
@@ -1188,6 +1232,17 @@ and a Project Roost deployment record. Verified live — see §15.
   in hit frequency (a reskin fails), must not share a save slot (sharing one
   would silently overwrite a balance and hoard), must not share a symbol set,
   and an unknown machine id falls back to the first rather than failing.
+- **The Ledger (`state/ledger.rs`, `state/tests/ledger.rs`):** a fresh ledger
+  knows nothing; recording accumulates rounds, stake, return, hits, features and
+  the best round; each cabinet keeps its own record; **a round with no stake is
+  ignored**, so a stray free spin cannot be counted as a round the player never
+  paid for; the bands account for every round; the margin shrinks as the sample
+  grows and is meaningless at one round; and the whole thing round-trips through
+  its own key. In a live session: a round opens on a paid spin and closes on the
+  next; **a free spin never opens a round of its own**; a round's credits include
+  the free spins it bought; every closed round carries the stake that paid for
+  it; a ledger built from real play matches the rounds it saw; and a Feature Buy
+  does not leave a half-formed round behind.
 - **Machine profiles (`state/profile.rs`):** every cabinet profiles to a
   plausible hit frequency and volatility; the bands account for every round; the
   profiler and the batch sim agree, since they are two loops over the same
@@ -1335,6 +1390,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | A reveal that consumes randomness | A cascade refills from each reel's own strip rather than rolling (§5.15), so the chain is a function of the stops. Tested by running the animated and headless paths from one seed on the cascading cabinet. |
 | A gamble quietly shaved | The scale is asserted fair over 200,000 flips, and a whole simulation that gambles every win is compared against one that gambles none (§5.16). A shaved coin would look like ordinary RTP drift in any single-number band. |
 | Quoting a number a sample cannot support | The live profile shows hit frequency, volatility and a band bar, and deliberately **not** RTP — 20,000 rounds put Dragon's Hoard 5 points out (§5.17). A wrong figure is worse than no figure. |
+| A player reading variance as a rigged machine | The Ledger shows their sample against the measured cabinet *and* the margin of error on it (§5.18). Showing the two bars without the caveat would have been worse than showing neither. |
 | A new machine shipping at the wrong RTP | The sim iterates `MACHINES`; a cabinet cannot be added without being measured (§5.8). |
 | Two machines sharing a save slot | Slots are `<machine>_<slot>`; a test asserts they are distinct. |
 | Jackpots exploitable by bet-switching | Odds are per credit wagered, so the trigger is bet-fair by construction (§5.6) and tested. The bet-ladder sim test excludes jackpots deliberately — they are too high-variance to compare over 20k spins — and their return is checked against its closed form instead. |
@@ -1367,22 +1423,20 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus twelve post-v1 systems
+## 15. Current State — v1 shipped, plus thirteen post-v1 systems
 
-**All five phases are done, every item in §14 is met**, and twelve systems have
+**All five phases are done, every item in §14 is met**, and thirteen systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
 machines (§5.8), achievements (§5.9), the Vault Pick (§5.10), the reel-feel pass
 (§5.11), the Dragon's Wrath (§5.12), the Feature Buy (§5.13), ways-to-win
-(§5.14), cascading reels (§5.15), the Dragon's Gamble (§5.16) and live machine
-profiles (§5.17). The game is
+(§5.14), cascading reels (§5.15), the Dragon's Gamble (§5.16), live machine
+profiles (§5.17) and the Ledger (§5.18). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-267 tests pass; `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`
+281 tests pass; `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`
 and the `wasm32-unknown-unknown` release build are clean. Every `.rs` file is
-under the 800-line limit; `engine/sim.rs` (830) and `game.rs` (812) both went over
-adding the profiler and were split into `engine/sim/tests.rs` and
-`game/feedback.rs`, leaving `data.rs` (716) the largest.
+under the 800-line limit, `data.rs` (716) and `ui.rs` (712) the largest.
 
 Measured RTP over 1,000,000 spins: Dragon's Hoard **0.9612** at **0.411** hit
 frequency, Frost Wyrm **0.9450** at **0.258**, Emberfall **0.9596** at **0.622**
@@ -1395,7 +1449,7 @@ Captures in `docs/verification/`: `ui_idle`, `ui_spin`, `ui_win`, `ui_freespins`
 `ui_paytable`, `ui_settings`, `ui_machines`, `ui_frost`, `ui_achievements`,
 `ui_bonus`, `ui_feature_card`, `ui_hatch`, `ui_jackpot`, `ui_autospin`,
 `ui_anticipation`, `ui_wrath`, `ui_featurebuy`, `ui_ways`, `ui_cascade`,
-`ui_gamble`. The catalog card image at the project root is produced by the same
+`ui_gamble`, `ui_ledger`. The catalog card image at the project root is produced by the same
 harness. `ui_spin` is captured at 20 frames rather than 150 — at the default
 the spin has already finished, so the blur it is meant to show is not there.
 

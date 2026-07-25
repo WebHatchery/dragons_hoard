@@ -15,6 +15,7 @@ use crate::data::GameData;
 use crate::state::gamble::Scale;
 #[cfg(test)]
 use crate::state::GameSession;
+use serde::{Deserialize, Serialize};
 
 /// Balance the sim tops up to before each paid spin, so a losing streak can
 /// never stall it.
@@ -127,7 +128,10 @@ impl RoundStats {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+/// Serializable because the Ledger (§5.18) persists a player's own copy of it
+/// across sessions — the same shape measuring the machine and measuring them.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
 pub struct RoundStats {
     /// Completed rounds: one paid spin plus every free spin and feature it led
     /// to. The unit variance is measured in, because a free spin is part of the

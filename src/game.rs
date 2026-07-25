@@ -45,10 +45,13 @@ pub struct Game {
     show_machines: bool,
     show_achievements: bool,
     show_featurebuy: bool,
+    show_ledger: bool,
     /// Measured cabinet profiles (§5.17). Lives here rather than on the session
     /// because it describes the catalog, not one machine's play.
     profiles: crate::state::profile::ProfileBook,
     achievements: AchievementBook,
+    /// What this player has actually seen, per cabinet (§5.18).
+    ledger: crate::state::ledger::Ledger,
     save_exists: bool,
 }
 
@@ -104,6 +107,8 @@ impl Game {
         let mut sound = sound;
         sound.set_volume(session.preferences.sfx_volume());
 
+        let ledger = crate::state::ledger::Ledger::load(&data.config);
+
         let mut game = Self {
             data,
             session,
@@ -119,8 +124,10 @@ impl Game {
             show_machines: false,
             show_achievements: false,
             show_featurebuy: false,
+            show_ledger: false,
             profiles: crate::state::profile::ProfileBook::default(),
             achievements,
+            ledger,
             save_exists: false,
         };
         game.refresh_save_state();
@@ -130,6 +137,7 @@ impl Game {
     pub fn update(&mut self, dt: f32) {
         self.ui_time += dt;
         self.measure_machines();
+        self.drain_finished_rounds();
         self.notifications.update(dt);
         self.shake.update(dt);
         self.particles.update(dt);
@@ -149,6 +157,7 @@ impl Game {
             self.show_machines = false;
             self.show_achievements = false;
             self.show_featurebuy = false;
+            self.show_ledger = false;
         }
 
         let actions: Vec<UiAction> = self.events.drain().collect();
@@ -170,6 +179,8 @@ impl Game {
             show_machines: self.show_machines,
             show_achievements: self.show_achievements,
             show_featurebuy: self.show_featurebuy,
+            ledger: &self.ledger,
+            show_ledger: self.show_ledger,
             profiles: &self.profiles,
             achievements: &self.achievements,
             shake: self.shake.offset(),
@@ -285,13 +296,31 @@ impl Game {
         }
     }
 
+    /// Write any round the last stake closed into the ledger (§5.18).
+    ///
+    /// Drained here rather than inside the session because the ledger spans
+    /// every cabinet and outlives any one save slot, exactly like the
+    /// achievements book.
+    pub(super) fn drain_finished_rounds(&mut self) {
+        let Some(round) = self.session.closed_round.take() else {
+            return;
+        };
+        self.ledger.record(
+            self.data.machine_id(),
+            round.wagered,
+            round.credits,
+            round.feature,
+        );
+        let _ = self.ledger.save(&self.data.config);
+    }
+
     /// Keep the machine profiles (§5.17) moving while the picker is open.
     ///
     /// Only while it is open: measuring costs real frame time and nobody is
     /// looking at the answer otherwise. Cabinets are measured one at a time, in
     /// catalog order, so the row the player is reading fills in first.
     fn measure_machines(&mut self) {
-        if !self.show_machines {
+        if !self.show_machines && !self.show_ledger {
             return;
         }
         for machine in crate::data::MACHINES {
@@ -472,6 +501,16 @@ impl Game {
             ActionOutcome::GambleRefused(reason) => {
                 self.sound.play_at(Sfx::Click, 0.6);
                 self.notifications.warning(gamble_refusal(reason));
+            }
+            ActionOutcome::LedgerToggled => {
+                self.show_ledger = !self.show_ledger;
+                // The panel compares the player against the machine, so the
+                // machine has to have been measured. Asking here means opening
+                // the ledger starts the profiler if the picker never did.
+                if self.show_ledger {
+                    self.profiles.request(self.data.machine_id(), &self.data);
+                }
+                self.sound.play(Sfx::Click);
             }
             ActionOutcome::FeatureBuyToggled => {
                 self.show_featurebuy = !self.show_featurebuy;
