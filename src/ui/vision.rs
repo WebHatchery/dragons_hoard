@@ -9,9 +9,10 @@
 //! shapes as everyone else, and the shapes are what the fix relies on.
 
 use crate::data::GameData;
+use crate::ui::frame;
 use crate::ui::legibility::{simulate, Vision};
 use crate::ui::nav::Nav;
-use crate::ui::{palette, symbols, virtual_button, UiAction, LOGICAL_HEIGHT, LOGICAL_WIDTH};
+use crate::ui::{logical_width, palette, symbols, virtual_button, UiAction, LOGICAL_HEIGHT};
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::Pointer;
 use macroquad_toolkit::ui::{
@@ -22,12 +23,12 @@ pub fn draw(data: &GameData, pointer: Pointer, actions: &mut Vec<UiAction>, nav:
     draw_rectangle(
         0.0,
         0.0,
-        LOGICAL_WIDTH,
+        logical_width(),
         LOGICAL_HEIGHT,
         Color::new(0.0, 0.0, 0.0, 0.88),
     );
 
-    let panel = Rect::new(90.0, 96.0, 1100.0, 500.0);
+    let panel = frame::centred_at(1100.0, 96.0, 500.0);
     // Everything drawn below is measured against this panel (§5.37).
     let _region = Region::on(panel, palette::stone());
     draw_surface(

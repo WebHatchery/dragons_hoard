@@ -20,9 +20,10 @@
 
 use crate::state::history::{Cause, History};
 use crate::state::ledger::Ledger;
+use crate::ui::frame;
 use crate::ui::naming;
 use crate::ui::nav::Nav;
-use crate::ui::{palette, virtual_button, UiAction, LOGICAL_HEIGHT, LOGICAL_WIDTH};
+use crate::ui::{logical_width, palette, virtual_button, UiAction, LOGICAL_HEIGHT};
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::Pointer;
 use macroquad_toolkit::ui::{
@@ -30,7 +31,10 @@ use macroquad_toolkit::ui::{
     ButtonTone, Region, SurfaceStyle, TextStyle,
 };
 
-const PANEL: Rect = Rect::new(160.0, 90.0, 960.0, 540.0);
+/// Sized per frame, now that the screen can change shape (§5.46).
+fn panel() -> Rect {
+    frame::centred_at(960.0, 90.0, 540.0)
+}
 
 pub fn draw(
     history: &History,
@@ -42,14 +46,14 @@ pub fn draw(
     draw_rectangle(
         0.0,
         0.0,
-        LOGICAL_WIDTH,
+        logical_width(),
         LOGICAL_HEIGHT,
         Color::new(0.0, 0.0, 0.0, 0.80),
     );
     // Everything drawn below is measured against this panel (§5.37).
-    let _region = Region::on(PANEL, palette::stone());
+    let _region = Region::on(panel(), palette::stone());
     draw_surface(
-        PANEL,
+        panel(),
         &SurfaceStyle::new(palette::stone())
             .with_border(2.0, palette::gold())
             .with_header(48.0, palette::stone_header())
@@ -57,8 +61,8 @@ pub fn draw(
     );
     draw_ui_text_ex(
         "This Session",
-        PANEL.x + 20.0,
-        PANEL.y + 32.0,
+        panel().x + 20.0,
+        panel().y + 32.0,
         TextStyle::new(21.0, palette::gold_bright()).params(),
     );
     draw_text_right(
@@ -66,12 +70,12 @@ pub fn draw(
             "{} rounds across every cabinet",
             naming::count(history.rounds())
         ),
-        PANEL.right() - 140.0,
-        PANEL.y + 31.0,
+        panel().right() - 140.0,
+        panel().y + 31.0,
         TextStyle::new(14.0, palette::text_dim()),
     );
     if virtual_button(
-        Rect::new(PANEL.right() - 130.0, PANEL.y + 9.0, 110.0, 30.0),
+        Rect::new(panel().right() - 130.0, panel().y + 9.0, 110.0, 30.0),
         "Close",
         true,
         ButtonTone::Danger,
@@ -81,7 +85,7 @@ pub fn draw(
         actions.push(UiAction::ToggleHistory);
     }
 
-    let plot = Rect::new(PANEL.x + 20.0, PANEL.y + 62.0, PANEL.w - 40.0, 300.0);
+    let plot = Rect::new(panel().x + 20.0, panel().y + 62.0, panel().w - 40.0, 300.0);
     if history.is_empty() {
         draw_text_centered_in_box_ex(
             "Play a round and the shape of it appears here.",
@@ -98,16 +102,21 @@ pub fn draw(
     draw_figures(
         history,
         ledger,
-        Rect::new(PANEL.x + 20.0, plot.bottom() + 16.0, PANEL.w - 40.0, 60.0),
+        Rect::new(
+            panel().x + 20.0,
+            plot.bottom() + 16.0,
+            panel().w - 40.0,
+            60.0,
+        ),
     );
 
     draw_text_block(
         "The band is the highest and lowest the bankroll reached; the line closes each step. A \
          long slow decline broken by occasional spikes is what this machine does — the spikes are \
          where the return comes from, and there is no way to know which round is one.",
-        PANEL.x + 20.0,
+        panel().x + 20.0,
         plot.bottom() + 84.0,
-        PANEL.w - 40.0,
+        panel().w - 40.0,
         56.0,
         16.0,
         4.0,
@@ -425,6 +434,6 @@ mod tests {
             .iter()
             .map(|cause| 14.0 + cause.label().len() as f32 * 7.0 + 14.0)
             .sum();
-        assert!(width < PANEL.w - 40.0 - 200.0, "legend is {}px", width);
+        assert!(width < panel().w - 40.0 - 200.0, "legend is {}px", width);
     }
 }

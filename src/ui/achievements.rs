@@ -4,8 +4,9 @@
 //! achievement you cannot see the shape of is not a goal — it is a surprise.
 
 use crate::state::achievements::{AchievementBook, ConditionKind};
+use crate::ui::frame;
 use crate::ui::nav::Nav;
-use crate::ui::{palette, virtual_button, UiAction, LOGICAL_HEIGHT, LOGICAL_WIDTH};
+use crate::ui::{logical_width, palette, virtual_button, UiAction, LOGICAL_HEIGHT};
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::Pointer;
 use macroquad_toolkit::ui::{
@@ -18,13 +19,13 @@ pub fn draw(book: &AchievementBook, pointer: Pointer, actions: &mut Vec<UiAction
     draw_rectangle(
         0.0,
         0.0,
-        LOGICAL_WIDTH,
+        logical_width(),
         LOGICAL_HEIGHT,
         Color::new(0.0, 0.0, 0.0, 0.82),
     );
 
     let height = 108.0 + book.defs().len() as f32 * ROW_HEIGHT;
-    let panel = Rect::new(230.0, (LOGICAL_HEIGHT - height) * 0.5, 820.0, height);
+    let panel = frame::centred(820.0, height);
     // Everything drawn below is measured against this panel (§5.37).
     let _region = Region::on(panel, palette::stone());
     draw_surface(

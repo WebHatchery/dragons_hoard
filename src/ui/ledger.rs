@@ -9,8 +9,9 @@ use crate::data::GameData;
 use crate::engine::sim::BAND_LABELS;
 use crate::state::ledger::{Ledger, MachineLedger};
 use crate::state::profile::{MachineProfile, ProfileBook};
+use crate::ui::frame;
 use crate::ui::nav::Nav;
-use crate::ui::{palette, virtual_button, UiAction, LOGICAL_HEIGHT, LOGICAL_WIDTH};
+use crate::ui::{logical_width, palette, virtual_button, UiAction, LOGICAL_HEIGHT};
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::Pointer;
 use macroquad_toolkit::ui::{
@@ -29,14 +30,14 @@ pub fn draw(
     draw_rectangle(
         0.0,
         0.0,
-        LOGICAL_WIDTH,
+        logical_width(),
         LOGICAL_HEIGHT,
         Color::new(0.0, 0.0, 0.0, 0.82),
     );
 
     // Sized to the caveat, which is the last thing on it — the first pass left
     // a hand's width of empty stone under the text.
-    let panel = Rect::new(190.0, 92.0, 900.0, 516.0);
+    let panel = frame::centred_at(900.0, 92.0, 516.0);
     // Everything drawn below is measured against this panel (§5.37).
     let _region = Region::on(panel, palette::stone());
     draw_surface(

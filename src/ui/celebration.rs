@@ -1,7 +1,7 @@
 //! Full-screen celebration card rendering.
 
 use crate::state::celebration::{Celebration, CelebrationKind};
-use crate::ui::{palette, LOGICAL_HEIGHT, LOGICAL_WIDTH};
+use crate::ui::{logical_width, palette, LOGICAL_HEIGHT};
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::{draw_surface, draw_text_centered_in_box_ex, SurfaceStyle, TextStyle};
 
@@ -16,7 +16,7 @@ pub fn draw(celebration: &Celebration) {
     draw_rectangle(
         0.0,
         0.0,
-        LOGICAL_WIDTH,
+        logical_width(),
         LOGICAL_HEIGHT,
         Color::new(0.0, 0.0, 0.0, 0.88 * alpha),
     );
@@ -24,7 +24,7 @@ pub fn draw(celebration: &Celebration) {
     let width = CARD_WIDTH * scale;
     let height = CARD_HEIGHT * scale;
     let card = Rect::new(
-        (LOGICAL_WIDTH - width) * 0.5,
+        (logical_width() - width) * 0.5,
         (LOGICAL_HEIGHT - height) * 0.5,
         width,
         height,
@@ -74,7 +74,7 @@ pub fn draw(celebration: &Celebration) {
 
 /// Where a card's particles should burst from.
 pub fn card_center() -> Vec2 {
-    vec2(LOGICAL_WIDTH * 0.5, LOGICAL_HEIGHT * 0.5)
+    vec2(logical_width() * 0.5, LOGICAL_HEIGHT * 0.5)
 }
 
 fn card_colors(kind: &CelebrationKind) -> (Color, Color) {

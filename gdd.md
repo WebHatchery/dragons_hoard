@@ -2110,8 +2110,8 @@ phones. It was mouse-and-keyboard only.
 **Both are the same question.** A game built for a mouse checks
 `is_mouse_button_released` at every control; adding touch that way means finding
 all of them and remembering the differences. Miss one and it is simply dead on a
-phone, silently. So both become a **`Pointer`** \u2014 a position and whether it was
-released \u2014 and it turned out the game already had a single seam: `Nav::control`
+phone, silently. So both become a **`Pointer`** — a position and whether it was
+released — and it turned out the game already had a single seam: `Nav::control`
 is the only place a control asks whether it was pressed, because \u00a75.27 made every
 button keyboard-reachable through it. Touch went in at one site.
 
@@ -2129,7 +2129,7 @@ it is on a screen, so the useful question is inverted: *how wide must the window
 be before every control clears the standard?* One number, and it goes down when
 the layout improves.
 
-The first answer was **2347px** \u2014 wider than most laptops, with a 24-pixel
+The first answer was **2347px** — wider than most laptops, with a 24-pixel
 control setting it. Twelve distinct undersized sizes.
 
 **The fix is an expanded hit area, not a bigger button.** Growing every control
@@ -2137,11 +2137,11 @@ would change a layout designed at those sizes and push panels past their bounds;
 a small precise control with a generous invisible margin is the usual answer and
 the right one. **Visual weight is a design decision and target size is an
 accessibility one, and they do not have to be the same number.** After expansion
-the requirement is a uniform **1280px** \u2014 the design width, and no narrower.
+the requirement is a uniform **1280px** — the design width, and no narrower.
 
 The cost of that is neighbours: two buttons eight pixels apart, each grown to
 forty-four, now overlap, and a press landing on the wrong control is worse than
-one landing on nothing. So overlaps are checked \u2014 and **finding none required
+one landing on nothing. So overlaps are checked — and **finding none required
 getting the question right**. Run against the layout-audit scene it reported
 seven clashes, all between controls in *different panels* that the scene opens
 simultaneously and the game never does. Touch targets are measured **one screen
@@ -2153,7 +2153,52 @@ can find, and it does not. A control too small to see is a control nobody
 presses, which is a separate fault from one too small to hit.
 
 A fixed 1280-logical layout cannot meet the standard on a phone-width window at
-all \u2014 that would need a responsive layout, which this is not.
+all — that would need a responsive layout, which this is not.
+
+### 5.46 A layout that follows the window (post-v1)
+
+§5.45 ended by naming its own limit: a fixed 1280×720 layout cannot meet the
+touch standard on a narrow window, because everything is shrunk to fit a shape
+the screen does not have. This is that limit removed.
+
+**Letterboxing was a decision nobody made.** On 16:9 it is invisible and correct.
+On anything else it is bars, and on a phone held sideways — nearer 20:9 — it is
+bars *and* controls a third the size they need to be.
+
+**Fixed height, flexible width.** The height stays 720: it is what every panel's
+vertical layout was written against, and a reel window has a natural height a
+taller screen should not stretch. The **width follows the window**, so a wide
+screen gets genuinely more room rather than a scaled-up copy, and a narrow one
+gets less — which makes every control a larger fraction of it, which is the same
+thing as being bigger.
+
+Clamped at 4:3 and 21:9. Below the first the wager panel and the reels stop
+fitting side by side; above the second they read as two separate screens. Outside
+the clamp the letterbox returns, which is the right failure: bars beat a broken
+layout.
+
+**Extra width goes to the reels.** The wager panel is a column of controls and a
+wider one is the same column with more space between the words; the reel window
+is the part that benefits.
+
+`LOGICAL_WIDTH` became a function reading a per-frame value — the same move
+§5.43 made for the palette, and for the same reason: the alternative is a
+parameter on every panel that would say the same thing every time. Overlays
+centre through `frame::centred`, because an absolute `Rect::new(340.0, ...)` is a
+centre offset with the centre baked in, and a constant is only the right way to
+write one when the edges never move.
+
+**And it found a real gap in §5.37.** At 1000 logical pixels the header buttons —
+anchored 946 from the right edge — land exactly where the cabinet name is drawn,
+and the capture showed the title simply gone. **The layout audit called it
+clean**, correctly by its own rule: the title never crossed its *region's* edge,
+it collided with something else inside it. Overflow past a boundary and collision
+between siblings are different faults, and only the first is checked.
+
+The title is dropped when there is not room for it, which is a responsive
+decision rather than a fix: the cabinet's name is also on the "How X plays"
+button and at the top of the rules panel, so the header is the one place it can
+be spent. Sibling collision remains unmeasured.
 
 
 ### 5.4 Juice / feel (toolkit FX)
@@ -2756,6 +2801,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
+| Bars on every screen that is not 16:9 | The logical width follows the window between 4:3 and 21:9, with the height fixed and overlays centred per frame (§5.46). Extra width goes to the reels. |
 | A control that is dead on a phone | Mouse and touch became one `Pointer` at the single seam every control already passed through (§5.45), and hit areas grow to the 44px standard while the drawn size stays. |
 | Six cabinets that sound like one cabinet | Eight shared stems rendered once, with a per-cabinet mix (§5.44). Async loading rules out re-rendering on a machine switch, so cabinets differ in instrumentation rather than in key. |
 | Recolouring an interface by hand | 298 palette uses became theme-backed accessors, and every theme is run through the contrast gate and the layout audit (§5.43). A gate is permission to change, not only a check. |
@@ -2805,7 +2851,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus forty post-v1 systems
+## 15. Current State — v1 shipped, plus forty-one post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
@@ -2816,11 +2862,11 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) and touch input (§5.45). The game is
+navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) and a responsive frame (§5.46). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-436 tests pass here and 259 in `macroquad-toolkit`; `cargo fmt --check`,
+448 tests pass here and 259 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
 release build are clean. Every `.rs` file is under the 800-line limit, `data.rs`
 (792) and `ui/reels.rs` (734) the largest — `state/spin.rs` dropped from 615 to

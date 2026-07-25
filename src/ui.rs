@@ -4,6 +4,7 @@ pub mod achievements;
 pub mod bonus;
 pub mod celebration;
 pub mod featurebuy;
+pub mod frame;
 pub mod gamble;
 pub mod hint;
 pub mod history;
@@ -38,7 +39,11 @@ use macroquad_toolkit::ui::{
     meter, ButtonStyle, ButtonTone, Region, SurfaceStyle, TextStyle, VirtualUi,
 };
 
-pub const LOGICAL_WIDTH: f32 = 1280.0;
+/// The width being drawn at. A function since §5.46, because it follows the
+/// window's shape rather than being a constant.
+pub fn logical_width() -> f32 {
+    frame::width()
+}
 pub const LOGICAL_HEIGHT: f32 = 720.0;
 
 pub mod palette {
@@ -192,6 +197,8 @@ pub struct UiContext<'a> {
     /// game loop rather than the wall clock so captures stay deterministic.
     pub ui_time: f32,
     pub ui: &'a VirtualUi,
+    /// Where the big pieces go at this window's shape (§5.46).
+    pub frame: frame::Frame,
 }
 
 pub fn draw_game_ui(ctx: UiContext<'_>, nav: &mut Nav) -> Vec<UiAction> {
@@ -325,7 +332,7 @@ pub fn draw_game_ui(ctx: UiContext<'_>, nav: &mut Nav) -> Vec<UiAction> {
 }
 
 fn draw_header(ctx: &UiContext<'_>, pointer: Pointer, actions: &mut Vec<UiAction>, nav: &mut Nav) {
-    let rect = Rect::new(18.0, 16.0, LOGICAL_WIDTH - 36.0, 64.0);
+    let rect = ctx.frame.header;
     // The header, where the cabinet name ran into the Buy button (§5.35).
     let _region = Region::on(rect, palette::stone_header());
     draw_surface(
@@ -335,12 +342,24 @@ fn draw_header(ctx: &UiContext<'_>, pointer: Pointer, actions: &mut Vec<UiAction
             .with_top_highlight(2.0, palette::gold()),
     );
 
-    draw_ui_text_ex(
-        &ctx.data.config.display_name,
-        rect.x + 18.0,
-        rect.y + 41.0,
-        TextStyle::new(31.0, palette::gold_bright()).params(),
-    );
+    // Fitted to the space the buttons leave, not set at 31px and hoped for.
+    // The buttons are anchored 946 logical pixels from the right edge, so on a
+    // narrow screen (§5.46) they arrive exactly where the title was — and the
+    // layout audit could not see it, because the title never crossed its
+    // *region's* edge, only collided with something inside it.
+    let title_span = (rect.right() - 946.0) - (rect.x + 18.0) - 12.0;
+    if title_span >= 120.0 {
+        draw_text_block(
+            &ctx.data.config.display_name,
+            rect.x + 18.0,
+            rect.y + 12.0,
+            title_span,
+            38.0,
+            31.0,
+            0.0,
+            palette::gold_bright(),
+        );
+    }
 
     // The header has the only spare width on screen, and these should be
     // reachable from anywhere rather than buried in the wager panel.
@@ -421,7 +440,7 @@ fn draw_header(ctx: &UiContext<'_>, pointer: Pointer, actions: &mut Vec<UiAction
 /// Bottom strip: hoard progress and session stats. The far right is left clear
 /// for the notification stack, which anchors bottom-right.
 fn draw_footer(ctx: &UiContext<'_>) {
-    let rect = Rect::new(18.0, 632.0, LOGICAL_WIDTH - 36.0, 70.0);
+    let rect = ctx.frame.footer;
     // The footer, where the generated shortcut line clipped (§5.29).
     let _region = Region::on(rect, Color::new(0.07, 0.06, 0.07, 1.0));
     draw_surface(

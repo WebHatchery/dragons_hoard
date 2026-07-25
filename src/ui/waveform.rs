@@ -25,8 +25,9 @@
 
 use crate::audio::{config, voices_for, Sfx};
 use crate::music::{self, Track};
+use crate::ui::frame;
 use crate::ui::nav::Nav;
-use crate::ui::{palette, virtual_button, UiAction, LOGICAL_HEIGHT, LOGICAL_WIDTH};
+use crate::ui::{logical_width, palette, virtual_button, UiAction, LOGICAL_HEIGHT};
 use macroquad::prelude::*;
 use macroquad_toolkit::synth::render_waveform;
 use macroquad_toolkit::ui::Pointer;
@@ -49,12 +50,12 @@ pub fn draw(
     draw_rectangle(
         0.0,
         0.0,
-        LOGICAL_WIDTH,
+        logical_width(),
         LOGICAL_HEIGHT,
         Color::new(0.0, 0.0, 0.0, 0.86),
     );
 
-    let panel = Rect::new(150.0, 48.0, 980.0, 624.0);
+    let panel = frame::centred_at(980.0, 48.0, 624.0);
     // Everything drawn below is measured against this panel (§5.37).
     let _region = Region::on(panel, palette::stone());
     draw_surface(

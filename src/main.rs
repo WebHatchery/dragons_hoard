@@ -18,7 +18,7 @@ fn window_conf() -> Conf {
     capture::capture_window_conf(
         "DRAGONS_HOARD",
         "Dragon's Hoard",
-        ui::LOGICAL_WIDTH as i32,
+        ui::frame::DESIGN_WIDTH as i32,
         ui::LOGICAL_HEIGHT as i32,
     )
 }

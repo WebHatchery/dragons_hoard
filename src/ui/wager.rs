@@ -20,7 +20,7 @@ pub fn draw_control_panel(
     actions: &mut Vec<UiAction>,
     nav: &mut Nav,
 ) {
-    let rect = Rect::new(852.0, 96.0, 410.0, 520.0);
+    let rect = ctx.frame.wager;
     // The wager panel (§5.37).
     let _region = Region::on(rect, palette::stone());
     draw_surface(

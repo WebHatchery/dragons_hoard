@@ -11,7 +11,7 @@
 use crate::data::GameData;
 use crate::state::holdspin::HoldSpinRound;
 use crate::ui::naming;
-use crate::ui::{palette, reels, LOGICAL_HEIGHT, LOGICAL_WIDTH};
+use crate::ui::{logical_width, palette, reels, LOGICAL_HEIGHT};
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::{
     draw_surface, draw_text_centered_in_box_ex, draw_ui_text_ex, RectExt, SurfaceStyle, TextStyle,
@@ -28,7 +28,7 @@ pub fn draw(data: &GameData, round: &HoldSpinRound, ui_time: f32) {
     draw_rectangle(
         0.0,
         0.0,
-        LOGICAL_WIDTH,
+        logical_width(),
         LOGICAL_HEIGHT,
         Color::new(0.02, 0.0, 0.0, 0.62),
     );

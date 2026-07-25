@@ -13,9 +13,10 @@ use crate::data::GameData;
 use crate::engine::sim::BAND_LABELS;
 use crate::state::profile::{ProfileBook, TierProfile};
 use crate::state::{featurebuy, GameSession};
+use crate::ui::frame;
 use crate::ui::naming;
 use crate::ui::nav::Nav;
-use crate::ui::{palette, virtual_button, UiAction, LOGICAL_HEIGHT, LOGICAL_WIDTH};
+use crate::ui::{logical_width, palette, virtual_button, UiAction, LOGICAL_HEIGHT};
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::Pointer;
 use macroquad_toolkit::ui::{
@@ -36,14 +37,14 @@ pub fn draw(
     draw_rectangle(
         0.0,
         0.0,
-        LOGICAL_WIDTH,
+        logical_width(),
         LOGICAL_HEIGHT,
         Color::new(0.0, 0.0, 0.0, 0.82),
     );
 
     let tiers = &data.featurebuy.tiers;
     let height = 152.0 + tiers.len() as f32 * ROW_HEIGHT;
-    let panel = Rect::new(260.0, (LOGICAL_HEIGHT - height) * 0.5, 760.0, height);
+    let panel = frame::centred(760.0, height);
     // Everything drawn below is measured against this panel (§5.37).
     let _region = Region::on(panel, palette::stone());
     draw_surface(

@@ -6,8 +6,9 @@
 //! make the asymmetry feel like the button was broken.
 
 use crate::state::limits::{Cap, LimitChoices, LimitState};
+use crate::ui::frame;
 use crate::ui::nav::Nav;
-use crate::ui::{palette, virtual_button, UiAction, LOGICAL_HEIGHT, LOGICAL_WIDTH};
+use crate::ui::{logical_width, palette, virtual_button, UiAction, LOGICAL_HEIGHT};
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::Pointer;
 use macroquad_toolkit::ui::{
@@ -26,13 +27,13 @@ pub fn draw(
     draw_rectangle(
         0.0,
         0.0,
-        LOGICAL_WIDTH,
+        logical_width(),
         LOGICAL_HEIGHT,
         Color::new(0.0, 0.0, 0.0, 0.78),
     );
 
     // Sized to its content: four rows and the rule that governs them.
-    let panel = Rect::new(300.0, 130.0, 680.0, 396.0);
+    let panel = frame::centred_at(680.0, 130.0, 396.0);
     // Everything drawn below is measured against this panel (§5.37).
     let _region = Region::on(panel, palette::stone());
     draw_surface(

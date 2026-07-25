@@ -22,7 +22,9 @@ const BLUR_PASSES: usize = 5;
 const PULSE_RATE: f32 = 6.0;
 
 pub fn panel_rect() -> Rect {
-    Rect::new(18.0, 96.0, 812.0, 520.0)
+    // Whatever is left once the wager panel has its column (§5.46). A wider
+    // window gives the reels more room, which is the part that benefits.
+    crate::ui::frame::Frame::new(crate::ui::frame::width()).reels
 }
 
 /// The jackpot ladder, sitting between the panel title and the reels — where a

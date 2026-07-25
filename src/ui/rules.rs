@@ -26,15 +26,19 @@
 //! harness is for.
 
 use crate::state::rules::{self, Rule};
+use crate::ui::frame;
 use crate::ui::nav::Nav;
-use crate::ui::{palette, virtual_button, UiAction, UiContext, LOGICAL_HEIGHT, LOGICAL_WIDTH};
+use crate::ui::{logical_width, palette, virtual_button, UiAction, UiContext, LOGICAL_HEIGHT};
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::Pointer;
 use macroquad_toolkit::ui::{
     draw_surface, draw_ui_text_ex, wrap_text, ButtonTone, Region, SurfaceStyle, TextStyle,
 };
 
-const PANEL: Rect = Rect::new(120.0, 44.0, 1040.0, 632.0);
+/// Sized per frame, now that the screen can change shape (§5.46).
+fn panel() -> Rect {
+    frame::centred_at(1040.0, 44.0, 632.0)
+}
 const COLUMN_GAP: f32 = 28.0;
 const PADDING: f32 = 22.0;
 const HEADER: f32 = 62.0;
@@ -49,14 +53,14 @@ pub fn draw(ctx: &UiContext<'_>, pointer: Pointer, actions: &mut Vec<UiAction>, 
     draw_rectangle(
         0.0,
         0.0,
-        LOGICAL_WIDTH,
+        logical_width(),
         LOGICAL_HEIGHT,
         Color::new(0.0, 0.0, 0.0, 0.72),
     );
     // Everything drawn below is measured against this panel (§5.37).
-    let _region = Region::on(PANEL, palette::stone());
+    let _region = Region::on(panel(), palette::stone());
     draw_surface(
-        PANEL,
+        panel(),
         &SurfaceStyle::new(palette::stone())
             .with_border(2.0, palette::gold())
             .with_header(48.0, palette::stone_header())
@@ -64,8 +68,8 @@ pub fn draw(ctx: &UiContext<'_>, pointer: Pointer, actions: &mut Vec<UiAction>, 
     );
     draw_ui_text_ex(
         &format!("How {} plays", ctx.data.config.display_name),
-        PANEL.x + PADDING,
-        PANEL.y + 32.0,
+        panel().x + PADDING,
+        panel().y + 32.0,
         TextStyle::new(21.0, palette::gold_bright()).params(),
     );
 
@@ -75,7 +79,7 @@ pub fn draw(ctx: &UiContext<'_>, pointer: Pointer, actions: &mut Vec<UiAction>, 
 
     let body = fitting_size(&rules, column_width, available, measure);
     for (rule, slot) in rules.iter().zip(plan(&rules, body, measure)) {
-        let x = PANEL.x + PADDING + slot.column as f32 * (column_width + COLUMN_GAP);
+        let x = panel().x + PADDING + slot.column as f32 * (column_width + COLUMN_GAP);
         draw_ui_text_ex(
             &rule.title,
             x,
@@ -102,7 +106,7 @@ pub fn draw(ctx: &UiContext<'_>, pointer: Pointer, actions: &mut Vec<UiAction>, 
     }
 
     if virtual_button(
-        Rect::new(PANEL.right() - 130.0, PANEL.y + 10.0, 110.0, 30.0),
+        Rect::new(panel().right() - 130.0, panel().y + 10.0, 110.0, 30.0),
         "Close",
         true,
         ButtonTone::Danger,
@@ -115,8 +119,8 @@ pub fn draw(ctx: &UiContext<'_>, pointer: Pointer, actions: &mut Vec<UiAction>, 
 
 /// Column width and the vertical room a column has.
 fn geometry() -> (f32, f32) {
-    let column_width = (PANEL.w - PADDING * 2.0 - COLUMN_GAP) / 2.0;
-    let available = PANEL.bottom() - (PANEL.y + HEADER) - PADDING;
+    let column_width = (panel().w - PADDING * 2.0 - COLUMN_GAP) / 2.0;
+    let available = panel().bottom() - (panel().y + HEADER) - PADDING;
     (column_width, available)
 }
 
@@ -132,7 +136,7 @@ struct Slot {
 /// a sentence that restarts somewhere else.
 fn plan(rules: &[Rule], body: f32, measure: Measure<'_>) -> Vec<Slot> {
     let (column_width, available) = geometry();
-    let top = PANEL.y + HEADER;
+    let top = panel().y + HEADER;
 
     let mut slots = Vec::with_capacity(rules.len());
     let mut column = 0;
@@ -237,7 +241,7 @@ mod tests {
         // The failure this is really guarding against: the old paytable prose
         // grew past its box and drew over the footer behind the overlay.
         let (column_width, available) = geometry();
-        let top = PANEL.y + HEADER;
+        let top = panel().y + HEADER;
         for data in every_machine() {
             let rules = rules::rules(&data);
             let body = fitting_size(&rules, column_width, available, measure());
@@ -245,14 +249,14 @@ mod tests {
             for (rule, slot) in rules.iter().zip(plan(&rules, body, measure())) {
                 let bottom = slot.y + block_height(rule, column_width, body, measure());
                 assert!(
-                    bottom <= PANEL.bottom(),
+                    bottom <= panel().bottom(),
                     "{} spills {}px past the panel",
                     data.machine.id,
-                    bottom - PANEL.bottom()
+                    bottom - panel().bottom()
                 );
                 assert!(slot.y >= top);
-                let right = PANEL.x + PADDING + slot.column as f32 * (column_width + COLUMN_GAP);
-                assert!(right + column_width <= PANEL.right());
+                let right = panel().x + PADDING + slot.column as f32 * (column_width + COLUMN_GAP);
+                assert!(right + column_width <= panel().right());
             }
         }
     }
@@ -268,7 +272,7 @@ mod tests {
 
         for pair in slots.windows(2) {
             if pair[1].column != pair[0].column {
-                assert_eq!(pair[1].y, PANEL.y + HEADER);
+                assert_eq!(pair[1].y, panel().y + HEADER);
                 assert_eq!(pair[1].column, pair[0].column + 1);
             } else {
                 assert!(pair[1].y > pair[0].y);

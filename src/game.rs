@@ -274,7 +274,12 @@ impl Game {
     pub fn draw(&mut self) {
         clear_background(palette::background());
 
-        let virtual_ui = begin_virtual_ui_frame(ui::LOGICAL_WIDTH, ui::LOGICAL_HEIGHT);
+        // The logical width follows the window's shape (§5.46); the height is
+        // fixed, because every panel's vertical layout was written against it.
+        let logical_width = ui::frame::logical_width(screen_width(), screen_height());
+        let frame = ui::frame::Frame::new(logical_width);
+        ui::frame::set_width(logical_width);
+        let virtual_ui = begin_virtual_ui_frame(logical_width, ui::frame::HEIGHT);
         let actions = ui::draw_game_ui(
             UiContext {
                 data: &self.data,
@@ -313,6 +318,7 @@ impl Game {
                 shake: self.shake.offset(),
                 ui_time: self.ui_time,
                 ui: &virtual_ui,
+                frame,
             },
             &mut self.nav,
         );
@@ -329,7 +335,7 @@ impl Game {
         // Touch targets are their own audit and their own scenes (§5.45):
         // sizes want every panel, overlaps want one screen at a time.
         if let Some((width, worst)) =
-            macroquad_toolkit::ui::smallest_touchable_width(ui::LOGICAL_WIDTH)
+            macroquad_toolkit::ui::smallest_touchable_width(ui::logical_width())
         {
             println!(
                 "touch targets: need a {:.0}px-wide window; worst is {}",

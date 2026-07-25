@@ -1,8 +1,9 @@
 //! The paytable overlay: what every symbol pays, and the rules in prose.
 
+use crate::ui::frame;
 use crate::ui::nav::Nav;
 use crate::ui::{
-    palette, symbols, virtual_button, UiAction, UiContext, LOGICAL_HEIGHT, LOGICAL_WIDTH,
+    logical_width, palette, symbols, virtual_button, UiAction, UiContext, LOGICAL_HEIGHT,
 };
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::Pointer;
@@ -15,7 +16,7 @@ pub fn draw(ctx: &UiContext<'_>, pointer: Pointer, actions: &mut Vec<UiAction>, 
     draw_rectangle(
         0.0,
         0.0,
-        LOGICAL_WIDTH,
+        logical_width(),
         LOGICAL_HEIGHT,
         Color::new(0.0, 0.0, 0.0, 0.72),
     );
@@ -23,7 +24,7 @@ pub fn draw(ctx: &UiContext<'_>, pointer: Pointer, actions: &mut Vec<UiAction>, 
     // Tall enough for four paragraphs of rules under nine symbol rows. The
     // Dragon's Wrath note (§5.12) overflowed the old 580 and spilled onto the
     // footer behind the overlay.
-    let rect = Rect::new(180.0, 44.0, 920.0, 632.0);
+    let rect = frame::centred_at(920.0, 44.0, 632.0);
     // Everything drawn below is measured against this panel (§5.37).
     let _region = Region::on(rect, palette::stone());
     draw_surface(
