@@ -10,7 +10,7 @@ pub use cascade::CascadeStep;
 pub use evaluate::{evaluate, expand_wilds, EvalContext, SpinOutcome};
 #[cfg(test)]
 pub use reels::grid_from_stops;
-pub use reels::{pick_stops, resting_grid, Grid};
+pub use reels::{resting_grid, Grid};
 
 use crate::data::GameData;
 use macroquad_toolkit::rng::SeededRng;
@@ -20,7 +20,11 @@ use macroquad_toolkit::rng::SeededRng;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SpinMode {
     Base,
-    FreeSpin,
+    /// A free spin, and how many symbols the refine order has burned off the
+    /// strips by the time it runs (§5.21). Zero on a cabinet without one.
+    FreeSpin {
+        burned: usize,
+    },
 }
 
 /// The decided result of one spin. Animation only ever *reveals* this.
@@ -50,16 +54,23 @@ impl SpinResult {
 }
 
 pub fn spin(data: &GameData, rng: &mut SeededRng, line_bet: i64, mode: SpinMode) -> SpinResult {
-    let stops = pick_stops(data, rng);
+    // The strips a free spin turns are not necessarily the strips the base
+    // game turns (§5.21), and the stops have to be drawn against whichever set
+    // is actually spinning.
+    let reels = match mode {
+        SpinMode::Base => data.reels.clone(),
+        SpinMode::FreeSpin { burned } => data.refined_reels(burned),
+    };
+    let stops = reels::pick_stops_on(&reels, rng);
     // Heights are drawn *after* the stops so a fixed cabinet's stream is
     // unchanged — `pick_heights` consumes nothing when there is no range. They
     // are not stored: the grid they produce *is* the record of the shape.
     let heights = reels::pick_heights(data, rng);
-    let landed = reels::grid_from_stops_and_heights(data, &stops, &heights);
+    let landed = reels::grid_on(data, &reels, &stops, &heights);
 
     let (grid, ctx) = match mode {
         SpinMode::Base => (landed, EvalContext::base(data, line_bet)),
-        SpinMode::FreeSpin => {
+        SpinMode::FreeSpin { .. } => {
             let grid = if data.freespins.expanding_wilds {
                 expand_wilds(data, &landed)
             } else {
@@ -126,7 +137,7 @@ mod tests {
 
         let mut rng = SeededRng::new(99);
         for _ in 0..400 {
-            let result = spin(&data, &mut rng, 10, SpinMode::FreeSpin);
+            let result = spin(&data, &mut rng, 10, SpinMode::FreeSpin { burned: 0 });
             for reel in 0..result.grid.reel_count() {
                 if result.grid.reel_contains(reel, wild) {
                     assert!(

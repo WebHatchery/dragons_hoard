@@ -97,6 +97,23 @@ impl Game {
                 self.session = GameSession::new(&self.data, 0xD2A6_0F1E);
                 self.fast_forward_to(|session| session.last_win > 0);
             }
+            "refining" => {
+                // Frost Wyrm mid-feature, a few spins in, so the banner names
+                // what has already been burned off the strips (§5.21).
+                self.data = GameData::load_machine(crate::data::machine_by_id("frost")).unwrap();
+                self.session = GameSession::new(&self.data, 0xD2A6_0F1E);
+                self.fast_forward_to(GameSession::in_free_spins);
+                self.session.celebrations.clear();
+                for _ in 0..2 {
+                    if !self.session.in_free_spins() {
+                        break;
+                    }
+                    self.session.balance = 1_000_000;
+                    let _ = self.session.spin(&self.data);
+                    self.session.celebrations.clear();
+                }
+                let _ = self.session.begin_spin(&self.data);
+            }
             "frost" => {
                 self.data = GameData::load_machine(&crate::data::MACHINES[1]).unwrap();
                 self.session = GameSession::new(&self.data, 0xD2A6_0F1E);

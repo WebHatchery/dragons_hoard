@@ -93,11 +93,16 @@ impl Grid {
 }
 
 /// Pick one stop index per reel. `strip[stop]` becomes the top visible cell.
+/// Stops against a cabinet's raw strips. Only the tests reach this now — the
+/// engine draws against whichever set is actually spinning (§5.21).
+#[cfg(test)]
 pub fn pick_stops(data: &GameData, rng: &mut SeededRng) -> Vec<usize> {
-    data.reels
-        .iter()
-        .map(|strip| rng.below(strip.len()))
-        .collect()
+    pick_stops_on(&data.reels, rng)
+}
+
+/// Stops against a given set of strips, which may have been refined (§5.21).
+pub fn pick_stops_on(reels: &[Vec<usize>], rng: &mut SeededRng) -> Vec<usize> {
+    reels.iter().map(|strip| rng.below(strip.len())).collect()
 }
 
 /// Read the visible window out of each strip, wrapping at the end.
@@ -111,8 +116,12 @@ pub fn grid_from_stops(data: &GameData, stops: &[usize]) -> Grid {
 /// shifting spin is as decided as a fixed one — the animation reveals a board
 /// whose *shape* was settled before a reel moved, not just its symbols.
 pub fn grid_from_stops_and_heights(data: &GameData, stops: &[usize], heights: &[usize]) -> Grid {
-    let columns: Vec<Vec<usize>> = data
-        .reels
+    grid_on(data, &data.reels, stops, heights)
+}
+
+/// The window read out of a given set of strips.
+pub fn grid_on(data: &GameData, reels: &[Vec<usize>], stops: &[usize], heights: &[usize]) -> Grid {
+    let columns: Vec<Vec<usize>> = reels
         .iter()
         .enumerate()
         .map(|(reel, strip)| {

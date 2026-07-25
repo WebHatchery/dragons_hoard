@@ -1,10 +1,16 @@
 {
   "awards": {
-    "3": 8,
-    "4": 12,
-    "5": 18
+    "3": 5,
+    "4": 8,
+    "5": 12
   },
   "retrigger": true,
-  "multiplier": 3,
-  "expanding_wilds": true
+  "multiplier": 2,
+  "expanding_wilds": true,
+  "refine": {
+    "order": [
+      "frostcoin",
+      "rimehoard"
+    ]
+  }
 }

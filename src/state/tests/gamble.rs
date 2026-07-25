@@ -129,6 +129,7 @@ fn a_gamble_is_not_offered_during_free_spins_or_an_autospin_run() {
         awarded: 3,
         line_bet: session.line_bet(&data),
         total_won: 0,
+        burned: 0,
     });
     assert!(!session.can_gamble(), "offered mid-feature");
 }

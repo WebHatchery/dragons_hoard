@@ -142,6 +142,7 @@ impl GameSession {
                     awarded: spins,
                     line_bet,
                     total_won: 0,
+                    burned: 0,
                 });
                 self.celebrations
                     .push(CelebrationKind::FreeSpinsEntry { spins, scatters: 0 });

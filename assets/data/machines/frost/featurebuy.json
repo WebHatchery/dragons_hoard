@@ -4,22 +4,22 @@
     {
       "id": "freespins",
       "name": "Free Spins",
-      "description": "8 free spins with expanding wilds and tripled line wins.",
+      "description": "5 free spins that burn the cheap symbols off the reels as they run.",
       "award": {
         "kind": "free_spins",
         "spins": 8
       },
-      "price_multiple": 56
+      "price_multiple": 168
     },
     {
       "id": "super",
       "name": "Super Free Spins",
-      "description": "18 free spins \u2014 the five-scatter award, bought outright.",
+      "description": "12 free spins \u2014 the five-scatter award, bought outright.",
       "award": {
         "kind": "free_spins",
         "spins": 18
       },
-      "price_multiple": 127
+      "price_multiple": 396
     },
     {
       "id": "wrath",

@@ -105,10 +105,10 @@ pub fn draw_reels(data: &GameData, session: &GameSession, shake: Vec2, ui_time: 
         (
             Color::new(0.14, 0.070, 0.045, 0.97),
             palette::EMBER,
-            "The Vault — Free Spins  ·  wilds expand  ·  line wins doubled",
+            feature_title(data, session),
         )
     } else {
-        (palette::STONE, palette::GOLD_DIM, "The Vault")
+        (palette::STONE, palette::GOLD_DIM, String::from("The Vault"))
     };
 
     let style = SurfaceStyle::new(surface)
@@ -119,7 +119,7 @@ pub fn draw_reels(data: &GameData, session: &GameSession, shake: Vec2, ui_time: 
     draw_surface(panel, &style);
 
     draw_ui_text_ex(
-        title,
+        &title,
         panel.x + 18.0,
         panel.y + 30.0,
         TextStyle::new(
@@ -153,6 +153,34 @@ pub fn draw_reels(data: &GameData, session: &GameSession, shake: Vec2, ui_time: 
     // symbol and was invisible.
     draw_cascade_badge(session, shake);
     draw_win_summary(data, session, bounds);
+}
+
+/// The banner across the reel cabinet during a feature.
+///
+/// On a refining cabinet (§5.21) it names what the feature has burned off the
+/// strips, because the escalation is invisible otherwise — the reels simply feel
+/// luckier and the player has no way to know why.
+fn feature_title(data: &GameData, session: &GameSession) -> String {
+    let base = format!(
+        "The Vault — Free Spins  ·  wilds expand  ·  line wins x{}",
+        data.freespins.multiplier.max(1)
+    );
+    let Some(refine) = data.freespins.refine.as_ref() else {
+        return base;
+    };
+    let burned = session.free_spins.as_ref().map_or(0, |state| state.burned);
+    if burned == 0 {
+        return base;
+    }
+
+    let names: Vec<&str> = refine
+        .order
+        .iter()
+        .take(burned)
+        .filter_map(|id| data.symbols.index_of(id))
+        .map(|index| data.symbols.get(index).short.as_str())
+        .collect();
+    format!("{}  ·  burned {}", base, names.join(" "))
 }
 
 /// The progressive ladder: one plate per tier, richest on the right, each

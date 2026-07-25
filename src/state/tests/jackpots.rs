@@ -41,6 +41,7 @@ fn a_free_spin_neither_feeds_nor_draws_a_jackpot() {
         awarded: 20,
         line_bet: 25,
         total_won: 0,
+        burned: 0,
     });
     let before = session.jackpots.value(&data.jackpots, 0);
 

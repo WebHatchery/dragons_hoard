@@ -132,6 +132,7 @@ fn free_spins_chain_themselves_without_another_stake() {
         awarded: 3,
         line_bet: 1,
         total_won: 0,
+        burned: 0,
     });
     let wagered = session.stats.total_wagered;
 
@@ -158,6 +159,7 @@ fn the_last_free_spin_does_not_ask_for_another() {
         awarded: 1,
         line_bet: 1,
         total_won: 0,
+        burned: 0,
     });
     let mut events = Vec::new();
     while session.in_free_spins() {
@@ -220,6 +222,7 @@ fn ending_the_feature_raises_a_summary_card_with_its_total() {
         awarded: 4,
         line_bet: 1,
         total_won: 0,
+        burned: 0,
     });
 
     while session.in_free_spins() {
@@ -305,6 +308,7 @@ fn a_free_spin_does_not_cost_the_autospin_run_a_spin() {
         awarded: 3,
         line_bet: 1,
         total_won: 0,
+        burned: 0,
     });
     let before = session.autospin_remaining();
 
@@ -357,6 +361,7 @@ fn free_spins_cost_nothing_and_count_down() {
         awarded: 2,
         line_bet: 10,
         total_won: 0,
+        burned: 0,
     });
     let start = session.balance;
 
@@ -376,6 +381,7 @@ fn the_feature_retires_once_its_last_spin_resolves() {
         awarded: 1,
         line_bet: 1,
         total_won: 0,
+        burned: 0,
     });
 
     // A retrigger on the final spin would keep it alive, so spin until the
@@ -399,6 +405,7 @@ fn bets_are_locked_during_free_spins() {
         awarded: 3,
         line_bet: 1,
         total_won: 0,
+        burned: 0,
     });
 
     assert!(!session.adjust_bet(&data, 1));
@@ -484,6 +491,7 @@ mod jackpots;
 mod ledger;
 mod machines;
 mod preferences;
+mod refine;
 
 #[test]
 fn a_reel_that_has_landed_shows_what_it_landed_on() {

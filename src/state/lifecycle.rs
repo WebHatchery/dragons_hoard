@@ -197,8 +197,20 @@ impl GameSession {
             self.jackpots.contribute(&data.jackpots, total_bet);
         }
 
+        // The burn deepens *before* the spin it applies to, so the feature's
+        // first spin already runs on a refined set (§5.21) — otherwise the
+        // escalation would start a beat late and the first free spin would be
+        // indistinguishable from a base one.
         let mode = if was_free_spin {
-            SpinMode::FreeSpin
+            let depth = data.refine_depth();
+            let burned = match self.free_spins.as_mut() {
+                Some(state) => {
+                    state.burned = (state.burned + 1).min(depth);
+                    state.burned
+                }
+                None => 0,
+            };
+            SpinMode::FreeSpin { burned }
         } else {
             SpinMode::Base
         };

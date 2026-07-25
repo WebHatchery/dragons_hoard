@@ -52,6 +52,12 @@ pub struct FreeSpinState {
     pub awarded: u32,
     pub line_bet: i64,
     pub total_won: i64,
+    /// Symbols burned off the strips so far (§5.21). Rises by one per free spin
+    /// and stops at the length of the refine order; a retrigger does **not**
+    /// reset it, because taking the reels back to their raw state would make
+    /// extra spins a punishment.
+    #[serde(default)]
+    pub burned: usize,
 }
 
 /// What a single resolved spin did to the session.
@@ -574,6 +580,7 @@ impl GameSession {
                         awarded,
                         line_bet,
                         total_won: 0,
+                        burned: 0,
                     });
                 }
             }

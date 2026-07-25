@@ -977,6 +977,51 @@ right ones; the Wrath tier in particular went from 29× to 70×, because a
 four-egg trigger on a board that can be thirty cells tall is a very different
 proposition from the same trigger on fifteen.
 
+### 5.21 Refining free spins (post-v1)
+
+Sixteen systems in, the feature set was essentially complete for a modern slot
+except for one thing: free spins were still N identical spins. **Frost Wyrm's now
+burn the cheapest symbols off the reels as they run**, so the feature escalates
+instead of repeating.
+
+Each free spin removes the next symbol in a configured order from every strip.
+By the last spin the reels hold only what pays well, and the banner names what
+has gone — "burned FRC RIM" — because the escalation is otherwise invisible: the
+reels simply feel luckier and the player has no way to know why.
+
+**Strips are dynamic for the first time.** Everything before this treated
+`data.reels` as fixed. `refined_reels(burned)` returns a filtered set, and stops
+are drawn against *that* rather than the raw strips — a subtle but essential
+point, since a shorter strip has a different stop range.
+
+**The burn deepens before the spin it applies to**, so the feature's first spin
+already runs refined. Deepening it afterwards would make the first free spin
+indistinguishable from a base one and start the escalation a beat late.
+
+**A retrigger does not reset it.** Rebuilding the strips would undo everything
+the feature had burned, making extra spins a punishment.
+
+**Validation refuses to burn the wild, the scatter or the hoard symbol**: no
+scatter means no retrigger, no wild means no substitution, and the egg feeds the
+meter. And a reel that would empty keeps what it has — validation cannot catch
+that one, because whether it happens depends on how a designer laid out one
+particular strip.
+
+**Tuning took four passes and the answer was not the paytable.** Burning four of
+Frost's eight payables took RTP to **6.92** — free spins alone at 6.04 of
+turnover. Two burns brought it to 1.41. The instinct was to cut the paytable, but
+a 36% cut would have gutted the base game to pay for the feature. Rebalancing the
+*feature* instead — spins 8/12/18 → 5/8/12 and the multiplier ×3 → ×2, since the
+refining now provides the escalation a flat multiplier used to — got it to 1.08,
+and a 14% paytable trim landed **0.9491**.
+
+**The Feature Buy repriced itself by a factor of three.** Frost's free-spin tier
+went from 56× to **168×** and the super tier from 127× to **396×**, because the
+feature really is three times more valuable than it was. Nobody worked that out;
+the price test measured it and printed the answer.
+
+`data.rs` reached 848 lines and its feature configs moved to `data/features.rs`.
+
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
 - Winning lines: pulse highlight (`blink`/`pulse`), floating win amounts
@@ -1344,6 +1389,13 @@ and a Project Roost deployment record. Verified live — see §15.
   in hit frequency (a reskin fails), must not share a save slot (sharing one
   would silently overwrite a balance and hoard), must not share a symbol set,
   and an unknown machine id falls back to the first rather than failing.
+- **Refining free spins (`state/tests/refine.rs`):** the burn deepens one symbol
+  per free spin and stops at the length of the order; **a refined strip really
+  loses the symbol**, or the feature would be N ordinary spins with a longer
+  banner; a strip never burns down to nothing; nothing is burned outside the
+  feature; **a retrigger does not take the reels back**; a cabinet without a
+  refine order is untouched, so the other four behave exactly as they did; and
+  refining never burns the wild, the scatter or the egg.
 - **Synthesis (`macroquad-toolkit/src/synth.rs`):** the container is a
   well-formed WAV and its declared sizes match the real payload; synthesis is
   deterministic; **a different seed changes only the noise**, so one effect can
@@ -1518,6 +1570,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | A player reading variance as a rigged machine | The Ledger shows their sample against the measured cabinet *and* the margin of error on it (§5.18). Showing the two bars without the caveat would have been worse than showing neither. |
 | A refactor silently changing every sound | Length and checksum of all eight effects are pinned (§5.19). The move into the toolkit was proved byte-identical; the three later changes were deliberate and re-baselined. |
 | Duplicated grid index arithmetic | `reel * rows + row` lived at eight call sites until §5.20; `Grid::index` owns it now. Reels that differ in height would have silently read the wrong cells at every one of them. |
+| A feature tuned by gutting the base game | Refining took Frost to 6.92; the fix was rebalancing the feature's own spins and multiplier, not a 36% paytable cut that would have paid for the feature out of the base game (§5.21). |
 | A new machine shipping at the wrong RTP | The sim iterates `MACHINES`; a cabinet cannot be added without being measured (§5.8). |
 | Two machines sharing a save slot | Slots are `<machine>_<slot>`; a test asserts they are distinct. |
 | Jackpots exploitable by bet-switching | Odds are per credit wagered, so the trigger is bet-fair by construction (§5.6) and tested. The bet-ladder sim test excludes jackpots deliberately — they are too high-variance to compare over 20k spins — and their return is checked against its closed form instead. |
@@ -1550,25 +1603,26 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus fifteen post-v1 systems
+## 15. Current State — v1 shipped, plus sixteen post-v1 systems
 
-**All five phases are done, every item in §14 is met**, and fifteen systems have
+**All five phases are done, every item in §14 is met**, and sixteen systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
 machines (§5.8), achievements (§5.9), the Vault Pick (§5.10), the reel-feel pass
 (§5.11), the Dragon's Wrath (§5.12), the Feature Buy (§5.13), ways-to-win
 (§5.14), cascading reels (§5.15), the Dragon's Gamble (§5.16), live machine
 profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
-shifting reels (§5.20). The game is
+shifting reels (§5.20) and refining free spins (§5.21). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-278 tests pass here and 148 in `macroquad-toolkit`; `cargo fmt --check`,
+285 tests pass here and 148 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
-release build are clean. Every `.rs` file is under the 800-line limit, `data.rs`
-(762) and `ui.rs` (729) the largest.
+release build are clean. Every `.rs` file is under the 800-line limit; `data.rs`
+reached 848 adding refining and its feature configs were split into
+`data/features.rs`, leaving it (741) and `ui/reels.rs` (738) the largest.
 
 Measured RTP over 1,000,000 spins: Dragon's Hoard **0.9612** at **0.411** hit
-frequency, Frost Wyrm **0.9450** at **0.258**, Emberfall **0.9596** at **0.622**
+frequency, Frost Wyrm **0.9491** at **0.259**, Emberfall **0.9596** at **0.622**
 (§5.14), Avalanche **0.9429** at **0.475** (§5.15). Both paytables were scaled ~2–3%
 down to make room for the Dragon's Wrath (§5.12). The Feature Buy (§5.13) moved
 neither, by construction — it is a second door into features that already
@@ -1578,7 +1632,7 @@ Captures in `docs/verification/`: `ui_idle`, `ui_spin`, `ui_win`, `ui_freespins`
 `ui_paytable`, `ui_settings`, `ui_machines`, `ui_frost`, `ui_achievements`,
 `ui_bonus`, `ui_feature_card`, `ui_hatch`, `ui_jackpot`, `ui_autospin`,
 `ui_anticipation`, `ui_wrath`, `ui_featurebuy`, `ui_ways`, `ui_cascade`,
-`ui_gamble`, `ui_ledger`, `ui_waveforms`, `ui_shifting`. The catalog card image at the project root is produced by the same
+`ui_gamble`, `ui_ledger`, `ui_waveforms`, `ui_shifting`, `ui_refining`. The catalog card image at the project root is produced by the same
 harness. `ui_spin` is captured at 20 frames rather than 150 — at the default
 the spin has already finished, so the blur it is meant to show is not there.
 
