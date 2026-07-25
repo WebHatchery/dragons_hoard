@@ -1,0 +1,22 @@
+[
+  { "id": 1, "name": "Middle", "rows": [1, 1, 1, 1, 1] },
+  { "id": 2, "name": "Top", "rows": [0, 0, 0, 0, 0] },
+  { "id": 3, "name": "Bottom", "rows": [2, 2, 2, 2, 2] },
+  { "id": 4, "name": "Dive", "rows": [0, 1, 2, 1, 0] },
+  { "id": 5, "name": "Climb", "rows": [2, 1, 0, 1, 2] },
+  { "id": 6, "name": "Slide Down", "rows": [0, 0, 1, 2, 2] },
+  { "id": 7, "name": "Slide Up", "rows": [2, 2, 1, 0, 0] },
+  { "id": 8, "name": "Low Cradle", "rows": [1, 0, 0, 0, 1] },
+  { "id": 9, "name": "High Cradle", "rows": [1, 2, 2, 2, 1] },
+  { "id": 10, "name": "Arch Down", "rows": [0, 1, 1, 1, 0] },
+  { "id": 11, "name": "Arch Up", "rows": [2, 1, 1, 1, 2] },
+  { "id": 12, "name": "Zig Down", "rows": [1, 2, 1, 0, 1] },
+  { "id": 13, "name": "Zig Up", "rows": [1, 0, 1, 2, 1] },
+  { "id": 14, "name": "Top Dip", "rows": [0, 0, 1, 0, 0] },
+  { "id": 15, "name": "Bottom Bump", "rows": [2, 2, 1, 2, 2] },
+  { "id": 16, "name": "Mid Peak", "rows": [1, 1, 0, 1, 1] },
+  { "id": 17, "name": "Mid Trough", "rows": [1, 1, 2, 1, 1] },
+  { "id": 18, "name": "Top Weave", "rows": [0, 1, 0, 1, 0] },
+  { "id": 19, "name": "Bottom Weave", "rows": [2, 1, 2, 1, 2] },
+  { "id": 20, "name": "Wide Weave", "rows": [0, 2, 0, 2, 0] }
+]

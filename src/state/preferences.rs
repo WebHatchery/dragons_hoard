@@ -65,6 +65,10 @@ pub struct Preferences {
     /// a count so editing the choices in JSON cannot strand a saved preference
     /// on a value that is no longer offered.
     pub autospin_choice: usize,
+    /// Which cabinet to boot into. Empty means "whatever is first in the
+    /// catalog"; an id that no longer exists falls back the same way, so
+    /// removing a machine cannot strand a player outside the game.
+    pub machine_id: String,
     /// Particle bursts. Paired with `shared.screen_shake` as a "reduced motion"
     /// pair; separate flags because shake is the one that causes trouble for
     /// motion-sensitive players, and some want to keep the sparkle.
@@ -82,6 +86,7 @@ impl Default for Preferences {
             shared: GameSettings::default(),
             spin_speed: SpinSpeed::Normal,
             autospin_choice: usize::MAX,
+            machine_id: String::new(),
             particles: true,
         }
     }

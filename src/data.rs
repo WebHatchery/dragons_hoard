@@ -9,13 +9,70 @@ use macroquad_toolkit::data_loader::{load_embedded_json, load_embedded_json_labe
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-const GAME_CONFIG_JSON: &str = include_str!("../assets/data/game_config.json");
-const SYMBOLS_JSON: &str = include_str!("../assets/data/symbols.json");
-const REELS_JSON: &str = include_str!("../assets/data/reels.json");
-const PAYLINES_JSON: &str = include_str!("../assets/data/paylines.json");
-const FREESPINS_JSON: &str = include_str!("../assets/data/freespins.json");
-const JACKPOTS_JSON: &str = include_str!("../assets/data/jackpots.json");
 const TEXTURE_MANIFEST_JSON: &str = include_str!("../assets/data/texture_manifest.json");
+
+/// One playable machine: a complete, self-contained set of maths and content.
+///
+/// Everything that makes a machine what it is — symbols, strips, paytable,
+/// feature rules, jackpot tiers — is JSON. The only Rust here is the list of
+/// which files to embed, because `include_str!` runs at compile time.
+///
+/// Adding a machine is: drop a directory under `assets/data/machines/`, add an
+/// entry to [`MACHINES`], and re-run the RTP sim — which tests **every** machine
+/// (§4), so a new one cannot ship out of band.
+#[derive(Debug)]
+pub struct MachineDef {
+    pub id: &'static str,
+    /// One line for the picker, describing how this machine plays.
+    pub blurb: &'static str,
+    config: &'static str,
+    symbols: &'static str,
+    reels: &'static str,
+    paylines: &'static str,
+    freespins: &'static str,
+    jackpots: &'static str,
+}
+
+macro_rules! machine {
+    ($id:literal, $dir:literal, $blurb:literal) => {
+        MachineDef {
+            id: $id,
+            blurb: $blurb,
+            config: include_str!(concat!(
+                "../assets/data/machines/",
+                $dir,
+                "/game_config.json"
+            )),
+            symbols: include_str!(concat!("../assets/data/machines/", $dir, "/symbols.json")),
+            reels: include_str!(concat!("../assets/data/machines/", $dir, "/reels.json")),
+            paylines: include_str!(concat!("../assets/data/machines/", $dir, "/paylines.json")),
+            freespins: include_str!(concat!("../assets/data/machines/", $dir, "/freespins.json")),
+            jackpots: include_str!(concat!("../assets/data/machines/", $dir, "/jackpots.json")),
+        }
+    };
+}
+
+pub static MACHINES: &[MachineDef] = &[
+    machine!(
+        "dragon",
+        "dragon",
+        "Medium volatility. Frequent coin and gem wins, doubled free spins."
+    ),
+    machine!(
+        "frost",
+        "frost",
+        "High volatility. Rarer wins, far bigger, with tripled free spins."
+    ),
+];
+
+/// Look a machine up by id, falling back to the first so a stale saved id can
+/// never leave the player with no machine at all.
+pub fn machine_by_id(id: &str) -> &'static MachineDef {
+    MACHINES
+        .iter()
+        .find(|machine| machine.id == id)
+        .unwrap_or(&MACHINES[0])
+}
 
 /// Longest run a paytable entry can describe. Index 0..=5, so a 5-reel game
 /// indexes `pay_table[symbol][count]` directly.
@@ -237,6 +294,10 @@ impl FreeSpinsConfig {
 
 #[derive(Debug, Clone)]
 pub struct GameData {
+    /// Which machine this data came from. `GameData` is always exactly one
+    /// machine's worth — switching cabinets rebuilds it rather than indexing
+    /// into a collection, which is why no other module needed to change.
+    pub machine: &'static MachineDef,
     pub config: GameConfig,
     pub symbols: Symbols,
     /// One strip per reel, each entry a symbol index.
@@ -248,18 +309,29 @@ pub struct GameData {
 }
 
 impl GameData {
+    /// The machine the game boots into.
     pub fn load() -> Result<Self, String> {
-        let config: GameConfig = load_embedded_json_labeled("game_config", GAME_CONFIG_JSON)?;
-        let symbol_defs: Vec<SymbolDef> = load_embedded_json_labeled("symbols", SYMBOLS_JSON)?;
+        Self::load_machine(&MACHINES[0])
+    }
+
+    pub fn load_machine(machine: &'static MachineDef) -> Result<Self, String> {
+        let label = |what: &str| format!("{}/{}", machine.id, what);
+
+        let config: GameConfig = load_embedded_json_labeled(&label("game_config"), machine.config)?;
+        let symbol_defs: Vec<SymbolDef> =
+            load_embedded_json_labeled(&label("symbols"), machine.symbols)?;
         let symbols = Symbols::new(symbol_defs)?;
-        let strips: Vec<Vec<String>> = load_embedded_json_labeled("reels", REELS_JSON)?;
-        let paylines: Vec<Payline> = load_embedded_json_labeled("paylines", PAYLINES_JSON)?;
-        let freespins: FreeSpinsConfig = load_embedded_json_labeled("freespins", FREESPINS_JSON)?;
-        let jackpots: Jackpots = load_embedded_json_labeled("jackpots", JACKPOTS_JSON)?;
+        let strips: Vec<Vec<String>> = load_embedded_json_labeled(&label("reels"), machine.reels)?;
+        let paylines: Vec<Payline> =
+            load_embedded_json_labeled(&label("paylines"), machine.paylines)?;
+        let freespins: FreeSpinsConfig =
+            load_embedded_json_labeled(&label("freespins"), machine.freespins)?;
+        let jackpots: Jackpots = load_embedded_json_labeled(&label("jackpots"), machine.jackpots)?;
         let texture_manifest = load_embedded_json(TEXTURE_MANIFEST_JSON)?;
 
         let reels = resolve_strips(&symbols, &strips)?;
         let data = Self {
+            machine,
             config,
             symbols,
             reels,
@@ -270,6 +342,16 @@ impl GameData {
         };
         data.validate()?;
         Ok(data)
+    }
+
+    pub fn machine_id(&self) -> &'static str {
+        self.machine.id
+    }
+
+    /// Each machine gets its own save slot, so switching cabinets never
+    /// overwrites the balance and hoard built up on the other one.
+    pub fn save_slot(&self) -> String {
+        format!("{}_{}", self.machine.id, self.config.save_slot)
     }
 
     /// Total bet for a line bet: every payline is always active.

@@ -1,12 +1,14 @@
 //! Immediate-mode UI. Pure view layer: it reads state and returns intents.
 
 pub mod celebration;
+pub mod machines;
+pub mod paytable;
 pub mod reels;
 pub mod settings;
 pub mod symbols;
 
 use crate::data::GameData;
-use crate::state::{jackpot, GameSession};
+use crate::state::GameSession;
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::{
     draw_badge, draw_surface, draw_text_block, draw_text_centered_in_box_ex, draw_text_right,
@@ -41,6 +43,9 @@ pub enum UiAction {
     ToggleAutospin,
     TogglePaytable,
     ToggleSettings,
+    ToggleMachines,
+    /// Index into `data::MACHINES`.
+    SelectMachine(usize),
     VolumeUp,
     VolumeDown,
     CycleSpinSpeed,
@@ -61,6 +66,7 @@ pub struct UiContext<'a> {
     pub save_exists: bool,
     pub show_paytable: bool,
     pub show_settings: bool,
+    pub show_machines: bool,
     /// Screen-shake displacement, applied to the reels panel only.
     pub shake: Vec2,
     /// Accumulated in-game seconds, used for pulsing highlights. Comes from the
@@ -79,7 +85,10 @@ pub fn draw_game_ui(ctx: UiContext<'_>) -> Vec<UiAction> {
     draw_footer(&ctx);
 
     if ctx.show_paytable {
-        draw_paytable_overlay(&ctx, mouse, &mut actions);
+        paytable::draw(&ctx, mouse, &mut actions);
+    }
+    if ctx.show_machines {
+        machines::draw(ctx.data, mouse, &mut actions);
     }
     if ctx.show_settings {
         settings::draw(
@@ -117,8 +126,17 @@ fn draw_header(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>) {
         TextStyle::new(31.0, palette::GOLD_BRIGHT).params(),
     );
 
-    // The header has the only spare width on screen, and settings should be
+    // The header has the only spare width on screen, and these should be
     // reachable from anywhere rather than buried in the wager panel.
+    if virtual_button(
+        Rect::new(rect.right() - 710.0, rect.y + 18.0, 108.0, 28.0),
+        "Machines",
+        true,
+        ButtonTone::Secondary,
+        mouse,
+    ) {
+        actions.push(UiAction::ToggleMachines);
+    }
     if virtual_button(
         Rect::new(rect.right() - 592.0, rect.y + 18.0, 108.0, 28.0),
         "Settings",
@@ -470,8 +488,9 @@ fn draw_footer(ctx: &UiContext<'_>) {
         hoard.count as f32,
         ctx.data.config.hoard_capacity as f32,
         palette::EMBER,
+        // Machine-agnostic: the Frost cabinet has a hoard too.
         Some(&format!(
-            "Dragon's Hoard {}/{}",
+            "Hoard {}/{}",
             hoard.count, ctx.data.config.hoard_capacity
         )),
     );
@@ -496,135 +515,11 @@ fn draw_footer(ctx: &UiContext<'_>) {
         TextStyle::new(16.0, palette::TEXT).params(),
     );
     draw_ui_text_ex(
-        "Space spins  ·  Up/Down bet  ·  M max  ·  A autospin  ·  P paytable  ·  O settings",
+        "Space spins · Up/Down bet · M max · A autospin · P paytable · O settings · C machines",
         rect.x + 470.0,
         rect.y + 56.0,
         TextStyle::new(15.0, palette::TEXT_DIM).params(),
     );
-}
-
-fn draw_paytable_overlay(ctx: &UiContext<'_>, mouse: Vec2, actions: &mut Vec<UiAction>) {
-    draw_rectangle(
-        0.0,
-        0.0,
-        LOGICAL_WIDTH,
-        LOGICAL_HEIGHT,
-        Color::new(0.0, 0.0, 0.0, 0.72),
-    );
-
-    let rect = Rect::new(180.0, 70.0, 920.0, 580.0);
-    draw_surface(
-        rect,
-        &SurfaceStyle::new(palette::STONE)
-            .with_border(2.0, palette::GOLD)
-            .with_header(48.0, palette::STONE_HEADER)
-            .with_header_divider(1.0, palette::GOLD_DIM),
-    );
-    draw_ui_text_ex(
-        "Paytable — multipliers of the line bet",
-        rect.x + 20.0,
-        rect.y + 32.0,
-        TextStyle::new(21.0, palette::GOLD_BRIGHT).params(),
-    );
-
-    let mut y = rect.y + 76.0;
-    for (index, def) in ctx.data.symbols.iter() {
-        let row = Rect::new(rect.x + 20.0, y, rect.w - 40.0, 44.0);
-        let swatch = Rect::new(row.x, row.y - 2.0, 46.0, 42.0);
-        let tint = Color::new(def.color[0], def.color[1], def.color[2], 1.0);
-        draw_surface(
-            swatch,
-            &SurfaceStyle::new(Color::new(
-                0.055 + tint.r * 0.14,
-                0.05 + tint.g * 0.14,
-                0.065 + tint.b * 0.14,
-                1.0,
-            ))
-            .with_border(1.0, palette::GOLD_DIM),
-        );
-        if !symbols::draw(def, swatch, 0.0) {
-            draw_text_centered_in_box_ex(
-                &def.short,
-                swatch.x,
-                swatch.y,
-                swatch.w,
-                swatch.h,
-                TextStyle::new(18.0, palette::TEXT_BRIGHT),
-            );
-        }
-        draw_ui_text_ex(
-            &def.name,
-            row.x + 68.0,
-            row.y + 25.0,
-            TextStyle::new(18.0, palette::TEXT_BRIGHT).params(),
-        );
-        draw_ui_text_ex(
-            &symbol_note(ctx, index),
-            row.x + 270.0,
-            row.y + 25.0,
-            TextStyle::new(15.0, palette::TEXT_DIM).params(),
-        );
-        draw_text_right(
-            &format!(
-                "x3 {}    x4 {}    x5 {}",
-                pay_label(ctx, index, 3),
-                pay_label(ctx, index, 4),
-                pay_label(ctx, index, 5)
-            ),
-            row.right(),
-            row.y + 25.0,
-            TextStyle::new(17.0, palette::GOLD),
-        );
-        y += 46.0;
-    }
-
-    draw_text_block(
-        &format!(
-            "Wins pay left to right from reel 1 on all 20 lines. The Dragon is wild and pays the best reading of a line. Dragon Fire scatters pay anywhere and 3+ award free spins with expanding wilds.\n\
-             Progressives: {}% of every stake feeds the four pots, which pay at random on any paid spin. Bigger stakes win them proportionally more often, so the return per credit is the same at every bet — worth {:.1}% of all play.",
-            ctx.data.jackpots.contribution_permille as f32 / 10.0,
-            jackpot::expected_rtp(&ctx.data.jackpots) * 100.0,
-        ),
-        rect.x + 20.0,
-        y + 6.0,
-        rect.w - 40.0,
-        76.0,
-        15.0,
-        4.0,
-        palette::TEXT_DIM,
-    );
-
-    if virtual_button(
-        Rect::new(rect.right() - 130.0, rect.y + 10.0, 110.0, 30.0),
-        "Close",
-        true,
-        ButtonTone::Danger,
-        mouse,
-    ) {
-        actions.push(UiAction::TogglePaytable);
-    }
-}
-
-/// A run that does not pay reads as a dash, not a zero — the lowest symbols
-/// deliberately start at four of a kind.
-fn pay_label(ctx: &UiContext<'_>, index: usize, count: usize) -> String {
-    match ctx.data.symbols.pay(index, count) {
-        0 => "-".to_owned(),
-        value => value.to_string(),
-    }
-}
-
-fn symbol_note(ctx: &UiContext<'_>, index: usize) -> String {
-    let def = ctx.data.symbols.get(index);
-    if def.is_wild {
-        "Wild — substitutes for all but the scatter".to_owned()
-    } else if def.is_scatter {
-        "Scatter — pays total bet, anywhere".to_owned()
-    } else if def.is_hoard {
-        "Fills the Dragon's Hoard meter".to_owned()
-    } else {
-        format!("{} tier", def.tier)
-    }
 }
 
 fn virtual_button(rect: Rect, text: &str, enabled: bool, tone: ButtonTone, mouse: Vec2) -> bool {
@@ -695,6 +590,9 @@ pub fn actions_from_keys(celebrating: bool) -> Vec<UiAction> {
     }
     if is_key_pressed(KeyCode::O) {
         actions.push(UiAction::ToggleSettings);
+    }
+    if is_key_pressed(KeyCode::C) {
+        actions.push(UiAction::ToggleMachines);
     }
     if is_key_pressed(KeyCode::S) {
         actions.push(UiAction::Save);

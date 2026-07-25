@@ -1,0 +1,33 @@
+{
+  "contribution_permille": 30,
+  "tiers": [
+    {
+      "id": "mini",
+      "name": "Mini",
+      "seed": 300,
+      "share_permille": 400,
+      "odds_per_credit": 120000
+    },
+    {
+      "id": "minor",
+      "name": "Minor",
+      "seed": 1500,
+      "share_permille": 300,
+      "odds_per_credit": 600000
+    },
+    {
+      "id": "major",
+      "name": "Major",
+      "seed": 8000,
+      "share_permille": 200,
+      "odds_per_credit": 3000000
+    },
+    {
+      "id": "grand",
+      "name": "Grand",
+      "seed": 40000,
+      "share_permille": 100,
+      "odds_per_credit": 15000000
+    }
+  ]
+}

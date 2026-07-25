@@ -171,6 +171,66 @@ mod tests {
     const SMOKE_TOLERANCE: f64 = 0.15;
     const FULL_TOLERANCE: f64 = 0.03;
 
+    /// **Every machine must be in band, not just the one that boots.** A second
+    /// cabinet is a whole second maths model; without this it could ship at any
+    /// RTP at all and nothing would notice.
+    #[test]
+    fn every_machine_loads_and_lands_in_band() {
+        for machine in crate::data::MACHINES {
+            let data = GameData::load_machine(machine)
+                .unwrap_or_else(|err| panic!("machine '{}' failed to load: {}", machine.id, err));
+            let report = run(
+                &data,
+                SimConfig {
+                    spins: 20_000,
+                    ..SimConfig::default()
+                },
+            );
+
+            println!("{:>8}: {}", machine.id, report.summary());
+            assert!(
+                (report.rtp() - TARGET_RTP).abs() < SMOKE_TOLERANCE,
+                "machine '{}' RTP {:.4} outside {:.2} +/- {:.2}",
+                machine.id,
+                report.rtp(),
+                TARGET_RTP,
+                SMOKE_TOLERANCE
+            );
+        }
+    }
+
+    /// Machines should not all play the same. This asserts the catalog actually
+    /// offers a choice rather than a reskin.
+    #[test]
+    fn the_machines_differ_in_volatility() {
+        let mut hit_rates = Vec::new();
+        for machine in crate::data::MACHINES {
+            let data = GameData::load_machine(machine).unwrap();
+            let report = run(
+                &data,
+                SimConfig {
+                    spins: 20_000,
+                    ..SimConfig::default()
+                },
+            );
+            hit_rates.push((machine.id, report.hit_frequency()));
+        }
+
+        let lowest = hit_rates
+            .iter()
+            .map(|(_, rate)| *rate)
+            .fold(f64::MAX, f64::min);
+        let highest = hit_rates
+            .iter()
+            .map(|(_, rate)| *rate)
+            .fold(0.0f64, f64::max);
+        assert!(
+            highest - lowest > 0.05,
+            "every machine plays the same: {:?}",
+            hit_rates
+        );
+    }
+
     #[test]
     fn rtp_smoke_lands_in_band() {
         let data = GameData::load().unwrap();
@@ -291,6 +351,34 @@ mod tests {
             run(&data, config).total_won,
             "same seed produced different turnover"
         );
+    }
+
+    /// The long-run gate for the whole catalog. A machine whose features are
+    /// rare needs far more spins than the smoke run to converge — Frost Wyrm
+    /// triggers its feature roughly half as often as Dragon's Hoard.
+    #[test]
+    #[ignore = "million-spin run per machine; too slow for a debug CI build"]
+    fn every_machine_holds_its_rtp_over_a_long_run() {
+        for machine in crate::data::MACHINES {
+            let data = GameData::load_machine(machine).unwrap();
+            let report = run(
+                &data,
+                SimConfig {
+                    spins: 1_000_000,
+                    ..SimConfig::default()
+                },
+            );
+
+            println!("{:>8}: {}", machine.id, report.summary());
+            assert!(
+                (report.rtp() - TARGET_RTP).abs() < FULL_TOLERANCE,
+                "machine '{}' RTP {:.4} outside {:.2} +/- {:.2}",
+                machine.id,
+                report.rtp(),
+                TARGET_RTP,
+                FULL_TOLERANCE
+            );
+        }
     }
 
     /// The real RTP gate. `cargo test --release -- --ignored --nocapture`.

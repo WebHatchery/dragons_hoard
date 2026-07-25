@@ -26,6 +26,10 @@ pub enum ActionOutcome {
     BetChanged(i64),
     PaytableToggled,
     SettingsToggled,
+    MachinesToggled,
+    /// The player picked a cabinet; the orchestrator owns the swap because it
+    /// has to rebuild `GameData` and move save slots.
+    MachineSelected(usize),
     /// A preference changed and should be written back to disk.
     PreferenceChanged,
     AutospinStarted(u32),
@@ -62,6 +66,8 @@ pub fn apply(
             ActionOutcome::PaytableToggled
         }
         UiAction::ToggleSettings => ActionOutcome::SettingsToggled,
+        UiAction::ToggleMachines => ActionOutcome::MachinesToggled,
+        UiAction::SelectMachine(index) => ActionOutcome::MachineSelected(index),
         UiAction::VolumeUp => {
             session.preferences.adjust_volume(0.1);
             ActionOutcome::PreferenceChanged

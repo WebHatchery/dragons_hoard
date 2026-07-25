@@ -98,6 +98,9 @@ multiplier of that pot, not of the bet at hatch time.
 ## 4. Math Model (RTP)
 
 - **Target RTP:** ~95% (tunable via reel strips + paytable; verified by sim).
+- **Two machines, both verified.** Figures below are Dragon's Hoard; Frost Wyrm
+  measures **0.9475** at a **0.259** hit frequency (§5.8). The sim runs every
+  machine in the catalog — a second cabinet is a second maths model.
 - **Measured:** RTP **0.9567**, hit frequency **0.410** over 1,000,000 spins
   (`cargo test --release -- --ignored --nocapture`). Contributions as a fraction
   of turnover: base game 0.665, free spins 0.193, Hatch bonus 0.058,
@@ -255,6 +258,45 @@ and the sparkle kept. Both are hard gates in `game.rs`, routed through
 Being able to reach **silence** matters here more than usual: the effects are
 synthesised (§7.1) and have never been listened to.
 
+### 5.8 Multiple machines (post-v1)
+
+The catalog ships two cabinets, and the whole difference between them is JSON.
+
+| | Dragon's Hoard | Frost Wyrm |
+|---|---|---|
+| Volatility | medium | high |
+| Hit frequency | 0.410 | 0.259 |
+| Strip length | 40 | 50 |
+| Symbols paying from 3 | 7 of 8 | 5 of 8 |
+| Free spins | 10/15/20 at ×2 | 8/12/18 at ×3 |
+| Hoard | 15 eggs, ×1 pot | 20 eggs, ×2 pot |
+| Grand jackpot seed | 25,000 | 40,000 |
+| Biggest win in 1M spins | 73,758 | 99,720 |
+| Measured RTP | 0.9567 | 0.9475 |
+
+**`GameData` is still exactly one machine's worth.** Switching rebuilds it
+rather than indexing into a collection — which is why adding the second cabinet
+touched almost no other module: every `data.config.*` and `data.symbols` reader
+kept working unchanged. The only Rust a machine needs is its entry in
+`MACHINES`, because `include_str!` runs at compile time.
+
+**Each machine has its own save slot** (`<machine>_<slot>`), so a balance and
+hoard built on one cabinet are never overwritten by the other. A test asserts
+the slots are distinct — sharing one would silently destroy progress. The
+last-played machine is remembered in preferences, and an id that no longer
+exists falls back to the first rather than stranding the player outside the
+game.
+
+**The sim tests every machine, not just the one that boots.** A second cabinet
+is a second maths model; without `every_machine_loads_and_lands_in_band` and its
+long-run counterpart, a new machine could ship at any RTP and nothing would
+notice. A further test asserts the machines actually differ in hit frequency —
+proof the catalog offers a choice rather than a reskin.
+
+Frost Wyrm reuses every procedural art routine (§7.1) with new colours and
+names, which is the payoff for making `art` a data key: a whole second symbol
+set cost no new drawing code.
+
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
 - Winning lines: pulse highlight (`blink`/`pulse`), floating win amounts
@@ -382,6 +424,8 @@ every `.rs` under the **800-line hard limit**; split by responsibility.
 | `src/state/jackpot.rs` | Progressive pots: contribution, bet-fair trigger, closed-form RTP (§5.6). |
 | `src/state/preferences.rs` | Player settings on top of the toolkit's `GameSettings` (§5.7). |
 | `src/ui/settings.rs` | The settings overlay. |
+| `src/ui/paytable.rs` | The paytable overlay (split out of `ui.rs` at the size limit). |
+| `src/ui/machines.rs` | The machine picker (§5.8). |
 | `src/state/tests.rs` | Session integration tests (spin lifecycle, features, autospin, cards). |
 | `src/ui/celebration.rs` | Full-screen card rendering. |
 | `src/ui/symbols.rs` | Procedural symbol art (§7.1). |
@@ -610,6 +654,12 @@ and a Project Roost deployment record. Verified live — see §15.
   than rejected. End to end: a free spin neither feeds nor draws a pot, a win is
   credited and raises its own card while suppressing the big-win one, autospin
   stops, and the pots survive a reload.
+- **Machines (`engine/sim.rs`, `state/tests.rs`):** **every** machine in the
+  catalog loads, validates, and lands in the RTP band — at 20k spins in CI and
+  over a million per machine in the ignored long run. The machines must differ
+  in hit frequency (a reskin fails), must not share a save slot (sharing one
+  would silently overwrite a balance and hoard), must not share a symbol set,
+  and an unknown machine id falls back to the first rather than failing.
 - **Preferences (`state/preferences.rs`, `state/tests.rs`):** defaults are
   playable; both cycles reach every option and wrap; volume steps in tenths,
   clamps, and **can reach true silence**; the motion toggles are independent; a
@@ -650,7 +700,9 @@ and a Project Roost deployment record. Verified live — see §15.
 | A second Spin press mid-spin taking a second stake | `begin_spin` refuses with `SpinBlocked::Busy` before touching the balance; covered by a test that asserts the balance is untouched. |
 | A feature firing unseen underneath its own auto-chain | A showing celebration card holds the reels, the payout and the auto-chain (§8.2.1); tested. Autospin also stops on every notable outcome. |
 | Autospin quietly draining the balance | It stops on features, hatches, big wins and an empty balance, each with its own message; the bet ladder is locked for the run. |
-| `state.rs` growing past 800 lines | Already happened once; split into `hoard`/`save`/`autospin`/`celebration`/`jackpot`/`preferences`/`spin`/`tests` siblings. **`state/tests.rs` (712) and `ui.rs` (706) are now the ones to watch** — split them on the next change that touches either. |
+| `state.rs` growing past 800 lines | Already happened once; split into `hoard`/`save`/`autospin`/`celebration`/`jackpot`/`preferences`/`spin`/`tests` siblings. `ui.rs` hit the limit next and had its paytable overlay split into `ui/paytable.rs`. **`state/tests.rs` is now the largest file** — split it on the next change that touches it. |
+| A new machine shipping at the wrong RTP | The sim iterates `MACHINES`; a cabinet cannot be added without being measured (§5.8). |
+| Two machines sharing a save slot | Slots are `<machine>_<slot>`; a test asserts they are distinct. |
 | Jackpots exploitable by bet-switching | Odds are per credit wagered, so the trigger is bet-fair by construction (§5.6) and tested. The bet-ladder sim test excludes jackpots deliberately — they are too high-variance to compare over 20k spins — and their return is checked against its closed form instead. |
 | A new layer silently moving RTP | Adding jackpots took RTP from 0.961 to 1.000; the Monte-Carlo gate caught it and the paytable JSON absorbed it. Any future layer must be added to the sim in the same change. |
 | Gambling optics | Explicit play-money framing in `game_page.json`; no purchases, no real value. Progressives grow only from play-money stakes and reset to a fixed seed. |
@@ -659,11 +711,11 @@ and a Project Roost deployment record. Verified live — see §15.
 
 ## 13. Out of Scope (v1)
 
-Real currency / IAP, networked leaderboards, multiple slot machines/themes,
-mobile-touch gestures beyond what the shared web shell already provides.
+Real currency / IAP, networked leaderboards, mobile-touch gestures beyond what
+the shared web shell already provides.
 
-Built after v1 shipped: ~~progressive jackpots~~ (§5.6) and ~~sound settings
-persistence~~ (§5.7).
+Built after v1 shipped: ~~progressive jackpots~~ (§5.6), ~~sound settings
+persistence~~ (§5.7) and ~~multiple slot machines/themes~~ (§5.8).
 
 ---
 
@@ -680,24 +732,26 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus progressives and settings
+## 15. Current State — v1 shipped, plus three post-v1 systems
 
-**All five phases are done, every item in §14 is met**, and two systems have been
-built on top since: progressive jackpots (§5.6) and settings (§5.7). The game is
+**All five phases are done, every item in §14 is met**, and three systems have
+been built on top since: progressive jackpots (§5.6), settings (§5.7) and
+multiple machines (§5.8). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-128 tests pass; `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`
+135 tests pass; `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`
 and the `wasm32-unknown-unknown` release build are clean. Every `.rs` file is
-under the 800-line limit, but `state/tests.rs` (712) and `ui.rs` (706) are both
-close enough to need splitting on the next change that touches them.
+under the 800-line limit; `state/tests.rs` is now the largest and should be
+split next.
 
-Measured RTP over 1,000,000 spins is **0.9567** at a **0.410** hit frequency,
-including a 0.041 jackpot layer.
+Measured RTP over 1,000,000 spins: Dragon's Hoard **0.9567** at **0.410** hit
+frequency, Frost Wyrm **0.9475** at **0.259**.
 
 Captures in `docs/verification/`: `ui_idle`, `ui_spin`, `ui_win`, `ui_freespins`,
-`ui_paytable`, `ui_settings`, `ui_feature_card`, `ui_hatch`, `ui_autospin`. The
-catalog card image at the project root is produced by the same harness.
+`ui_paytable`, `ui_settings`, `ui_machines`, `ui_frost`, `ui_feature_card`,
+`ui_hatch`, `ui_autospin`. The catalog card image at the project root is produced
+by the same harness.
 
 ### Verified, and not
 

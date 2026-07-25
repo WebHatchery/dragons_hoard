@@ -37,13 +37,25 @@ pub struct Game {
     ui_time: f32,
     show_paytable: bool,
     show_settings: bool,
+    show_machines: bool,
     save_exists: bool,
 }
 
 impl Game {
     pub async fn new() -> Self {
-        let data = GameData::load()
+        // Load the default machine first purely to find out where preferences
+        // live, then honour the cabinet the player last chose.
+        let bootstrap = GameData::load()
             .unwrap_or_else(|err| panic!("Dragon's Hoard embedded data failed to load: {}", err));
+        let preferences = Preferences::load(&bootstrap.config);
+        let data = if preferences.machine_id.is_empty()
+            || preferences.machine_id == bootstrap.machine_id()
+        {
+            bootstrap
+        } else {
+            GameData::load_machine(crate::data::machine_by_id(&preferences.machine_id))
+                .unwrap_or(bootstrap)
+        };
 
         // Symbols are drawn procedurally (see `ui::symbols`), so the manifest is
         // empty by design. It is still loaded so the asset pipeline stays wired
@@ -71,7 +83,7 @@ impl Game {
         ));
 
         let mut session = GameSession::new(&data, random_u64());
-        session.preferences = Preferences::load(&data.config);
+        session.preferences = preferences;
 
         let mut sound = sound;
         sound.set_volume(session.preferences.sfx_volume());
@@ -88,6 +100,7 @@ impl Game {
             ui_time: 0.0,
             show_paytable: false,
             show_settings: false,
+            show_machines: false,
             save_exists: false,
         };
         game.refresh_save_state();
@@ -133,6 +146,12 @@ impl Game {
                 let _ = self.session.begin_spin(&self.data);
             }
             "paytable" => self.show_paytable = true,
+            "machines" => self.show_machines = true,
+            "frost" => {
+                self.data = GameData::load_machine(&crate::data::MACHINES[1]).unwrap();
+                self.session = GameSession::new(&self.data, 0xD2A6_0F1E);
+                self.fast_forward_to(|session| session.last_win > 0);
+            }
             "settings" => self.show_settings = true,
             _ => {}
         }
@@ -173,6 +192,7 @@ impl Game {
         if is_key_pressed(KeyCode::Escape) {
             self.show_settings = false;
             self.show_paytable = false;
+            self.show_machines = false;
         }
 
         let actions: Vec<UiAction> = self.events.drain().collect();
@@ -191,6 +211,7 @@ impl Game {
             save_exists: self.save_exists,
             show_paytable: self.show_paytable,
             show_settings: self.show_settings,
+            show_machines: self.show_machines,
             shake: self.shake.offset(),
             ui_time: self.ui_time,
             ui: &virtual_ui,
@@ -242,6 +263,71 @@ impl Game {
     fn burst(&mut self, position: Vec2, count: usize, config: &BurstConfig) {
         if self.session.preferences.particles {
             self.particles.spawn_burst(position, count, config);
+        }
+    }
+
+    /// Move to another cabinet.
+    ///
+    /// Each machine is a separate maths model with its own balance, hoard and
+    /// jackpots, so this banks the current one to its own slot and loads the
+    /// target's — it is closer to walking to a different machine than to
+    /// changing a theme. Refused mid-spin: the stake on the current machine is
+    /// already committed.
+    fn switch_machine(&mut self, index: usize) {
+        let Some(machine) = crate::data::MACHINES.get(index) else {
+            return;
+        };
+        if machine.id == self.data.machine_id() {
+            self.show_machines = false;
+            return;
+        }
+        if !self.session.is_settled() {
+            self.notifications
+                .warning("Finish this spin before switching machines");
+            return;
+        }
+
+        self.autosave();
+
+        let data = match GameData::load_machine(machine) {
+            Ok(data) => data,
+            Err(err) => {
+                self.notifications
+                    .danger(format!("Could not load that machine: {}", err));
+                return;
+            }
+        };
+
+        let mut preferences = self.session.preferences.clone();
+        preferences.machine_id = machine.id.to_owned();
+        self.data = data;
+        self.session = self.load_machine_session();
+        self.session.preferences = preferences;
+
+        self.particles.clear();
+        self.floating.clear();
+        self.shake.clear();
+        self.show_machines = false;
+        self.refresh_save_state();
+        let _ = self.session.preferences.save(&self.data.config);
+
+        self.notifications
+            .success(format!("Now playing {}", self.data.config.display_name));
+    }
+
+    /// The target machine's saved session, or a fresh one if it has never been
+    /// played.
+    fn load_machine_session(&mut self) -> GameSession {
+        let loaded: Result<SaveData, String> = load_from_slot_with_migration(
+            &self.data.config.game_name,
+            &self.data.save_slot(),
+            &self.data.config.version,
+            |version, value| migrate_save_value(version, value, &self.data),
+        );
+
+        match loaded {
+            Ok(save) => GameSession::from_save(&self.data, save),
+            Err(_) => GameSession::new(&self.data, random_u64()),
         }
     }
 
@@ -403,6 +489,11 @@ impl Game {
                 self.show_settings = !self.show_settings;
                 self.sound.play(Sfx::Click);
             }
+            ActionOutcome::MachinesToggled => {
+                self.show_machines = !self.show_machines;
+                self.sound.play(Sfx::Click);
+            }
+            ActionOutcome::MachineSelected(index) => self.switch_machine(index),
             ActionOutcome::PreferenceChanged => {
                 // Apply immediately so the change is audible/visible while the
                 // panel is still open, then persist it.
@@ -476,7 +567,7 @@ impl Game {
         let save = self.session.to_save(&self.data.config.version);
         if save_to_slot_with_version(
             &self.data.config.game_name,
-            &self.data.config.save_slot,
+            &self.data.save_slot(),
             &save,
             &self.data.config.version,
         )
@@ -490,7 +581,7 @@ impl Game {
         let save = self.session.to_save(&self.data.config.version);
         match save_to_slot_with_version(
             &self.data.config.game_name,
-            &self.data.config.save_slot,
+            &self.data.save_slot(),
             &save,
             &self.data.config.version,
         ) {
@@ -505,7 +596,7 @@ impl Game {
     fn load_game(&mut self) {
         let loaded: Result<SaveData, String> = load_from_slot_with_migration(
             &self.data.config.game_name,
-            &self.data.config.save_slot,
+            &self.data.save_slot(),
             &self.data.config.version,
             |version, value| migrate_save_value(version, value, &self.data),
         );
@@ -526,7 +617,7 @@ impl Game {
     }
 
     fn delete_save(&mut self) {
-        match delete_slot(&self.data.config.game_name, &self.data.config.save_slot) {
+        match delete_slot(&self.data.config.game_name, &self.data.save_slot()) {
             Ok(()) => {
                 self.notifications.info("Save slot cleared");
                 self.refresh_save_state();
@@ -536,6 +627,6 @@ impl Game {
     }
 
     fn refresh_save_state(&mut self) {
-        self.save_exists = slot_exists(&self.data.config.game_name, &self.data.config.save_slot);
+        self.save_exists = slot_exists(&self.data.config.game_name, &self.data.save_slot());
     }
 }

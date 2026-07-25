@@ -1,0 +1,164 @@
+[
+  {
+    "id": "frostcoin",
+    "name": "Frost Coin",
+    "tier": "low",
+    "short": "FRC",
+    "art": "coin",
+    "texture": "sym_frostcoin",
+    "color": [
+      0.7,
+      0.78,
+      0.86
+    ],
+    "pays": {
+      "4": 17,
+      "5": 59
+    }
+  },
+  {
+    "id": "rimehoard",
+    "name": "Rime Hoard",
+    "tier": "low",
+    "short": "RIM",
+    "art": "coin_stack",
+    "texture": "sym_rimehoard",
+    "color": [
+      0.85,
+      0.88,
+      0.72
+    ],
+    "pays": {
+      "4": 28,
+      "5": 89
+    }
+  },
+  {
+    "id": "shard",
+    "name": "Ice Shard",
+    "tier": "low",
+    "short": "SHD",
+    "art": "gem",
+    "texture": "sym_shard",
+    "color": [
+      0.55,
+      0.85,
+      0.9
+    ],
+    "pays": {
+      "4": 43,
+      "5": 119
+    }
+  },
+  {
+    "id": "glacier",
+    "name": "Glacier Gem",
+    "tier": "mid",
+    "short": "GLC",
+    "art": "gem",
+    "texture": "sym_glacier",
+    "color": [
+      0.24,
+      0.48,
+      0.82
+    ],
+    "pays": {
+      "3": 21,
+      "4": 71,
+      "5": 179
+    }
+  },
+  {
+    "id": "amethyst",
+    "name": "Frozen Amethyst",
+    "tier": "mid",
+    "short": "AMY",
+    "art": "gem",
+    "texture": "sym_amethyst",
+    "color": [
+      0.58,
+      0.36,
+      0.82
+    ],
+    "pays": {
+      "3": 28,
+      "4": 106,
+      "5": 226
+    }
+  },
+  {
+    "id": "vault",
+    "name": "Frozen Vault",
+    "tier": "high",
+    "short": "VLT",
+    "art": "chest",
+    "texture": "sym_vault",
+    "color": [
+      0.42,
+      0.52,
+      0.62
+    ],
+    "pays": {
+      "3": 59,
+      "4": 226,
+      "5": 618
+    }
+  },
+  {
+    "id": "wyrmegg",
+    "name": "Wyrm Egg",
+    "tier": "high",
+    "short": "EGG",
+    "art": "egg",
+    "texture": "sym_wyrmegg",
+    "color": [
+      0.82,
+      0.9,
+      0.94
+    ],
+    "is_hoard": true,
+    "pays": {
+      "3": 71,
+      "4": 296,
+      "5": 771
+    }
+  },
+  {
+    "id": "wyrm",
+    "name": "Frost Wyrm",
+    "tier": "wild",
+    "short": "WYR",
+    "art": "dragon",
+    "texture": "sym_wyrm",
+    "color": [
+      0.36,
+      0.72,
+      0.94
+    ],
+    "is_wild": true,
+    "pays": {
+      "3": 142,
+      "4": 594,
+      "5": 1662
+    }
+  },
+  {
+    "id": "frostfire",
+    "name": "Frostfire",
+    "tier": "scatter",
+    "short": "FFR",
+    "art": "flame",
+    "texture": "sym_frostfire",
+    "color": [
+      0.62,
+      0.92,
+      1.0
+    ],
+    "is_scatter": true,
+    "pays": {
+      "3": 2,
+      "4": 12,
+      "5": 60
+    }
+  }
+]
