@@ -112,8 +112,16 @@ fn a_ways_machine_declares_no_paylines_and_a_lines_machine_declares_some() {
             }
             Evaluation::Ways => {
                 assert!(data.paylines.is_empty(), "{} declared paylines", machine.id);
-                assert_eq!(data.ways_count(), Some(243));
                 assert!(data.bet_units() > 0);
+                match data.config.reel_heights {
+                    // A shifting cabinet's ways change every spin (§5.20), so it
+                    // has no fixed figure to quote — only a ceiling.
+                    Some(_) => {
+                        assert_eq!(data.ways_count(), None);
+                        assert!(data.max_ways().unwrap() > 243);
+                    }
+                    None => assert_eq!(data.ways_count(), Some(243)),
+                }
             }
         }
     }

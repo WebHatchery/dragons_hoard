@@ -260,7 +260,7 @@ synthesised (§7.1) and have never been listened to.
 
 ### 5.8 Multiple machines (post-v1)
 
-The catalog ships four cabinets. For the first two the whole difference is JSON;
+The catalog ships five cabinets. For the first two the whole difference is JSON;
 the third (§5.14) changes the evaluator and the fourth (§5.15) changes what a
 spin *is*, which is what makes them different games rather than different
 tunings.
@@ -921,6 +921,62 @@ second during a Dragon's Wrath round (§5.12), so any tail smears into a wash. I
 runs 0.16s with a sharp attack and most of that at near-silence, and a test now
 pins it under 0.2s.
 
+### 5.20 Shifting reels, and a fifth cabinet (post-v1)
+
+§5.14 changed what counts as a win and §5.15 changed what a spin is. This
+changes the **shape of the board**: on **Wyrmspire** every reel rolls its own
+height, two to six rows, on every spin — so the number of ways changes with it,
+anywhere from 32 to 7,776.
+
+**The grid had to learn that reels differ.** `Grid` was `reels × rows` with the
+flat index `reel * rows + row` written out at eight call sites. It now holds a
+height per reel and a cached prefix sum, and `Grid::index` is the only place that
+arithmetic lives. That refactor stands on its own — duplicated index maths across
+the evaluator, the cascades, the win highlight and the hold-and-spin was a latent
+bug however tall the reels are — and all 278 tests passed on it before a single
+height varied.
+
+**The shape is decided at commit, like everything else.** `pick_heights` runs
+straight after `pick_stops` and the two travel together, so the animation reveals
+a board whose *shape* was settled before a reel moved, not just its symbols. A
+reel spins at the height it is going to land on, because spinning at the
+configured maximum and settling to something shorter makes every reel jump as it
+stops.
+
+**Heights are uniform across the range.** Weighting them toward the tall end
+would be a way to move RTP without touching the paytable, and RTP lives in the
+data (§4).
+
+**Shifting reels require ways evaluation, and validation says so.** A payline
+names a row on every reel; on a cabinet where a reel might be two rows tall, half
+of them would point at cells that are not there.
+
+**The ways figure is read off the board, not the config.** `ways_count()` returns
+`None` on a shifting cabinet and the panel reads `grid.ways()` instead — "4320
+ways this spin (up to 7776)". Quoting only the ceiling would be advertising a
+grid the player is almost never looking at.
+
+**Tuning it took four passes.** The first measured **3.33** — six reels of up to
+six rows is a great many ways, and the ways cabinet's paytable is built for 243
+of them. Starting from Avalanche's table (lows paying from four, which is the
+lever on hit frequency) and scaling landed **0.9552**. Two tests then failed for
+real reasons: Wyrmspire shared a strip length and symbol set with Emberfall, so
+it got its own 46-symbol strips; and the fixed `ways_count() == 243` assertion
+needed to learn that a shifting cabinet has a ceiling rather than a figure.
+
+| | Emberfall | Avalanche | Wyrmspire |
+|---|---|---|---|
+| Reels | 5 × 3 fixed | 5 × 3 fixed, cascading | 5 × **2–6** |
+| Ways | 243 | 243 | **32 – 7,776** |
+| Bet units | 25 | 25 | 30 |
+| Hit frequency | 0.622 | 0.475 | **0.673** |
+| Measured RTP | 0.9596 | 0.9429 | 0.9552 |
+
+The Feature Buy caught its inherited prices for the fifth time and printed the
+right ones; the Wrath tier in particular went from 29× to 70×, because a
+four-egg trigger on a board that can be thirty cells tall is a very different
+proposition from the same trigger on fifteen.
+
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
 - Winning lines: pulse highlight (`blink`/`pulse`), floating win amounts
@@ -1461,6 +1517,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Quoting a number a sample cannot support | The live profile shows hit frequency, volatility and a band bar, and deliberately **not** RTP — 20,000 rounds put Dragon's Hoard 5 points out (§5.17). A wrong figure is worse than no figure. |
 | A player reading variance as a rigged machine | The Ledger shows their sample against the measured cabinet *and* the margin of error on it (§5.18). Showing the two bars without the caveat would have been worse than showing neither. |
 | A refactor silently changing every sound | Length and checksum of all eight effects are pinned (§5.19). The move into the toolkit was proved byte-identical; the three later changes were deliberate and re-baselined. |
+| Duplicated grid index arithmetic | `reel * rows + row` lived at eight call sites until §5.20; `Grid::index` owns it now. Reels that differ in height would have silently read the wrong cells at every one of them. |
 | A new machine shipping at the wrong RTP | The sim iterates `MACHINES`; a cabinet cannot be added without being measured (§5.8). |
 | Two machines sharing a save slot | Slots are `<machine>_<slot>`; a test asserts they are distinct. |
 | Jackpots exploitable by bet-switching | Odds are per credit wagered, so the trigger is bet-fair by construction (§5.6) and tested. The bet-ladder sim test excludes jackpots deliberately — they are too high-variance to compare over 20k spins — and their return is checked against its closed form instead. |
@@ -1493,22 +1550,22 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus fourteen post-v1 systems
+## 15. Current State — v1 shipped, plus fifteen post-v1 systems
 
-**All five phases are done, every item in §14 is met**, and fourteen systems have
+**All five phases are done, every item in §14 is met**, and fifteen systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
 machines (§5.8), achievements (§5.9), the Vault Pick (§5.10), the reel-feel pass
 (§5.11), the Dragon's Wrath (§5.12), the Feature Buy (§5.13), ways-to-win
 (§5.14), cascading reels (§5.15), the Dragon's Gamble (§5.16), live machine
-profiles (§5.17), the Ledger (§5.18) and the synthesis promotion (§5.19). The game is
+profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
+shifting reels (§5.20). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
 278 tests pass here and 148 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
 release build are clean. Every `.rs` file is under the 800-line limit, `data.rs`
-(716) and `ui.rs` (712) the largest — `audio.rs` dropped from 442 to 289 when its
-synthesis moved to the toolkit.
+(762) and `ui.rs` (729) the largest.
 
 Measured RTP over 1,000,000 spins: Dragon's Hoard **0.9612** at **0.411** hit
 frequency, Frost Wyrm **0.9450** at **0.258**, Emberfall **0.9596** at **0.622**
@@ -1521,7 +1578,7 @@ Captures in `docs/verification/`: `ui_idle`, `ui_spin`, `ui_win`, `ui_freespins`
 `ui_paytable`, `ui_settings`, `ui_machines`, `ui_frost`, `ui_achievements`,
 `ui_bonus`, `ui_feature_card`, `ui_hatch`, `ui_jackpot`, `ui_autospin`,
 `ui_anticipation`, `ui_wrath`, `ui_featurebuy`, `ui_ways`, `ui_cascade`,
-`ui_gamble`, `ui_ledger`, `ui_waveforms`. The catalog card image at the project root is produced by the same
+`ui_gamble`, `ui_ledger`, `ui_waveforms`, `ui_shifting`. The catalog card image at the project root is produced by the same
 harness. `ui_spin` is captured at 20 frames rather than 150 — at the default
 the spin has already finished, so the blur it is meant to show is not there.
 

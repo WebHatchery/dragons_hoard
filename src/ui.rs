@@ -383,9 +383,18 @@ fn draw_bet_controls(
             "{}\nTotal Bet: {}",
             // A ways cabinet has no lines to count, and "Lines: 0" would read as
             // a fault rather than as a different machine.
-            match ctx.data.ways_count() {
-                Some(ways) => format!("{} ways   (all active)", ways),
-                None => format!("Lines: {}   (all active)", ctx.data.paylines.len()),
+            match (ctx.data.ways_count(), ctx.data.max_ways()) {
+                (Some(ways), _) => format!("{} ways   (all active)", ways),
+                // A shifting cabinet (§5.20) has a different number of ways
+                // every spin, so it reads the board rather than the config.
+                // Quoting the ceiling alone would be advertising a grid the
+                // player is almost never looking at.
+                (None, Some(ceiling)) => format!(
+                    "{} ways this spin   (up to {})",
+                    ctx.session.display_grid().ways(),
+                    ceiling
+                ),
+                _ => format!("Lines: {}   (all active)", ctx.data.paylines.len()),
             },
             ctx.data.total_bet(line_bet)
         ),

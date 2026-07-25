@@ -133,11 +133,10 @@ pub(super) fn egg_cells(data: &GameData, grid: &Grid) -> Vec<usize> {
     let Some(hoard) = data.symbols.hoard() else {
         return Vec::new();
     };
-    let rows = grid.row_count();
     (0..grid.reel_count())
-        .flat_map(|reel| (0..rows).map(move |row| (reel, row)))
+        .flat_map(|reel| (0..grid.rows_on(reel)).map(move |row| (reel, row)))
         .filter(|(reel, row)| grid.at(*reel, *row) == hoard)
-        .map(|(reel, row)| reel * rows + row)
+        .map(|(reel, row)| grid.index(reel, row))
         .collect()
 }
 
@@ -148,7 +147,7 @@ pub(super) fn scatters_per_reel(data: &GameData, grid: &Grid) -> Vec<usize> {
     };
     (0..grid.reel_count())
         .map(|reel| {
-            (0..grid.row_count())
+            (0..grid.rows_on(reel))
                 .filter(|row| grid.at(reel, *row) == scatter)
                 .count()
         })

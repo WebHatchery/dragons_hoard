@@ -86,7 +86,7 @@ pub fn expand_wilds(data: &GameData, grid: &Grid) -> Grid {
     let mut expanded = grid.clone();
     for reel in 0..grid.reel_count() {
         if grid.reel_contains(reel, wild) {
-            for row in 0..grid.row_count() {
+            for row in 0..grid.rows_on(reel) {
                 expanded.set(reel, row, wild);
             }
         }
@@ -121,7 +121,6 @@ pub fn evaluate(data: &GameData, grid: &Grid, ctx: &EvalContext) -> SpinOutcome 
 
 /// Every paying payline, in payline order.
 fn line_wins(data: &GameData, grid: &Grid, ctx: &EvalContext) -> Vec<Win> {
-    let rows = grid.row_count();
     let mut wins = Vec::new();
     let mut cells = Vec::with_capacity(grid.reel_count());
 
@@ -148,7 +147,7 @@ fn line_wins(data: &GameData, grid: &Grid, ctx: &EvalContext) -> Vec<Win> {
                 .iter()
                 .enumerate()
                 .take(count)
-                .map(|(reel, row)| reel * rows + row)
+                .map(|(reel, row)| grid.index(reel, *row))
                 .collect(),
         });
     }

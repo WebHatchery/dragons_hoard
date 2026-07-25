@@ -108,6 +108,11 @@ pub static MACHINES: &[MachineDef] = &[
         "ways",
         "243 ways to win — no paylines. Symbols pay from the left wherever they land."
     ),
+    machine!(
+        "wyrmspire",
+        "wyrmspire",
+        "Shifting reels. Every reel is a different height each spin, so the ways change with it."
+    ),
     cascading_machine!(
         "avalanche",
         "avalanche",

@@ -46,17 +46,31 @@ pub fn grid_rect() -> Rect {
 }
 
 fn cell_size(data: &GameData) -> Vec2 {
+    cell_size_on(data, data.config.row_count)
+}
+
+/// Cell size on a reel showing `rows` symbols.
+///
+/// A shifting cabinet (§5.20) gives every reel its own height, and each one
+/// divides the *same* window between however many symbols it is showing — so a
+/// two-row reel draws two tall cells beside a seven-row reel drawing seven
+/// short ones. That is what makes the shape of the board readable at a glance.
+fn cell_size_on(data: &GameData, rows: usize) -> Vec2 {
     let rect = grid_rect();
     vec2(
         rect.w / data.config.reel_count.max(1) as f32,
-        rect.h / data.config.row_count.max(1) as f32,
+        rect.h / rows.max(1) as f32,
     )
 }
 
 /// Full cell slot, before the padding that separates the drawn tiles.
 fn cell_slot(data: &GameData, reel: usize, row: f32) -> Rect {
+    cell_slot_on(data, reel, row, data.config.row_count)
+}
+
+fn cell_slot_on(data: &GameData, reel: usize, row: f32, rows: usize) -> Rect {
     let rect = grid_rect();
-    let size = cell_size(data);
+    let size = cell_size_on(data, rows);
     Rect::new(
         rect.x + reel as f32 * size.x,
         rect.y + row * size.y,
@@ -128,7 +142,9 @@ pub fn draw_reels(data: &GameData, session: &GameSession, shake: Vec2, ui_time: 
 
     for reel in 0..data.config.reel_count {
         match spinning_position(session, reel) {
-            Some(position) => draw_spinning_reel(data, session, reel, position, shake, bounds),
+            Some(position) => {
+                draw_spinning_reel(data, session, reel, position, shake, bounds);
+            }
             None => draw_resting_reel(data, session, reel, &highlights, pulse, shake, clearing),
         }
     }
@@ -243,12 +259,12 @@ fn draw_resting_reel(
     // `display_grid`, not `grid`: a reel that has landed shows what it landed
     // on even while its neighbours are still turning.
     let grid = session.display_grid();
-    let rows = grid.row_count();
+    let rows = grid.rows_on(reel);
     for row in 0..rows {
-        let cell = cell_slot(data, reel, row as f32)
+        let cell = cell_slot_on(data, reel, row as f32, rows)
             .offset(shake)
             .inset(CELL_PADDING);
-        let index = reel * rows + row;
+        let index = grid.index(reel, row);
         // Mid-cascade the cells about to be cleared are lit at full brightness
         // rather than pulsed: they are on their way out, and a pulse would read
         // as "still in play" (§5.15).
@@ -280,6 +296,8 @@ fn draw_spinning_reel(
     shake: Vec2,
     bounds: Rect,
 ) {
+    // The height this reel will land on; decided at commit like everything else.
+    let rows = session.display_grid().rows_on(reel).max(1);
     let spinner = session.phase.spinner();
     let blurred = spinner.is_some_and(|spinner| spinner.is_blurred(reel));
     let anticipating = spinner.is_some_and(|spinner| spinner.is_anticipating(reel));
@@ -305,7 +323,18 @@ fn draw_spinning_reel(
     // the whole vault; drawing them on the leading pass instead left them
     // trailing the art they were supposed to sit beneath. The reel face is a
     // surface, and a surface does not smear — only what is printed on it does.
-    draw_strip_pass(data, reel, position, shake, bounds, 1.0, StripLayer::Tiles);
+    draw_strip_pass(
+        data,
+        reel,
+        position,
+        StripPass {
+            shake,
+            bounds,
+            alpha: 1.0,
+            layer: StripLayer::Tiles,
+            rows,
+        },
+    );
 
     for pass in 0..passes {
         // Spread the passes either side of the reel's current position, so the
@@ -319,10 +348,13 @@ fn draw_spinning_reel(
             data,
             reel,
             position + lag,
-            shake,
-            bounds,
-            alpha,
-            StripLayer::Art,
+            StripPass {
+                shake,
+                bounds,
+                alpha,
+                layer: StripLayer::Art,
+                rows,
+            },
         );
     }
 }
@@ -335,23 +367,40 @@ enum StripLayer {
     Art,
 }
 
-/// One pass of the strip at a given fractional position.
-fn draw_strip_pass(
-    data: &GameData,
-    reel: usize,
-    position: f32,
+/// Everything one pass of a spinning strip needs to place itself.
+///
+/// Bundled because the argument list reached eight once reels stopped all being
+/// the same height (§5.20), and six of them are the same for every pass of a
+/// given reel anyway.
+#[derive(Clone, Copy)]
+struct StripPass {
     shake: Vec2,
     bounds: Rect,
     alpha: f32,
     layer: StripLayer,
-) {
+    /// Rows this reel is landing on.
+    rows: usize,
+}
+
+/// One pass of the strip at a given fractional position.
+fn draw_strip_pass(data: &GameData, reel: usize, position: f32, pass: StripPass) {
+    let StripPass {
+        shake,
+        bounds,
+        alpha,
+        layer,
+        rows,
+    } = pass;
     let strip = &data.reels[reel];
-    let rows = data.config.row_count as i32;
+    // The height this reel is landing on, not the configured maximum: on a
+    // shifting cabinet (§5.20) the two differ, and spinning at one then settling
+    // at the other makes every reel jump as it stops.
+    let visible_rows = rows as i32;
     let top = position.floor();
     let offset = position - top;
 
-    for row in -1..=rows {
-        let slot = cell_slot(data, reel, row as f32 - offset).offset(shake);
+    for row in -1..=visible_rows {
+        let slot = cell_slot_on(data, reel, row as f32 - offset, rows).offset(shake);
         let Some(visible) = clip(slot.inset(CELL_PADDING), bounds) else {
             continue;
         };
@@ -558,7 +607,7 @@ fn draw_cascade_badge(session: &GameSession, shake: Vec2) {
 /// Flat `reel * rows + row` mask of cells that took part in a win.
 fn winning_cells(data: &GameData, session: &GameSession) -> Vec<bool> {
     let grid = &session.grid;
-    let mut mask = vec![false; grid.reel_count() * grid.row_count()];
+    let mut mask = vec![false; grid.cell_count()];
 
     let Some(outcome) = session.last_outcome.as_ref() else {
         return mask;
@@ -578,7 +627,7 @@ fn winning_cells(data: &GameData, session: &GameSession) -> Vec<bool> {
         if let Some(scatter) = data.symbols.scatter() {
             for (reel, row, symbol) in grid.cells() {
                 if symbol == scatter {
-                    mask[reel * grid.row_count() + row] = true;
+                    mask[grid.index(reel, row)] = true;
                 }
             }
         }
@@ -616,7 +665,7 @@ mod tests {
         });
 
         let mask = winning_cells(&data, &session);
-        let rows = session.grid.row_count();
+        let rows = session.grid.rows_on(0);
         for reel in 0..3 {
             assert!(mask[reel * rows + 1], "reel {} should be highlighted", reel);
         }

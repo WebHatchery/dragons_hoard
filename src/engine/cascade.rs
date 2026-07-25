@@ -103,7 +103,7 @@ pub fn resolve(
 
 /// Union of the cells every win on this grid used.
 fn cleared_cells(grid: &Grid, outcome: &SpinOutcome) -> Vec<usize> {
-    let mut mask = vec![false; grid.reel_count() * grid.row_count()];
+    let mut mask = vec![false; grid.cell_count()];
     for win in &outcome.wins {
         for cell in &win.cells {
             if let Some(lit) = mask.get_mut(*cell) {
@@ -128,14 +128,14 @@ fn collapse(
     stops: &[usize],
     consumed: &mut [usize],
 ) -> Grid {
-    let rows = grid.row_count();
     let mut columns: Vec<Vec<usize>> = Vec::with_capacity(grid.reel_count());
 
     for (reel, used) in consumed.iter_mut().enumerate().take(grid.reel_count()) {
         // Survivors, top to bottom, keeping their order — they fall, they do
         // not shuffle.
+        let rows = grid.rows_on(reel);
         let mut column: Vec<usize> = (0..rows)
-            .filter(|row| !cleared.contains(&(reel * rows + row)))
+            .filter(|row| !cleared.contains(&grid.index(reel, *row)))
             .map(|row| grid.at(reel, row))
             .collect();
 
@@ -267,7 +267,7 @@ mod tests {
         let mut rng = SeededRng::new(7);
         let stops = pick_stops(&data, &mut rng);
         let landed = grid_from_stops(&data, &stops);
-        let rows = landed.row_count();
+        let rows = landed.rows_on(0);
 
         // Clear the *bottom* cell of reel 0. Clearing the top would prove
         // nothing — the hole is already above the survivors, so nothing falls.
@@ -300,7 +300,7 @@ mod tests {
         let stops = pick_stops(&data, &mut rng);
         let landed = grid_from_stops(&data, &stops);
 
-        let rows = landed.row_count();
+        let rows = landed.rows_on(0);
         let mut consumed = vec![0; landed.reel_count()];
         let after = collapse(&data, &landed, &[rows - 1], &stops, &mut consumed);
 

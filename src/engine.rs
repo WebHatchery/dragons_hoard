@@ -8,7 +8,9 @@ pub mod sim;
 
 pub use cascade::CascadeStep;
 pub use evaluate::{evaluate, expand_wilds, EvalContext, SpinOutcome};
-pub use reels::{grid_from_stops, pick_stops, resting_grid, Grid};
+#[cfg(test)]
+pub use reels::grid_from_stops;
+pub use reels::{pick_stops, resting_grid, Grid};
 
 use crate::data::GameData;
 use macroquad_toolkit::rng::SeededRng;
@@ -49,7 +51,11 @@ impl SpinResult {
 
 pub fn spin(data: &GameData, rng: &mut SeededRng, line_bet: i64, mode: SpinMode) -> SpinResult {
     let stops = pick_stops(data, rng);
-    let landed = grid_from_stops(data, &stops);
+    // Heights are drawn *after* the stops so a fixed cabinet's stream is
+    // unchanged — `pick_heights` consumes nothing when there is no range. They
+    // are not stored: the grid they produce *is* the record of the shape.
+    let heights = reels::pick_heights(data, rng);
+    let landed = reels::grid_from_stops_and_heights(data, &stops, &heights);
 
     let (grid, ctx) = match mode {
         SpinMode::Base => (landed, EvalContext::base(data, line_bet)),
@@ -124,7 +130,7 @@ mod tests {
             for reel in 0..result.grid.reel_count() {
                 if result.grid.reel_contains(reel, wild) {
                     assert!(
-                        (0..result.grid.row_count()).all(|row| result.grid.at(reel, row) == wild)
+                        (0..result.grid.rows_on(reel)).all(|row| result.grid.at(reel, row) == wild)
                     );
                 }
             }

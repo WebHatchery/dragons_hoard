@@ -82,6 +82,14 @@ impl Game {
                 self.session = GameSession::new(&self.data, 0xD2A6_0F1E);
                 self.hold_a_cascade();
             }
+            "shifting" => {
+                // The shifting cabinet (§5.20), on a paying spin — a resting
+                // board is where the varying reel heights actually read.
+                self.data =
+                    GameData::load_machine(crate::data::machine_by_id("wyrmspire")).unwrap();
+                self.session = GameSession::new(&self.data, 0xD2A6_0F1E);
+                self.fast_forward_to(|session| session.last_win > 0);
+            }
             "ways" => {
                 // The 243-ways cabinet (§5.14). Fast-forwarded to a win, because
                 // a resting board says nothing about how differently it pays.

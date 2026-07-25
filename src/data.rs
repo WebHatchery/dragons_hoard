@@ -52,11 +52,22 @@ pub struct GameConfig {
     /// invalidate data that was correct.
     #[serde(default)]
     pub evaluation: Evaluation,
+    /// Reels that change height every spin (§5.20). Absent on a fixed cabinet,
+    /// which is every one built before it.
+    #[serde(default)]
+    pub reel_heights: Option<ReelHeights>,
     /// Line-bet units one spin costs. A payline machine buys one unit per line
     /// and leaves this unset; a ways machine has no lines to count, so it says
     /// so outright.
     #[serde(default)]
     pub bet_units: Option<usize>,
+}
+
+/// Range of visible rows a reel may take on a shifting cabinet (§5.20).
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct ReelHeights {
+    pub min: usize,
+    pub max: usize,
 }
 
 /// How a cabinet decides what has won.
@@ -475,11 +486,28 @@ impl GameData {
         self.config.bet_units.unwrap_or(self.paylines.len()).max(1)
     }
 
-    /// How many ways this cabinet pays, for the panel readout. `None` on a
-    /// payline machine, which counts lines instead.
+    /// How many ways this cabinet pays, for the panel readout.
+    ///
+    /// `None` on a payline machine, which counts lines instead, and `None` on a
+    /// shifting one (§5.20) — there the figure changes every spin, so the panel
+    /// reads it off the grid rather than off the config.
     pub fn ways_count(&self) -> Option<usize> {
-        (self.config.evaluation == Evaluation::Ways)
-            .then(|| self.config.row_count.pow(self.config.reel_count as u32))
+        if self.config.evaluation != Evaluation::Ways || self.config.reel_heights.is_some() {
+            return None;
+        }
+        Some(self.config.row_count.pow(self.config.reel_count as u32))
+    }
+
+    /// Highest ways this cabinet can reach, for the machine picker.
+    pub fn max_ways(&self) -> Option<usize> {
+        if self.config.evaluation != Evaluation::Ways {
+            return None;
+        }
+        let tallest = self
+            .config
+            .reel_heights
+            .map_or(self.config.row_count, |heights| heights.max);
+        Some(tallest.pow(self.config.reel_count as u32))
     }
 
     pub fn line_bet(&self, index: usize) -> i64 {
@@ -600,6 +628,24 @@ impl GameData {
         // without it.
         let cells = self.config.reel_count * self.config.row_count;
         crate::state::featurebuy::validate(&self.featurebuy, cells)?;
+        if let Some(heights) = self.config.reel_heights {
+            if heights.min == 0 || heights.min > heights.max {
+                return Err("reel_heights must be a range with at least one row".to_owned());
+            }
+            if heights.max > self.config.row_count {
+                return Err(format!(
+                    "reel_heights max ({}) exceeds row_count ({}), which is what the \
+                     window is sized against",
+                    heights.max, self.config.row_count
+                ));
+            }
+            // A payline names a row on every reel. On a cabinet where a reel
+            // might only be two rows tall, half of them would point at cells
+            // that are not there.
+            if self.config.evaluation == Evaluation::Lines {
+                return Err("shifting reels need ways evaluation".to_owned());
+            }
+        }
         if self.gamble.max_steps == 0 {
             return Err("a gamble with no steps could never be taken".to_owned());
         }

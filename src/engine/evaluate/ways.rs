@@ -66,7 +66,6 @@ fn symbol_win(
     multiplier: i64,
 ) -> Option<Win> {
     let is_wild_candidate = data.symbols.is_wild(candidate);
-    let rows = grid.row_count();
 
     let mut ways = 1usize;
     let mut run = 0usize;
@@ -79,14 +78,14 @@ fn symbol_win(
         let mut matches = 0usize;
         let mut reel_cells = Vec::new();
 
-        for row in 0..rows {
+        for row in 0..grid.rows_on(reel) {
             let symbol = grid.at(reel, row);
             // A wild candidate matches only real wilds — it does not substitute
             // for itself, which would make every run infinite.
             let hit = symbol == candidate || (!is_wild_candidate && data.symbols.is_wild(symbol));
             if hit {
                 matches += 1;
-                reel_cells.push(reel * rows + row);
+                reel_cells.push(grid.index(reel, row));
                 if symbol == candidate {
                     genuine += 1;
                 }
