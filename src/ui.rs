@@ -89,6 +89,7 @@ pub struct UiContext<'a> {
     pub show_machines: bool,
     pub show_achievements: bool,
     pub show_featurebuy: bool,
+    pub profiles: &'a crate::state::profile::ProfileBook,
     /// Screen-shake displacement, applied to the reels panel only.
     pub shake: Vec2,
     /// Accumulated in-game seconds, used for pulsing highlights. Comes from the
@@ -113,7 +114,7 @@ pub fn draw_game_ui(ctx: UiContext<'_>) -> Vec<UiAction> {
         achievements::draw(ctx.achievements, mouse, &mut actions);
     }
     if ctx.show_machines {
-        machines::draw(ctx.data, mouse, &mut actions);
+        machines::draw(ctx.data, ctx.profiles, mouse, &mut actions);
     }
     if ctx.show_settings {
         settings::draw(

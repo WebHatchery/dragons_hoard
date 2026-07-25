@@ -4,7 +4,6 @@
 pub mod cascade;
 pub mod evaluate;
 pub mod reels;
-#[cfg(test)]
 pub mod sim;
 
 pub use cascade::CascadeStep;

@@ -12,6 +12,7 @@ pub mod holdspin;
 pub mod jackpot;
 pub mod lifecycle;
 pub mod preferences;
+pub mod profile;
 pub mod save;
 pub mod spin;
 
@@ -423,7 +424,9 @@ impl GameSession {
     /// [`spin_leaving_bonus`](Self::spin_leaving_bonus) directly because it
     /// sometimes wants to stop on an open board. All three share `roll_spin` +
     /// `settle_spin`, so the sim exercises the real rules.
-    #[cfg(test)]
+    ///
+    /// No longer test-only: the machine profiler (§5.17) runs it at runtime on a
+    /// scratch session to measure the cabinet in front of the player.
     pub fn spin(&mut self, data: &GameData) -> Result<SpinResolution, SpinBlocked> {
         let mut resolution = self.spin_leaving_bonus(data)?;
         // A board dealt on this spin is played out immediately, so the headless

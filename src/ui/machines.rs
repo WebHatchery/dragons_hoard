@@ -5,16 +5,18 @@
 //! changing a theme — the panel says as much.
 
 use crate::data::{GameData, MachineDef, MACHINES};
+use crate::engine::sim::BAND_LABELS;
+use crate::state::profile::{MachineProfile, ProfileBook};
 use crate::ui::{palette, virtual_button, UiAction, LOGICAL_HEIGHT, LOGICAL_WIDTH};
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::{
-    draw_surface, draw_text_centered_in_box_ex, draw_ui_text_ex, ButtonTone, SurfaceStyle,
-    TextStyle,
+    draw_surface, draw_text_block, draw_text_centered_in_box_ex, draw_text_right, draw_ui_text_ex,
+    ButtonTone, SurfaceStyle, TextStyle,
 };
 
-const ROW_HEIGHT: f32 = 96.0;
+const ROW_HEIGHT: f32 = 140.0;
 
-pub fn draw(data: &GameData, mouse: Vec2, actions: &mut Vec<UiAction>) {
+pub fn draw(data: &GameData, profiles: &ProfileBook, mouse: Vec2, actions: &mut Vec<UiAction>) {
     draw_rectangle(
         0.0,
         0.0,
@@ -55,11 +57,11 @@ pub fn draw(data: &GameData, mouse: Vec2, actions: &mut Vec<UiAction>) {
             panel.w - 40.0,
             ROW_HEIGHT - 12.0,
         );
-        draw_row(data, machine, index, row, mouse, actions);
+        draw_row(data, profiles, machine, index, row, mouse, actions);
     }
 
     draw_ui_text_ex(
-        "Each machine keeps its own balance, hoard and jackpots.",
+        "Each machine keeps its own balance, hoard and jackpots. Figures are measured live over 20,000 spins, not quoted.",
         panel.x + 20.0,
         panel.bottom() - 20.0,
         TextStyle::new(15.0, palette::TEXT_DIM).params(),
@@ -68,6 +70,7 @@ pub fn draw(data: &GameData, mouse: Vec2, actions: &mut Vec<UiAction>) {
 
 fn draw_row(
     data: &GameData,
+    profiles: &ProfileBook,
     machine: &'static MachineDef,
     index: usize,
     row: Rect,
@@ -103,11 +106,23 @@ fn draw_row(
         row.y + 32.0,
         TextStyle::new(23.0, palette::GOLD_BRIGHT).params(),
     );
-    draw_ui_text_ex(
+    // Clipped to leave the Play button alone — the longest blurb ran straight
+    // under it.
+    draw_text_block(
         machine.blurb,
         row.x + 18.0,
-        row.y + 58.0,
-        TextStyle::new(15.0, palette::TEXT).params(),
+        row.y + 46.0,
+        row.w - 220.0,
+        22.0,
+        15.0,
+        2.0,
+        palette::TEXT,
+    );
+
+    draw_profile(
+        profiles,
+        machine.id,
+        Rect::new(row.x + 18.0, row.y + 68.0, row.w - 200.0, 56.0),
     );
 
     if playing {
@@ -139,4 +154,97 @@ fn machine_display_name(data: &GameData, machine: &'static MachineDef) -> String
     GameData::load_machine(machine)
         .map(|other| other.config.display_name)
         .unwrap_or_else(|_| machine.id.to_owned())
+}
+
+/// What the profiler has measured about this cabinet, or how far it has got.
+///
+/// A row that simply showed nothing until the numbers arrived would look
+/// broken, so an unmeasured machine says so and shows its progress.
+fn draw_profile(profiles: &ProfileBook, machine_id: &str, rect: Rect) {
+    match profiles.get(machine_id) {
+        Some(profile) => draw_measured(profile, rect),
+        None => {
+            let progress = profiles.progress(machine_id);
+            let bar = Rect::new(rect.x, rect.y + 10.0, rect.w * 0.45, 10.0);
+            draw_surface(
+                bar,
+                &SurfaceStyle::new(Color::new(0.07, 0.06, 0.07, 1.0))
+                    .with_border(1.0, palette::GOLD_DIM),
+            );
+            draw_rectangle(
+                bar.x + 1.0,
+                bar.y + 1.0,
+                (bar.w - 2.0) * progress,
+                bar.h - 2.0,
+                palette::EMBER,
+            );
+            draw_ui_text_ex(
+                "measuring this cabinet...",
+                bar.right() + 12.0,
+                rect.y + 19.0,
+                TextStyle::new(14.0, palette::TEXT_DIM).params(),
+            );
+        }
+    }
+}
+
+fn draw_measured(profile: &MachineProfile, rect: Rect) {
+    // Deliberately no return percentage. A 20,000-round sample measures hit
+    // frequency and the band shape well and RTP not at all — the first attempt
+    // put Dragon's Hoard at 87.4% against a true 92.7%, and Frost Wyrm at 95.5%
+    // against 91.2%. A slot's return needs millions of rounds to settle, so
+    // quoting one here would be inventing precision. What the sample *can*
+    // support is printed instead.
+    draw_ui_text_ex(
+        &format!(
+            "Pays on {:.0}% of spins   ·   {} volatility   ·   best seen {:.0}x",
+            profile.hit_frequency * 100.0,
+            profile.volatility_label(),
+            profile.best_round
+        ),
+        rect.x,
+        rect.y + 14.0,
+        TextStyle::new(14.0, palette::TEXT_BRIGHT).params(),
+    );
+
+    // The bands are what actually communicate volatility: two cabinets can both
+    // return 95% and feel nothing alike, and the shape of this bar is the
+    // difference.
+    let bar = Rect::new(rect.x, rect.y + 24.0, rect.w, 16.0);
+    let mut x = bar.x;
+    for (index, share) in profile.bands.iter().enumerate() {
+        let width = bar.w * *share as f32;
+        if width < 0.5 {
+            continue;
+        }
+        // Nothing is the flattest colour; the bigger the band the hotter it is.
+        let heat = index as f32 / (profile.bands.len() as f32 - 1.0);
+        draw_rectangle(
+            x,
+            bar.y,
+            width,
+            bar.h,
+            Color::new(0.10 + 0.72 * heat, 0.09 + 0.30 * heat, 0.10, 1.0),
+        );
+        x += width;
+    }
+    draw_surface(
+        bar,
+        &SurfaceStyle::new(Color::new(0.0, 0.0, 0.0, 0.0)).with_border(1.0, palette::GOLD_DIM),
+    );
+
+    // Label only the two ends: a legend for seven bands would be longer than
+    // the bar it explains.
+    draw_ui_text_ex(
+        BAND_LABELS[0],
+        bar.x,
+        bar.bottom() + 14.0,
+        TextStyle::new(12.0, palette::TEXT_DIM).params(),
+    );
+    draw_text_right(
+        BAND_LABELS[BAND_LABELS.len() - 1],
+        bar.right(),
+        bar.bottom() + 14.0,
+        TextStyle::new(12.0, palette::TEXT_DIM),
+    );
 }

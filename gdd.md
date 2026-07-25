@@ -754,6 +754,73 @@ raises the one card in the game that is not good news.
 The odd credit on a half-gamble goes to the player. Rounding against them on
 their own money is a bad look for one credit.
 
+### 5.17 Machine profiles, measured live (post-v1)
+
+Four cabinets, hit frequencies from 0.258 to 0.622, two evaluation models, one
+that cascades — and the player chose between them on one line of blurb. §5.13
+already recorded the same gap on the buy menu: "the price tells a player what a
+feature costs but nothing about what to expect for it."
+
+**The figures are measured, not written down.** The obvious fix is to bake them
+into JSON. The problem is that they are *derived*: every strip edit or retune
+makes them wrong, silently, and nothing would notice. The Feature Buy price gets
+away with being data because a price is a **choice** a test can then check; a hit
+frequency is not a choice, it is an **observation**. So the profiler runs the
+real headless spin path against the cabinet in front of the player. There is
+nothing to drift from, because there is nothing written down.
+
+That required making `GameSession::spin` and `engine::sim` non-test for the first
+time. The headless path is now a runtime capability rather than a testing
+convenience, which is the honest description of what it always was.
+
+**It never touches the player's session.** The profiler owns a scratch session
+with its own seed. If it drew from the live RNG, opening the machine picker would
+change the spins that came after it — a save-and-reload divergence a player could
+see and nobody could explain. A test spins two identical sessions with a profiler
+running between them and asserts they stay in lockstep.
+
+It runs 400 rounds per frame while the picker is open, so a full 20,000-round
+profile lands in about a second with no frame doing enough work to be felt.
+
+**What a 20,000-round sample can and cannot support.** The first version printed
+a return percentage. It was wrong: Dragon's Hoard profiled at **87.4%** against a
+true 92.7%, and Frost Wyrm at **95.5%** against 91.2%. Excluding progressives —
+the trick §5.6 already uses on the bet-ladder test, for exactly this reason —
+narrowed it but did not fix it. **A slot's RTP needs millions of rounds to settle,
+and no sample a player will wait for can measure it.** So the number is not
+shown. Quoting it would have been inventing precision, and a figure that is wrong
+by five points is worse than no figure.
+
+What the sample *does* support is printed instead: how often the machine pays,
+how unevenly, the largest round seen, and a band bar. The bar is what actually
+communicates the difference — two cabinets can both return 95% and feel nothing
+alike, and the shape of that bar is why.
+
+| | Dragon's Hoard | Frost Wyrm | Emberfall | Avalanche |
+|---|---|---|---|---|
+| Pays on | 40% of spins | 26% | 62% | 48% |
+| Volatility | Medium | High | Medium | Low |
+| Best seen | 284× | 795× | 194× | 81× |
+
+**A volatility index**, the standard deviation of return per round, is the number
+that separates the cabinets in a way RTP cannot. It is reported as a word rather
+than a figure — the number alone means nothing to anyone who has not seen another
+one to compare it against.
+
+`SimReport` split as a result: the *statistics of a run* (`RoundStats` — rounds,
+return sums, bands) compile into the game, and the batch drivers and their
+per-feature breakdown stay test-only.
+
+**A live RNG bug fell out of this.** The profiler's seed was originally
+`0x9E3779B97F4A7C15`, the golden-ratio constant — which is *exactly* what
+`SeededRng::new` xors its seed with. The state became zero, and an xorshift at
+zero is a fixed point: every draw returns 0, forever, with nothing about it
+looking broken. Every cabinet profiled to the same grid on every round. Fixed in
+`macroquad-toolkit` rather than worked around here, since it would silently kill
+the generator for any game that picked that seed — and a "nice" constant is
+exactly the sort of number someone reaches for. The guard fires only in that one
+case, and a test asserts every ordinary seed's stream is byte-identical to before.
+
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
 - Winning lines: pulse highlight (`blink`/`pulse`), floating win amounts
@@ -1121,6 +1188,18 @@ and a Project Roost deployment record. Verified live — see §15.
   in hit frequency (a reskin fails), must not share a save slot (sharing one
   would silently overwrite a balance and hoard), must not share a symbol set,
   and an unknown machine id falls back to the first rather than failing.
+- **Machine profiles (`state/profile.rs`):** every cabinet profiles to a
+  plausible hit frequency and volatility; the bands account for every round; the
+  profiler and the batch sim agree, since they are two loops over the same
+  engine; **profiling does not touch the player's session** — two identical
+  sessions stay in lockstep across a running profiler; the same cabinet profiles
+  identically twice, because a figure that wobbled between viewings would read as
+  a fault; and the catalog spans more than one volatility, or the picker would be
+  advertising a choice that does not exist.
+- **The RNG's one dead seed (`macroquad-toolkit/src/rng.rs`):** the seed that
+  zeroes the xorshift state still generates; no seed in a swept range produces a
+  dead stream; and **every ordinary seed's first draw is unchanged** by the
+  guard, so no existing game's determinism moved.
 - **The Dragon's Gamble (`state/gamble.rs`, `engine/sim.rs`, `state/tests/gamble.rs`):**
   a right guess doubles and a wrong one ends the round; **the scale is fair** over
   200,000 flips and **a gamble returns what it risks** when every round is pushed
@@ -1255,6 +1334,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | A new evaluation model quietly breaking the old one | `evaluation` defaults to `lines`, so existing data needed no edit, and both models are asserted present in the catalog (§5.14). Wins carry their own cells, so no consumer branches on the model. |
 | A reveal that consumes randomness | A cascade refills from each reel's own strip rather than rolling (§5.15), so the chain is a function of the stops. Tested by running the animated and headless paths from one seed on the cascading cabinet. |
 | A gamble quietly shaved | The scale is asserted fair over 200,000 flips, and a whole simulation that gambles every win is compared against one that gambles none (§5.16). A shaved coin would look like ordinary RTP drift in any single-number band. |
+| Quoting a number a sample cannot support | The live profile shows hit frequency, volatility and a band bar, and deliberately **not** RTP — 20,000 rounds put Dragon's Hoard 5 points out (§5.17). A wrong figure is worse than no figure. |
 | A new machine shipping at the wrong RTP | The sim iterates `MACHINES`; a cabinet cannot be added without being measured (§5.8). |
 | Two machines sharing a save slot | Slots are `<machine>_<slot>`; a test asserts they are distinct. |
 | Jackpots exploitable by bet-switching | Odds are per credit wagered, so the trigger is bet-fair by construction (§5.6) and tested. The bet-ladder sim test excludes jackpots deliberately — they are too high-variance to compare over 20k spins — and their return is checked against its closed form instead. |
@@ -1287,20 +1367,22 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus eleven post-v1 systems
+## 15. Current State — v1 shipped, plus twelve post-v1 systems
 
-**All five phases are done, every item in §14 is met**, and eleven systems have
+**All five phases are done, every item in §14 is met**, and twelve systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
 machines (§5.8), achievements (§5.9), the Vault Pick (§5.10), the reel-feel pass
 (§5.11), the Dragon's Wrath (§5.12), the Feature Buy (§5.13), ways-to-win
-(§5.14), cascading reels (§5.15) and the Dragon's Gamble (§5.16). The game is
+(§5.14), cascading reels (§5.15), the Dragon's Gamble (§5.16) and live machine
+profiles (§5.17). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-261 tests pass; `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`
+267 tests pass; `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`
 and the `wasm32-unknown-unknown` release build are clean. Every `.rs` file is
-under the 800-line limit; `data.rs` reached 811 and its machine catalog was split
-into `data/machines.rs`, leaving `game.rs` (783) the one to watch.
+under the 800-line limit; `engine/sim.rs` (830) and `game.rs` (812) both went over
+adding the profiler and were split into `engine/sim/tests.rs` and
+`game/feedback.rs`, leaving `data.rs` (716) the largest.
 
 Measured RTP over 1,000,000 spins: Dragon's Hoard **0.9612** at **0.411** hit
 frequency, Frost Wyrm **0.9450** at **0.258**, Emberfall **0.9596** at **0.622**
@@ -1376,6 +1458,8 @@ accruing. That closes the gap this section previously listed.
 - The cascade multiplier badge overlaps the top-right symbol. It is transient
   and only appears above ×1, but a real cabinet would find it somewhere of its
   own rather than over a cell.
+- The buy menu is still a plain list. §5.17 built the machinery to fix it —
+  a tier could be profiled the same way a cabinet is — and did not wire it up.
 - The buy menu is a plain list. A real cabinet would show each feature's
   volatility or a sample of what it pays; the price alone tells a player what it
   costs but not what to expect for it.

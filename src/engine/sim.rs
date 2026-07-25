@@ -7,14 +7,21 @@
 //! meter all contribute exactly as they do in play; a base-game-only sim would
 //! badly understate the return.
 
+// Only the batch drivers need these; the report shape and its accumulation are
+// pure arithmetic and compile into the game for the live profiler (§5.17).
+#[cfg(test)]
 use crate::data::GameData;
+#[cfg(test)]
 use crate::state::gamble::Scale;
+#[cfg(test)]
 use crate::state::GameSession;
 
 /// Balance the sim tops up to before each paid spin, so a losing streak can
 /// never stall it.
+#[cfg(test)]
 const SIM_BANKROLL: i64 = 1_000_000_000;
 
+#[cfg(test)]
 #[derive(Debug, Clone, Copy)]
 pub struct SimConfig {
     pub spins: u64,
@@ -22,6 +29,7 @@ pub struct SimConfig {
     pub seed: u64,
 }
 
+#[cfg(test)]
 impl Default for SimConfig {
     fn default() -> Self {
         Self {
@@ -32,6 +40,7 @@ impl Default for SimConfig {
     }
 }
 
+#[cfg(test)]
 #[derive(Debug, Clone, Default)]
 pub struct SimReport {
     pub paid_spins: u64,
@@ -50,8 +59,104 @@ pub struct SimReport {
     pub hatches: u64,
     pub wrath_rounds: u64,
     pub biggest_win: i64,
+
+    /// Return distribution across completed rounds.
+    pub stats: RoundStats,
 }
 
+/// The statistics of a run: how much came back per round, and how unevenly.
+///
+/// Split out of [`SimReport`] because the live profiler (§5.17) needs exactly
+/// this and none of the batch driver's per-feature breakdown. It is pure
+/// arithmetic, so it compiles into the game while the drivers stay test-only.
+impl RoundStats {
+    /// Record one finished round: everything a single paid spin returned,
+    /// including the free spins and features it triggered.
+    pub fn record(&mut self, credits: i64, total_bet: i64) {
+        if total_bet <= 0 {
+            return;
+        }
+        let ratio = credits as f64 / total_bet as f64;
+        self.rounds += 1;
+        self.return_sum += ratio;
+        self.return_square_sum += ratio * ratio;
+
+        // `position` finds the first bound the ratio does *not* exceed; falling
+        // off the end is the top band.
+        let band = BANDS
+            .iter()
+            .position(|bound| ratio <= *bound)
+            .unwrap_or(BAND_COUNT - 1);
+        self.bands[band] += 1;
+    }
+
+    /// Mean return per round, in units of total bet. Equals RTP when every
+    /// round was played at the same stake.
+    pub fn mean_return(&self) -> f64 {
+        if self.rounds == 0 {
+            return 0.0;
+        }
+        self.return_sum / self.rounds as f64
+    }
+
+    /// Volatility index: the standard deviation of return per round.
+    ///
+    /// This is the number that separates the four cabinets in a way RTP cannot.
+    /// Two machines can both return 95% while one pays a little constantly and
+    /// the other pays nothing for an hour and then everything at once — and it
+    /// is the second that empties a balance while the player is waiting.
+    pub fn volatility(&self) -> f64 {
+        if self.rounds < 2 {
+            return 0.0;
+        }
+        let mean = self.mean_return();
+        let variance = (self.return_square_sum / self.rounds as f64) - mean * mean;
+        variance.max(0.0).sqrt()
+    }
+
+    /// Share of rounds that fell in each band, summing to 1.
+    pub fn band_shares(&self) -> [f64; BAND_COUNT] {
+        let mut shares = [0.0; BAND_COUNT];
+        if self.rounds == 0 {
+            return shares;
+        }
+        for (index, count) in self.bands.iter().enumerate() {
+            shares[index] = *count as f64 / self.rounds as f64;
+        }
+        shares
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct RoundStats {
+    /// Completed rounds: one paid spin plus every free spin and feature it led
+    /// to. The unit variance is measured in, because a free spin is part of the
+    /// return on the paid spin that bought it, not a spin of its own.
+    pub rounds: u64,
+    /// Running sums of return-per-round in units of total bet, for the standard
+    /// deviation. Kept as sums rather than a list so a million-round profile
+    /// costs two floats.
+    return_sum: f64,
+    return_square_sum: f64,
+    /// How many rounds fell in each band of [`BANDS`].
+    pub bands: [u64; BAND_COUNT],
+}
+
+/// Upper bound of each win band, in multiples of total bet. The last band is
+/// everything above the previous one.
+///
+/// Chosen to say something a player can feel rather than to be evenly spaced:
+/// "nothing", "less than the stake back", "a small win", and then the three
+/// sizes that are worth telling someone about.
+pub const BANDS: [f64; BAND_COUNT - 1] = [0.0, 1.0, 2.0, 5.0, 20.0, 100.0];
+pub const BAND_COUNT: usize = 7;
+
+/// Human labels for the bands, in the same order.
+pub const BAND_LABELS: [&str; BAND_COUNT] = [
+    "nothing", "under 1x", "1-2x", "2-5x", "5-20x", "20-100x", "100x+",
+];
+
+#[cfg(test)]
 impl SimReport {
     pub fn rtp(&self) -> f64 {
         if self.total_wagered == 0 {
@@ -110,6 +215,7 @@ impl SimReport {
     }
 }
 
+#[cfg(test)]
 pub fn run(data: &GameData, config: SimConfig) -> SimReport {
     let mut session = GameSession::new(data, config.seed);
     session.line_bet_index = config.line_bet_index.min(data.config.line_bets.len() - 1);
@@ -123,6 +229,9 @@ pub fn run(data: &GameData, config: SimConfig) -> SimReport {
             break;
         };
 
+        let total_bet = session.total_bet(data);
+        let mut round_credits = resolution.total_credits();
+
         report.paid_spins += 1;
         accumulate(&mut report, &resolution, false);
 
@@ -135,8 +244,11 @@ pub fn run(data: &GameData, config: SimConfig) -> SimReport {
                 break;
             };
             report.free_spins += 1;
+            round_credits += free.total_credits();
             accumulate(&mut report, &free, true);
         }
+
+        report.stats.record(round_credits, total_bet);
     }
 
     report.total_wagered = session.stats.total_wagered;
@@ -144,6 +256,7 @@ pub fn run(data: &GameData, config: SimConfig) -> SimReport {
 }
 
 /// What buying one tier over and over returns per credit spent (§5.13).
+#[cfg(test)]
 #[derive(Debug, Clone, Default)]
 pub struct BuyReport {
     pub buys: u64,
@@ -151,6 +264,7 @@ pub struct BuyReport {
     pub won: i64,
 }
 
+#[cfg(test)]
 impl BuyReport {
     pub fn rtp(&self) -> f64 {
         if self.spent == 0 {
@@ -171,6 +285,7 @@ impl BuyReport {
 ///
 /// The balance is topped up between rounds so a bad run cannot end the sample
 /// early; the *stake* is still counted honestly, which is all the ratio needs.
+#[cfg(test)]
 pub fn simulate_buys(data: &GameData, tier: usize, rounds: u64, seed: u64) -> BuyReport {
     let mut session = GameSession::new(data, seed);
     let mut report = BuyReport::default();
@@ -211,6 +326,7 @@ pub fn simulate_buys(data: &GameData, tier: usize, rounds: u64, seed: u64) -> Bu
 /// as one who gambles nothing. Anything else means the coin is not fair or the
 /// stake accounting is wrong, and neither would show up in a total-RTP band on
 /// its own.
+#[cfg(test)]
 pub fn simulate_gambling_everything(data: &GameData, spins: u64, seed: u64) -> SimReport {
     let mut session = GameSession::new(data, seed);
     let mut report = SimReport::default();
@@ -254,6 +370,7 @@ pub fn simulate_gambling_everything(data: &GameData, spins: u64, seed: u64) -> S
     report
 }
 
+#[cfg(test)]
 fn accumulate(report: &mut SimReport, resolution: &crate::state::SpinResolution, free: bool) {
     let credits = resolution.total_credits();
     report.total_won += credits;
@@ -281,433 +398,4 @@ fn accumulate(report: &mut SimReport, resolution: &crate::state::SpinResolution,
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// Target RTP for Dragon's Hoard. Tune `assets/data/*.json` to move it.
-    const TARGET_RTP: f64 = 0.95;
-    /// The smoke run is small enough for a debug-build CI pass, so it needs a
-    /// wide band; the ignored full run below is the real gate.
-    const SMOKE_TOLERANCE: f64 = 0.15;
-    const FULL_TOLERANCE: f64 = 0.03;
-
-    /// **Every machine must be in band, not just the one that boots.** A second
-    /// cabinet is a whole second maths model; without this it could ship at any
-    /// RTP at all and nothing would notice.
-    #[test]
-    fn every_machine_loads_and_lands_in_band() {
-        for machine in crate::data::MACHINES {
-            let data = GameData::load_machine(machine)
-                .unwrap_or_else(|err| panic!("machine '{}' failed to load: {}", machine.id, err));
-            let report = run(
-                &data,
-                SimConfig {
-                    spins: 20_000,
-                    ..SimConfig::default()
-                },
-            );
-
-            println!("{:>8}: {}", machine.id, report.summary());
-            assert!(
-                (report.rtp() - TARGET_RTP).abs() < SMOKE_TOLERANCE,
-                "machine '{}' RTP {:.4} outside {:.2} +/- {:.2}",
-                machine.id,
-                report.rtp(),
-                TARGET_RTP,
-                SMOKE_TOLERANCE
-            );
-        }
-    }
-
-    /// Machines should not all play the same. This asserts the catalog actually
-    /// offers a choice rather than a reskin.
-    #[test]
-    fn the_machines_differ_in_volatility() {
-        let mut hit_rates = Vec::new();
-        for machine in crate::data::MACHINES {
-            let data = GameData::load_machine(machine).unwrap();
-            let report = run(
-                &data,
-                SimConfig {
-                    spins: 20_000,
-                    ..SimConfig::default()
-                },
-            );
-            hit_rates.push((machine.id, report.hit_frequency()));
-        }
-
-        let lowest = hit_rates
-            .iter()
-            .map(|(_, rate)| *rate)
-            .fold(f64::MAX, f64::min);
-        let highest = hit_rates
-            .iter()
-            .map(|(_, rate)| *rate)
-            .fold(0.0f64, f64::max);
-        assert!(
-            highest - lowest > 0.05,
-            "every machine plays the same: {:?}",
-            hit_rates
-        );
-    }
-
-    #[test]
-    fn rtp_smoke_lands_in_band() {
-        let data = GameData::load().unwrap();
-        let report = run(
-            &data,
-            SimConfig {
-                spins: 20_000,
-                ..SimConfig::default()
-            },
-        );
-
-        println!("{}", report.summary());
-        assert!(
-            (report.rtp() - TARGET_RTP).abs() < SMOKE_TOLERANCE,
-            "RTP {:.4} outside {:.2} +/- {:.2}: {}",
-            report.rtp(),
-            TARGET_RTP,
-            SMOKE_TOLERANCE,
-            report.summary()
-        );
-    }
-
-    #[test]
-    fn hit_frequency_is_sane() {
-        let data = GameData::load().unwrap();
-        let report = run(
-            &data,
-            SimConfig {
-                spins: 20_000,
-                ..SimConfig::default()
-            },
-        );
-
-        assert!(
-            report.hit_frequency() > 0.15 && report.hit_frequency() < 0.65,
-            "hit frequency {:.3} outside the playable band: {}",
-            report.hit_frequency(),
-            report.summary()
-        );
-    }
-
-    #[test]
-    fn rtp_is_stable_across_the_bet_ladder() {
-        let data = GameData::load().unwrap();
-        let low = run(
-            &data,
-            SimConfig {
-                spins: 20_000,
-                line_bet_index: 0,
-                ..SimConfig::default()
-            },
-        );
-        let high = run(
-            &data,
-            SimConfig {
-                spins: 20_000,
-                line_bet_index: data.config.line_bets.len() - 1,
-                ..SimConfig::default()
-            },
-        );
-
-        // Same seed, same outcomes — only the stake scales. This is the test
-        // that catches a hoard exploit where eggs banked cheap pay out dear.
-        //
-        // Jackpots are excluded deliberately: they are bet-fair by construction
-        // (`state::jackpot::the_trigger_is_bet_fair`) but far too high-variance
-        // to compare over 20,000 spins, so including them would make this a
-        // flake rather than a guard. Their return is checked against its closed
-        // form instead, in `the_jackpot_layer_matches_its_closed_form`.
-        assert!(
-            (low.rtp_excluding_jackpots() - high.rtp_excluding_jackpots()).abs() < 0.01,
-            "RTP drifts with stake: low {:.4} vs high {:.4}",
-            low.rtp_excluding_jackpots(),
-            high.rtp_excluding_jackpots()
-        );
-    }
-
-    /// The jackpot layer is the one part of the return with a closed form
-    /// (`seed/odds + rate × share`, see `state::jackpot`). Measuring it and
-    /// checking it against the formula catches a contribution or trigger bug
-    /// that a total-RTP band alone would absorb.
-    #[test]
-    #[ignore = "the rare tiers need a long run to converge"]
-    fn the_jackpot_layer_matches_its_closed_form() {
-        let data = GameData::load().unwrap();
-        let predicted = crate::state::jackpot::expected_rtp(&data.jackpots);
-        let report = run(
-            &data,
-            SimConfig {
-                spins: 4_000_000,
-                ..SimConfig::default()
-            },
-        );
-        let measured = report.contribution(report.jackpot_won);
-
-        println!(
-            "jackpot RTP predicted {:.4} measured {:.4}",
-            predicted, measured
-        );
-        assert!(
-            (measured - predicted).abs() < 0.012,
-            "jackpot return {:.4} does not match the predicted {:.4}",
-            measured,
-            predicted
-        );
-    }
-
-    #[test]
-    fn the_sim_is_deterministic() {
-        let data = GameData::load().unwrap();
-        let config = SimConfig {
-            spins: 2_000,
-            ..SimConfig::default()
-        };
-
-        assert_eq!(
-            run(&data, config).total_won,
-            run(&data, config).total_won,
-            "same seed produced different turnover"
-        );
-    }
-
-    /// The long-run gate for the whole catalog. A machine whose features are
-    /// rare needs far more spins than the smoke run to converge — Frost Wyrm
-    /// triggers its feature roughly half as often as Dragon's Hoard.
-    #[test]
-    #[ignore = "million-spin run per machine; too slow for a debug CI build"]
-    fn every_machine_holds_its_rtp_over_a_long_run() {
-        for machine in crate::data::MACHINES {
-            let data = GameData::load_machine(machine).unwrap();
-            let report = run(
-                &data,
-                SimConfig {
-                    spins: 1_000_000,
-                    ..SimConfig::default()
-                },
-            );
-
-            println!("{:>8}: {}", machine.id, report.summary());
-            assert!(
-                (report.rtp() - TARGET_RTP).abs() < FULL_TOLERANCE,
-                "machine '{}' RTP {:.4} outside {:.2} +/- {:.2}",
-                machine.id,
-                report.rtp(),
-                TARGET_RTP,
-                FULL_TOLERANCE
-            );
-        }
-    }
-
-    /// The real RTP gate. `cargo test --release -- --ignored --nocapture`.
-    #[test]
-    #[ignore = "million-spin run; too slow for a debug CI build"]
-    fn rtp_full_run_lands_in_band() {
-        let data = GameData::load().unwrap();
-        let report = run(
-            &data,
-            SimConfig {
-                spins: 1_000_000,
-                ..SimConfig::default()
-            },
-        );
-
-        println!("{}", report.summary());
-        assert!(
-            (report.rtp() - TARGET_RTP).abs() < FULL_TOLERANCE,
-            "RTP {:.4} outside {:.2} +/- {:.2}: {}",
-            report.rtp(),
-            TARGET_RTP,
-            FULL_TOLERANCE,
-            report.summary()
-        );
-    }
-}
-
-#[cfg(test)]
-mod buy_tests {
-    use super::*;
-    use crate::data::MACHINES;
-    use crate::state::featurebuy;
-
-    /// A bought feature must give back what the machine gives back — no more,
-    /// no less. This is the assertion the whole Feature Buy design rests on
-    /// (§5.13): price a tier below its expected value and never spinning beats
-    /// spinning; price it above and the menu is a trap.
-    ///
-    /// Runs in CI at a sample small enough to be quick, which is why the band is
-    /// wide. `feature_buy_prices_are_exact` is the tight one.
-    #[test]
-    fn every_bought_tier_returns_roughly_what_it_cost() {
-        for machine in MACHINES {
-            let data = GameData::load_machine(machine).unwrap();
-            let target = data.featurebuy.target_rtp_permille as f64 / 1000.0;
-
-            for (index, tier) in data.featurebuy.tiers.iter().enumerate() {
-                let report = simulate_buys(&data, index, 3_000, 0x51E_5EED + index as u64);
-                assert!(report.buys > 0, "{} sold nothing", tier.id);
-
-                let rtp = report.rtp();
-                assert!(
-                    (rtp - target).abs() < 0.35,
-                    "{}/{} returns {:.4} against a target of {:.4} — reprice it",
-                    machine.id,
-                    tier.id,
-                    rtp,
-                    target
-                );
-            }
-        }
-    }
-
-    /// The tight version. High-variance features need a large sample before the
-    /// mean settles, so this is `#[ignore]`d and run when tuning:
-    /// `cargo test --release -- --ignored feature_buy_prices_are_exact`.
-    #[test]
-    #[ignore]
-    fn feature_buy_prices_are_exact() {
-        // Every tier is measured and printed *before* anything is asserted. A
-        // run that stopped at the first bad price would make repricing a menu
-        // one slow round trip per tier.
-        let mut wrong: Vec<String> = Vec::new();
-
-        for machine in MACHINES {
-            let data = GameData::load_machine(machine).unwrap();
-            let target = data.featurebuy.target_rtp_permille as f64 / 1000.0;
-
-            for (index, tier) in data.featurebuy.tiers.iter().enumerate() {
-                let report = simulate_buys(&data, index, 200_000, 0xB0_0B5 + index as u64);
-                let rtp = report.rtp();
-                // What the price *should* be, given what the feature actually
-                // paid: the current price scaled by how far off target it came
-                // in. Printed so a failing run hands the designer the answer
-                // rather than only the problem.
-                let fair = tier.price_multiple as f64 * rtp / target;
-
-                println!(
-                    "{:>7}/{:<10} price {:>4}x  rtp {:.4}  (target {:.4})  fair price {:.1}x",
-                    machine.id, tier.id, tier.price_multiple, rtp, target, fair
-                );
-                if (rtp - target).abs() >= 0.02 {
-                    wrong.push(format!(
-                        "{}/{}: returns {:.4} against {:.4} — price it at {:.0}x, not {}x",
-                        machine.id,
-                        tier.id,
-                        rtp,
-                        target,
-                        fair.round(),
-                        tier.price_multiple
-                    ));
-                }
-            }
-        }
-
-        assert!(
-            wrong.is_empty(),
-            "mispriced tiers:
-  {}",
-            wrong.join(
-                "
-  "
-            )
-        );
-    }
-
-    /// Buying must not be a cheaper route to a progressive. The price is a
-    /// stake, so it feeds the pots; it is not a spin, so it does not roll.
-    #[test]
-    fn a_buy_feeds_the_pots_without_drawing_from_them() {
-        let data = GameData::load().unwrap();
-        let mut session = GameSession::new(&data, 77);
-        session.balance = 10_000_000;
-
-        let pots = |session: &GameSession| -> Vec<i64> {
-            (0..data.jackpots.tiers.len())
-                .map(|tier| session.jackpots.value(&data.jackpots, tier))
-                .collect()
-        };
-
-        let before = pots(&session);
-        let purchase = session.buy_feature(0, &data).unwrap();
-        let after = pots(&session);
-
-        assert!(purchase.price > 0);
-        assert!(
-            after.iter().zip(&before).all(|(now, then)| now > then),
-            "a bought feature should feed every tier"
-        );
-        assert_eq!(
-            session.stats.jackpots, 0,
-            "the purchase itself must not roll for a pot"
-        );
-    }
-
-    /// The menu advertises a price; the balance must move by exactly that.
-    #[test]
-    fn the_price_charged_is_the_price_shown() {
-        let data = GameData::load().unwrap();
-        for (index, tier) in data.featurebuy.tiers.iter().enumerate() {
-            let mut session = GameSession::new(&data, 9_000 + index as u64);
-            session.balance = 10_000_000;
-
-            let quoted = featurebuy::price(tier, session.total_bet(&data));
-            let before = session.balance;
-            let purchase = session.buy_feature(index, &data).unwrap();
-
-            assert_eq!(purchase.price, quoted);
-            assert_eq!(session.balance, before - quoted);
-        }
-    }
-}
-
-#[cfg(test)]
-mod gamble_tests {
-    use super::*;
-    use crate::data::MACHINES;
-
-    /// The claim §5.16 rests on: an even-money double moves variance and
-    /// nothing else. A player who gambles every win to the ladder's end must
-    /// measure the same RTP as one who never gambles.
-    ///
-    /// This is the only test in the suite that compares two *whole* simulations
-    /// against each other rather than against a target, because "unchanged" is
-    /// the assertion — there is no number to aim at.
-    #[test]
-    fn gambling_cannot_move_rtp() {
-        let data = GameData::load().unwrap();
-        let plain = run(
-            &data,
-            SimConfig {
-                spins: 120_000,
-                line_bet_index: 0,
-                seed: 0x6A_6B1E,
-            },
-        );
-        let gambled = simulate_gambling_everything(&data, 120_000, 0x6A_6B1E);
-
-        println!(
-            "plain {:.4} | gambling everything {:.4}",
-            plain.rtp(),
-            gambled.rtp()
-        );
-        assert!(
-            (plain.rtp() - gambled.rtp()).abs() < 0.06,
-            "gambling moved RTP from {:.4} to {:.4}",
-            plain.rtp(),
-            gambled.rtp()
-        );
-    }
-
-    /// A gamble must be offered on exactly the machines that can pay one, which
-    /// is all of them — the config is shared and reads nothing from the strips.
-    #[test]
-    fn every_machine_offers_the_gamble() {
-        for machine in MACHINES {
-            let data = GameData::load_machine(machine).unwrap();
-            assert!(data.gamble.max_steps > 0, "{} has no ladder", machine.id);
-            assert!(data.gamble.ceiling_multiple > 0);
-        }
-    }
-}
+mod tests;
