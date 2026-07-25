@@ -9,6 +9,7 @@ pub mod holdspin;
 pub mod ledger;
 pub mod legibility;
 pub mod machines;
+pub mod paint;
 pub mod paytable;
 pub mod reels;
 pub mod settings;

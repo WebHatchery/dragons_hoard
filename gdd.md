@@ -1143,6 +1143,53 @@ All five cabinets measure exactly the RTP they did before. `art` is a display ke
 and nothing downstream of it reads the maths — but a data edit across five
 machines is worth a million-spin run per machine to say so.
 
+### 5.25 The art becomes testable (post-v1)
+
+§5.24 ended with a claim and a screenshot: the three gem cuts are different
+shapes, look at the picture. This iteration built something that could check
+that, and the claim turned out to be **wrong**.
+
+**The art now draws through a trait.** `Painter` has four primitives — triangle,
+circle, ellipse, rectangle — and two implementations: `ScreenPainter`, which is
+what ships, and `Buffer`, which rasterises into a plain pixel array with no
+window, no GL context and no frame. `Canvas` is generic over it, so the same art
+routines serve both. Nothing below `Canvas` knows which it is drawing into.
+
+One primitive had been reaching past the canvas to macroquad directly — a
+`draw_poly` for the coin's embossed face — which is why the art could not be
+drawn headless at all. It is a fan of triangles now.
+
+**What that buys is measurement.** The first run said:
+
+```
+dragon: 'copper' and 'jade' differ in only 2.6% of their pixels
+dragon: 'copper' and 'sapphire' differ in only 4.1% of their pixels
+```
+
+A regular hexagon at that radius **is** a circle once the cell is 64 pixels tall,
+and the "round brilliant" was a twelve-sided circle. §5.24's capture looked
+convincing because the *facets* differ; the outlines did not. The hexagon is
+narrow and pointed now, the round cut is a flat oval, and the step cut was
+already a rectangle — three shapes rather than three shadings.
+
+**The metric was wrong twice before it was right.** Counting differing pixels
+across the whole cell is dominated by the empty background both symbols share.
+Jaccard distance over the union fixed that and produced meaningful numbers
+(18–30%) — which then showed that *silhouette alone is the wrong standard for
+this art*. Every symbol here is a centred object filling most of its cell; a coin
+and a chest overlap heavily in outline and always will, and what separates them
+is the lid and the keyhole. The shipped test measures **monochrome difference**,
+which sees outline and interior at once and is the strictest realistic case —
+what a symbol has left after colour blindness, a dim screen and a cell a sixth of
+the reel window tall.
+
+The gem-cut test keeps the silhouette standard deliberately, because §5.24's
+claim was about *shape* and colour must not be allowed to prop it up.
+
+**64 pixels is not arbitrary.** It is the cell height on a six-row reel of the
+shifting cabinet (§5.20) — the smallest this game ever draws a symbol, and the
+question §5.24 left open.
+
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
 - Winning lines: pulse highlight (`blink`/`pulse`), floating win amounts
@@ -1510,6 +1557,18 @@ and a Project Roost deployment record. Verified live — see §15.
   in hit frequency (a reskin fails), must not share a save slot (sharing one
   would silently overwrite a balance and hoard), must not share a symbol set,
   and an unknown machine id falls back to the first rather than failing.
+- **The rasteriser (`ui/paint.rs`):** a filled rectangle covers exactly its
+  area, a triangle about half its bounding box and a circle π/4 of one;
+  **winding order does not matter**, since the art is not consistent about it
+  and a rasteriser that cared would silently drop half the facets; alpha blends
+  rather than replaces; and drawing outside the buffer is ignored rather than
+  panicking.
+- **Art legibility (`ui/symbols/legible.rs`):** every symbol draws something at
+  the smallest cell the game produces and does not fill it edge to edge; **no
+  two symbols look alike in monochrome at that size**; the three gem cuts are
+  distinct in *silhouette*, which is the §5.24 claim stated as a property; and
+  art scales rather than shrinking into a corner, which would catch a routine
+  written in absolute units by mistake.
 - **Colour legibility (`ui/legibility.rs`):** **no two symbols sharing a shape
   are too close under any vision** — the check that found Frost Wyrm's glacier
   and amethyst 0.061 apart under deuteranopia; the simulation leaves greys
@@ -1712,6 +1771,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Duplicated grid index arithmetic | `reel * rows + row` lived at eight call sites until §5.20; `Grid::index` owns it now. Reels that differ in height would have silently read the wrong cells at every one of them. |
 | A feature tuned by gutting the base game | Refining took Frost to 6.92; the fix was rebalancing the feature's own spins and multiplier, not a 36% paytable cut that would have paid for the feature out of the base game (§5.21). |
 | Symbols that only differ by colour | Any two sharing a shape must stay apart under three simulated dichromacies (§5.24). The three gems now have three cuts, so the check has nothing left to catch. |
+| Art verified only by someone looking at it | The symbol routines rasterise to a buffer in a unit test (§5.25). It disproved §5.24's own screenshot-backed claim on its first run. |
 | A new machine shipping at the wrong RTP | The sim iterates `MACHINES`; a cabinet cannot be added without being measured (§5.8). |
 | Two machines sharing a save slot | Slots are `<machine>_<slot>`; a test asserts they are distinct. |
 | Jackpots exploitable by bet-switching | Odds are per credit wagered, so the trigger is bet-fair by construction (§5.6) and tested. The bet-ladder sim test excludes jackpots deliberately — they are too high-variance to compare over 20k spins — and their return is checked against its closed form instead. |
@@ -1744,20 +1804,21 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus nineteen post-v1 systems
+## 15. Current State — v1 shipped, plus twenty post-v1 systems
 
-**All five phases are done, every item in §14 is met**, and nineteen systems have
+**All five phases are done, every item in §14 is met**, and twenty systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
 machines (§5.8), achievements (§5.9), the Vault Pick (§5.10), the reel-feel pass
 (§5.11), the Dragon's Wrath (§5.12), the Feature Buy (§5.13), ways-to-win
 (§5.14), cascading reels (§5.15), the Dragon's Gamble (§5.16), live machine
 profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
-the reel-motion promotion (§5.23) and colour legibility (§5.24). The game is
+the reel-motion promotion (§5.23), colour legibility (§5.24) and testable art
+(§5.25). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-285 tests pass here and 158 in `macroquad-toolkit`; `cargo fmt --check`,
+295 tests pass here and 158 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
 release build are clean. Every `.rs` file is under the 800-line limit, `data.rs`
 (741) and `ui/reels.rs` (738) the largest — `state/spin.rs` dropped from 615 to
@@ -1840,10 +1901,9 @@ accruing. That closes the gap this section previously listed.
 - Nothing is left on the promotion list. `audio.rs` went in §5.19 and the reel
   motion in §5.23; what remains in this project is either this game's tuning or
   this game's rules.
-- §5.24 checked the symbols against colour blindness. Nothing has checked them
-  against **size** — the reels shrink to a sixth of the window on a six-row
-  shifting board (§5.20), and whether a stepped gem still reads at that scale is
-  a question the same capture harness could answer and has not been asked. A real cabinet would show each feature's
+- `ui/paint.rs` is a general-purpose CPU rasteriser for macroquad's primitives
+  and is the obvious next candidate for `macroquad-toolkit`: any game drawing
+  procedural art has the same problem of not being able to test it. A real cabinet would show each feature's
   volatility or a sample of what it pays; the price alone tells a player what it
   costs but not what to expect for it.
 - **Listen to the effects.** The waveform panel closed the part of this that is

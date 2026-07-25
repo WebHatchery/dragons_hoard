@@ -13,7 +13,10 @@
 //! An unrecognised value falls back to the three-letter code, so adding a symbol
 //! can never render nothing.
 
+mod legible;
+
 use crate::data::SymbolDef;
+use crate::ui::paint::{Painter, ScreenPainter};
 use macroquad::prelude::*;
 
 /// The shapes the renderer knows how to draw.
@@ -99,18 +102,25 @@ fn mix(a: Color, b: Color, t: f32) -> Color {
     )
 }
 
-/// Maps normalised 0..1 art coordinates onto the cell, so every routine is
-/// written once and scales to whatever size the reel window happens to be.
-#[derive(Debug, Clone, Copy)]
-struct Canvas {
+/// Maps normalised 0..1 art coordinates onto a cell, and hands the result to a
+/// [`Painter`] (§5.25).
+///
+/// Generic over the painter so the same art routines draw to the screen in the
+/// game and into a pixel buffer in a test. Nothing below this line knows which.
+struct Canvas<'a, P: Painter> {
     rect: Rect,
     unit: f32,
+    painter: &'a mut P,
 }
 
-impl Canvas {
-    fn new(rect: Rect) -> Self {
+impl<'a, P: Painter> Canvas<'a, P> {
+    fn new(rect: Rect, painter: &'a mut P) -> Self {
         let unit = rect.w.min(rect.h);
-        Self { rect, unit }
+        Self {
+            rect,
+            unit,
+            painter,
+        }
     }
 
     fn x(&self, x: f32) -> f32 {
@@ -130,33 +140,49 @@ impl Canvas {
         self.unit * size
     }
 
-    fn tri(&self, a: (f32, f32), b: (f32, f32), c: (f32, f32), color: Color) {
-        draw_triangle(self.p(a.0, a.1), self.p(b.0, b.1), self.p(c.0, c.1), color);
+    fn tri(&mut self, a: (f32, f32), b: (f32, f32), c: (f32, f32), color: Color) {
+        let (a, b, c) = (self.p(a.0, a.1), self.p(b.0, b.1), self.p(c.0, c.1));
+        self.painter.tri(a, b, c, color);
     }
 
     /// A quad as two triangles, for facets and slabs.
-    fn quad(&self, a: (f32, f32), b: (f32, f32), c: (f32, f32), d: (f32, f32), color: Color) {
+    fn quad(&mut self, a: (f32, f32), b: (f32, f32), c: (f32, f32), d: (f32, f32), color: Color) {
         self.tri(a, b, c, color);
         self.tri(a, c, d, color);
     }
 
-    fn circle(&self, x: f32, y: f32, radius: f32, color: Color) {
-        draw_circle(self.x(x), self.y(y), self.s(radius), color);
+    fn circle(&mut self, x: f32, y: f32, radius: f32, color: Color) {
+        let (center, radius) = (self.p(x, y), self.s(radius));
+        self.painter.circle(center, radius, color);
     }
 
     /// `rx`/`ry` are radii, matching macroquad's own `draw_ellipse`.
-    fn ellipse(&self, x: f32, y: f32, rx: f32, ry: f32, color: Color) {
-        draw_ellipse(self.x(x), self.y(y), self.s(rx), self.s(ry), 0.0, color);
+    fn ellipse(&mut self, x: f32, y: f32, rx: f32, ry: f32, color: Color) {
+        let (center, rx, ry) = (self.p(x, y), self.s(rx), self.s(ry));
+        self.painter.ellipse(center, rx, ry, color);
     }
 
-    fn rect(&self, x: f32, y: f32, w: f32, h: f32, color: Color) {
-        draw_rectangle(
-            self.x(x),
-            self.y(y),
-            self.rect.w * w,
-            self.rect.h * h,
-            color,
-        );
+    /// A regular polygon, as a fan of triangles.
+    ///
+    /// The one primitive that used to reach past the canvas to macroquad
+    /// directly, which meant the art could not be drawn without a GL context —
+    /// and so could not be measured at all (§5.25).
+    fn poly(&mut self, x: f32, y: f32, sides: usize, radius: f32, rotation: f32, color: Color) {
+        let step = std::f32::consts::TAU / sides.max(3) as f32;
+        let offset = rotation.to_radians();
+        let point = |index: usize| {
+            let angle = offset + step * index as f32;
+            (x + angle.cos() * radius, y + angle.sin() * radius)
+        };
+        for index in 0..sides.max(3) {
+            self.tri((x, y), point(index), point(index + 1), color);
+        }
+    }
+
+    fn rect(&mut self, x: f32, y: f32, w: f32, h: f32, color: Color) {
+        let at = self.p(x, y);
+        let size = vec2(self.rect.w * w, self.rect.h * h);
+        self.painter.rect(at, size, color);
     }
 }
 
@@ -169,41 +195,53 @@ pub fn draw(def: &SymbolDef, rect: Rect, lit: f32) -> bool {
 
 /// As [`draw`], but translucent — one pass of a motion-blurred reel.
 pub fn draw_with_alpha(def: &SymbolDef, rect: Rect, lit: f32, alpha: f32) -> bool {
+    paint(def, rect, lit, alpha, &mut ScreenPainter)
+}
+
+/// As [`draw_with_alpha`], but into any [`Painter`] — the screen in the game, a
+/// pixel buffer in a test (§5.25).
+pub fn paint<P: Painter>(
+    def: &SymbolDef,
+    rect: Rect,
+    lit: f32,
+    alpha: f32,
+    painter: &mut P,
+) -> bool {
     let Some(art) = SymbolArt::from_id(&def.art) else {
         return false;
     };
 
-    let canvas = Canvas::new(rect);
+    let mut canvas = Canvas::new(rect, painter);
     let shades = Shades::new(def.color, lit, alpha);
 
     match art {
-        SymbolArt::Coin => coin(&canvas, &shades, alpha, 0.5, 0.5, 0.30),
-        SymbolArt::CoinStack => coin_stack(&canvas, &shades, alpha),
-        SymbolArt::Gem => gem(&canvas, &shades, alpha),
-        SymbolArt::GemRound => gem_round(&canvas, &shades, alpha),
-        SymbolArt::GemStep => gem_step(&canvas, &shades, alpha),
-        SymbolArt::Chest => chest(&canvas, &shades, alpha),
-        SymbolArt::Egg => egg(&canvas, &shades, alpha),
-        SymbolArt::Dragon => dragon(&canvas, &shades, alpha),
-        SymbolArt::Flame => flame(&canvas, &shades, alpha),
+        SymbolArt::Coin => coin(&mut canvas, &shades, alpha, 0.5, 0.5, 0.30),
+        SymbolArt::CoinStack => coin_stack(&mut canvas, &shades, alpha),
+        SymbolArt::Gem => gem(&mut canvas, &shades, alpha),
+        SymbolArt::GemRound => gem_round(&mut canvas, &shades, alpha),
+        SymbolArt::GemStep => gem_step(&mut canvas, &shades, alpha),
+        SymbolArt::Chest => chest(&mut canvas, &shades, alpha),
+        SymbolArt::Egg => egg(&mut canvas, &shades, alpha),
+        SymbolArt::Dragon => dragon(&mut canvas, &shades, alpha),
+        SymbolArt::Flame => flame(&mut canvas, &shades, alpha),
     }
 
     true
 }
 
-fn coin(canvas: &Canvas, shades: &Shades, alpha: f32, cx: f32, cy: f32, radius: f32) {
+fn coin<P: Painter>(
+    canvas: &mut Canvas<P>,
+    shades: &Shades,
+    alpha: f32,
+    cx: f32,
+    cy: f32,
+    radius: f32,
+) {
     canvas.circle(cx, cy, radius, shades.darker);
     canvas.circle(cx, cy, radius * 0.88, shades.base);
     canvas.circle(cx, cy, radius * 0.66, shades.dark);
     // An embossed hexagon reads as a stamped face at reel size.
-    draw_poly(
-        canvas.x(cx),
-        canvas.y(cy),
-        6,
-        canvas.s(radius * 0.40),
-        15.0,
-        shades.light,
-    );
+    canvas.poly(cx, cy, 6, radius * 0.40, 15.0, shades.light);
     canvas.circle(
         cx - radius * 0.34,
         cy - radius * 0.36,
@@ -212,7 +250,7 @@ fn coin(canvas: &Canvas, shades: &Shades, alpha: f32, cx: f32, cy: f32, radius: 
     );
 }
 
-fn coin_stack(canvas: &Canvas, shades: &Shades, alpha: f32) {
+fn coin_stack<P: Painter>(canvas: &mut Canvas<P>, shades: &Shades, alpha: f32) {
     // A shallow pile: two coins at the back, one leaning in front.
     for (cx, cy, radius) in [(0.33, 0.62, 0.21), (0.67, 0.60, 0.21), (0.50, 0.44, 0.23)] {
         canvas.ellipse(cx, cy + 0.09, radius * 1.1, radius * 0.34, shades.darker);
@@ -222,13 +260,24 @@ fn coin_stack(canvas: &Canvas, shades: &Shades, alpha: f32) {
 
 /// Vertex `i` of a six-sided gem outline, points up and down, flats at the
 /// sides — the silhouette that reads as "cut stone" at reel size.
+/// A vertex of the hexagonal cut.
+///
+/// Squeezed horizontally on purpose. A regular hexagon at this radius is
+/// indistinguishable from a circle once the cell is 64 pixels tall — the
+/// silhouette test (§5.25) put it 2.6% away from the copper coin — so the stone
+/// is narrow and pointed top and bottom, which reads as *cut* rather than
+/// *round* at any size.
 fn hex_vertex(index: usize, radius: f32) -> (f32, f32) {
-    let angle = (30.0 + index as f32 * 60.0).to_radians();
-    (0.5 + angle.cos() * radius, 0.5 - angle.sin() * radius)
+    const NARROW: f32 = 0.66;
+    let angle = (90.0 + index as f32 * 60.0).to_radians();
+    (
+        0.5 + angle.cos() * radius * NARROW,
+        0.5 - angle.sin() * radius,
+    )
 }
 
-fn gem(canvas: &Canvas, shades: &Shades, alpha: f32) {
-    const R: f32 = 0.32;
+fn gem<P: Painter>(canvas: &mut Canvas<P>, shades: &Shades, alpha: f32) {
+    const R: f32 = 0.36;
     let v: Vec<(f32, f32)> = (0..6).map(|i| hex_vertex(i, R)).collect();
     let center = (0.5, 0.5);
 
@@ -259,15 +308,19 @@ fn gem(canvas: &Canvas, shades: &Shades, alpha: f32) {
 /// One of three gem shapes (§5.24). Three stones that differed only in hue were
 /// the same picture to a deuteranope; the cut carries the difference now and the
 /// colour only reinforces it.
-fn gem_round(canvas: &Canvas, shades: &Shades, alpha: f32) {
-    const R: f32 = 0.33;
+fn gem_round<P: Painter>(canvas: &mut Canvas<P>, shades: &Shades, alpha: f32) {
+    const R: f32 = 0.36;
+    // Wider than it is tall. A round brilliant is a circle, and a circle is the
+    // copper coin — the silhouette test (§5.25) put the two 4.1% apart, which is
+    // no distance at all. An oval is unmistakably neither.
+    const SQUASH: f32 = 0.62;
     const FACETS: usize = 12;
     let center = (0.5, 0.5);
     let rim: Vec<(f32, f32)> = (0..FACETS)
         .map(|i| {
             let angle =
                 i as f32 / FACETS as f32 * std::f32::consts::TAU - std::f32::consts::FRAC_PI_2;
-            (0.5 + angle.cos() * R, 0.5 + angle.sin() * R)
+            (0.5 + angle.cos() * R, 0.5 + angle.sin() * R * SQUASH)
         })
         .collect();
 
@@ -285,7 +338,10 @@ fn gem_round(canvas: &Canvas, shades: &Shades, alpha: f32) {
     let table: Vec<(f32, f32)> = (0..FACETS)
         .map(|i| {
             let angle = i as f32 / FACETS as f32 * std::f32::consts::TAU;
-            (0.5 + angle.cos() * R * 0.40, 0.5 + angle.sin() * R * 0.40)
+            (
+                0.5 + angle.cos() * R * 0.40,
+                0.5 + angle.sin() * R * 0.40 * SQUASH,
+            )
         })
         .collect();
     for index in 0..FACETS {
@@ -304,7 +360,7 @@ fn gem_round(canvas: &Canvas, shades: &Shades, alpha: f32) {
 ///
 /// Deliberately the least round of the three, so the trio reads as
 /// hexagon / circle / rectangle even at a glance and even in monochrome.
-fn gem_step(canvas: &Canvas, shades: &Shades, alpha: f32) {
+fn gem_step<P: Painter>(canvas: &mut Canvas<P>, shades: &Shades, alpha: f32) {
     const W: f32 = 0.25;
     const H: f32 = 0.33;
     const CHAMFER: f32 = 0.09;
@@ -361,7 +417,7 @@ fn gem_step(canvas: &Canvas, shades: &Shades, alpha: f32) {
     canvas.circle(0.44, 0.40, 0.026, Color::new(1.0, 1.0, 1.0, 0.8 * alpha));
 }
 
-fn chest(canvas: &Canvas, shades: &Shades, alpha: f32) {
+fn chest<P: Painter>(canvas: &mut Canvas<P>, shades: &Shades, alpha: f32) {
     let gold = Color::new(0.92, 0.76, 0.32, alpha);
 
     // Coins spilling over the back edge, drawn first so the lid overlaps them.
@@ -382,7 +438,7 @@ fn chest(canvas: &Canvas, shades: &Shades, alpha: f32) {
     canvas.circle(0.50, 0.53, 0.035, scale(gold, 0.45));
 }
 
-fn egg(canvas: &Canvas, shades: &Shades, alpha: f32) {
+fn egg<P: Painter>(canvas: &mut Canvas<P>, shades: &Shades, alpha: f32) {
     // Stacked ellipses give a proper egg profile — fat at the base, narrowing
     // smoothly to a rounded crown. A cone tapered to a point read as a teardrop.
     canvas.ellipse(0.50, 0.60, 0.25, 0.27, shades.base);
@@ -410,7 +466,7 @@ fn egg(canvas: &Canvas, shades: &Shades, alpha: f32) {
     );
 }
 
-fn dragon(canvas: &Canvas, shades: &Shades, alpha: f32) {
+fn dragon<P: Painter>(canvas: &mut Canvas<P>, shades: &Shades, alpha: f32) {
     // Horns behind the skull.
     canvas.tri((0.58, 0.34), (0.80, 0.08), (0.70, 0.36), shades.dark);
     canvas.tri((0.46, 0.32), (0.58, 0.12), (0.56, 0.36), shades.dark);
@@ -435,7 +491,7 @@ fn dragon(canvas: &Canvas, shades: &Shades, alpha: f32) {
     canvas.circle(0.22, 0.50, 0.022, shades.darker);
 }
 
-fn flame(canvas: &Canvas, shades: &Shades, alpha: f32) {
+fn flame<P: Painter>(canvas: &mut Canvas<P>, shades: &Shades, alpha: f32) {
     let outer = shades.base;
     let mid = mix(shades.base, Color::new(1.0, 0.85, 0.25, 1.0), 0.6);
     let core = Color::new(1.0, 0.96, 0.80, alpha);
@@ -505,7 +561,8 @@ mod tests {
 
     #[test]
     fn the_canvas_maps_normalised_coordinates_onto_the_cell() {
-        let canvas = Canvas::new(Rect::new(100.0, 200.0, 60.0, 90.0));
+        let mut painter = crate::ui::paint::Buffer::new(1, 1);
+        let canvas = Canvas::new(Rect::new(100.0, 200.0, 60.0, 90.0), &mut painter);
 
         assert_eq!(canvas.p(0.0, 0.0), vec2(100.0, 200.0));
         assert_eq!(canvas.p(1.0, 1.0), vec2(160.0, 290.0));
