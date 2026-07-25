@@ -324,6 +324,20 @@ impl Game {
     /// looking at the answer otherwise. Cabinets are measured one at a time, in
     /// catalog order, so the row the player is reading fills in first.
     fn measure_machines(&mut self) {
+        // The buy menu wants its tiers measured (§5.22); the picker and the
+        // ledger want the cabinets. Both run a slice per frame, and only while
+        // something is looking at the answer.
+        if self.show_featurebuy {
+            for tier in 0..self.data.featurebuy.tiers.len() {
+                if self.profiles.tier(self.data.machine_id(), tier).is_some() {
+                    continue;
+                }
+                self.profiles
+                    .request_tier(self.data.machine_id(), tier, &self.data);
+                self.profiles.step_tier(self.data.machine_id(), &self.data);
+                break;
+            }
+        }
         if !self.show_machines && !self.show_ledger {
             return;
         }

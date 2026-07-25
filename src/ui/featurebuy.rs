@@ -10,6 +10,8 @@
 //! that vanishes is a mystery.
 
 use crate::data::GameData;
+use crate::engine::sim::BAND_LABELS;
+use crate::state::profile::{ProfileBook, TierProfile};
 use crate::state::{featurebuy, GameSession};
 use crate::ui::{palette, virtual_button, UiAction, LOGICAL_HEIGHT, LOGICAL_WIDTH};
 use macroquad::prelude::*;
@@ -17,9 +19,15 @@ use macroquad_toolkit::ui::{
     draw_surface, draw_text_right, draw_ui_text_ex, ButtonTone, RectExt, SurfaceStyle, TextStyle,
 };
 
-const ROW_HEIGHT: f32 = 92.0;
+const ROW_HEIGHT: f32 = 128.0;
 
-pub fn draw(data: &GameData, session: &GameSession, mouse: Vec2, actions: &mut Vec<UiAction>) {
+pub fn draw(
+    data: &GameData,
+    session: &GameSession,
+    profiles: &ProfileBook,
+    mouse: Vec2,
+    actions: &mut Vec<UiAction>,
+) {
     draw_rectangle(
         0.0,
         0.0,
@@ -87,6 +95,12 @@ pub fn draw(data: &GameData, session: &GameSession, mouse: Vec2, actions: &mut V
             TextStyle::new(14.0, palette::TEXT_DIM).params(),
         );
 
+        draw_tier_profile(
+            profiles.tier(data.machine_id(), index),
+            profiles.tier_progress(data.machine_id(), index),
+            Rect::new(row.x + 16.0, row.y + 62.0, row.w - 210.0, 50.0),
+        );
+
         let button = Rect::new(row.right() - 176.0, row.y + 18.0, 160.0, 46.0);
         if affordable {
             if virtual_button(
@@ -118,7 +132,7 @@ pub fn draw(data: &GameData, session: &GameSession, mouse: Vec2, actions: &mut V
     }
 
     draw_ui_text_ex(
-        "Every price is set from what the feature actually pays, so buying returns exactly what spinning does.",
+        "Prices come from what each feature actually pays. The figures below them are measured the same way.",
         panel.x + 20.0,
         panel.bottom() - 46.0,
         TextStyle::new(14.0, palette::TEXT_DIM).params(),
@@ -139,4 +153,73 @@ pub fn draw(data: &GameData, session: &GameSession, mouse: Vec2, actions: &mut V
     if is_mouse_button_released(MouseButton::Left) && !panel.inset(-4.0).contains(mouse) {
         actions.push(UiAction::ToggleFeatureBuy);
     }
+}
+
+/// What a tier actually does when you buy it (§5.22).
+///
+/// The price says what a feature costs. This says what to expect for it — and
+/// the headline is the share of buys that come back under the price, which is
+/// the number the decision really turns on and the one no cabinet shows.
+fn draw_tier_profile(profile: Option<&TierProfile>, progress: f32, rect: Rect) {
+    let Some(profile) = profile else {
+        let bar = Rect::new(rect.x, rect.y + 12.0, rect.w * 0.4, 8.0);
+        draw_surface(
+            bar,
+            &SurfaceStyle::new(Color::new(0.07, 0.06, 0.07, 1.0))
+                .with_border(1.0, palette::GOLD_DIM),
+        );
+        draw_rectangle(
+            bar.x + 1.0,
+            bar.y + 1.0,
+            (bar.w - 2.0) * progress,
+            bar.h - 2.0,
+            palette::EMBER,
+        );
+        draw_ui_text_ex(
+            "measuring this feature...",
+            bar.right() + 12.0,
+            rect.y + 20.0,
+            TextStyle::new(13.0, palette::TEXT_DIM).params(),
+        );
+        return;
+    };
+
+    draw_ui_text_ex(
+        &format!(
+            "{:.0}% of buys come back under the price   ·   best seen {:.0}x",
+            profile.below_cost * 100.0,
+            profile.best
+        ),
+        rect.x,
+        rect.y + 14.0,
+        TextStyle::new(13.0, palette::TEXT_BRIGHT).params(),
+    );
+
+    let bar = Rect::new(rect.x, rect.y + 22.0, rect.w, 12.0);
+    let mut x = bar.x;
+    for (index, share) in profile.bands.iter().enumerate() {
+        let width = bar.w * *share as f32;
+        if width < 0.5 {
+            continue;
+        }
+        let heat = index as f32 / (profile.bands.len() as f32 - 1.0);
+        draw_rectangle(
+            x,
+            bar.y,
+            width,
+            bar.h,
+            Color::new(0.10 + 0.72 * heat, 0.09 + 0.30 * heat, 0.10, 1.0),
+        );
+        x += width;
+    }
+    draw_surface(
+        bar,
+        &SurfaceStyle::new(Color::new(0.0, 0.0, 0.0, 0.0)).with_border(1.0, palette::GOLD_DIM),
+    );
+    draw_ui_text_ex(
+        BAND_LABELS[0],
+        bar.x,
+        bar.bottom() + 13.0,
+        TextStyle::new(11.0, palette::TEXT_DIM).params(),
+    );
 }

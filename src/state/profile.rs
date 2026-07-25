@@ -168,6 +168,50 @@ impl Profiler {
     }
 }
 
+impl ProfileBook {
+    pub fn tier(&self, machine_id: &str, tier: usize) -> Option<&TierProfile> {
+        self.tiers
+            .iter()
+            .find(|((id, index), _)| id == machine_id && *index == tier)
+            .map(|(_, profile)| profile)
+    }
+
+    pub fn tier_progress(&self, machine_id: &str, tier: usize) -> f32 {
+        match &self.tier_running {
+            Some(((id, index), profiler)) if id == machine_id && *index == tier => {
+                profiler.progress()
+            }
+            _ => 0.0,
+        }
+    }
+
+    /// Ask for a tier to be measured. Cheap to call every frame.
+    ///
+    /// Tier profiling runs on its own slot rather than sharing the machine
+    /// profiler's, because the two are looked at on different screens and
+    /// queueing one behind the other would leave a panel blank for no reason.
+    pub fn request_tier(&mut self, machine_id: &str, tier: usize, data: &GameData) {
+        if self.tier(machine_id, tier).is_some() || self.tier_running.is_some() {
+            return;
+        }
+        self.tier_running = Some(((machine_id.to_owned(), tier), TierProfiler::new(data, tier)));
+    }
+
+    pub fn step_tier(&mut self, machine_id: &str, data: &GameData) {
+        let Some(((id, tier), profiler)) = self.tier_running.as_mut() else {
+            return;
+        };
+        if id != machine_id {
+            return;
+        }
+        if let Some(profile) = profiler.step(data) {
+            let key = (id.clone(), *tier);
+            self.tiers.push((key, profile));
+            self.tier_running = None;
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -316,6 +360,9 @@ pub struct ProfileBook {
     /// would quadruple the per-frame cost for no benefit — the player is
     /// looking at one row at a time anyway.
     running: Option<(String, Profiler)>,
+    /// Buy tiers already measured, keyed by machine and tier index (§5.22).
+    tiers: Vec<((String, usize), TierProfile)>,
+    tier_running: Option<((String, usize), TierProfiler)>,
 }
 
 impl ProfileBook {
@@ -360,5 +407,219 @@ impl ProfileBook {
             self.finished.push((id, profile));
             self.running = None;
         }
+    }
+}
+
+/// Rounds a tier profile is measured over. Fewer than a machine profile because
+/// a bought feature is one event rather than a spin, and each one costs several
+/// hundred internal spins to play out.
+pub const TIER_ROUNDS: u64 = 4_000;
+const TIER_BUYS_PER_STEP: u64 = 60;
+
+/// What a finished tier profile says about a purchase (§5.22).
+#[derive(Debug, Clone, PartialEq)]
+pub struct TierProfile {
+    /// Mean return as a share of the price. Sits near the machine's RTP,
+    /// because that is exactly what the price was set to make it (§5.13).
+    pub rtp: f64,
+    /// **Share of buys that hand back less than they cost.**
+    ///
+    /// The number a purchase actually turns on, and the one no real cabinet
+    /// shows. A tier can be priced perfectly fairly and still lose money most
+    /// times it is bought, because the distribution is skewed — a few large
+    /// returns carry the average while the median sits below the price. Nothing
+    /// is wrong with that; it is simply what "fair" means for a bet with a long
+    /// tail, and a player deserves to know it before spending 168x.
+    pub below_cost: f64,
+    pub bands: [f64; BAND_COUNT],
+    /// Largest return seen, as a multiple of the price.
+    pub best: f64,
+    pub buys: u64,
+}
+
+/// Measures one Feature Buy tier a few purchases at a time.
+pub struct TierProfiler {
+    session: GameSession,
+    tier: usize,
+    stats: RoundStats,
+    below_cost: u64,
+    best: f64,
+    target: u64,
+}
+
+impl TierProfiler {
+    pub fn new(data: &GameData, tier: usize) -> Self {
+        Self {
+            // A different seed per tier, so three tiers on one cabinet are not
+            // three views of the same stream of luck.
+            session: GameSession::new(data, PROFILE_SEED ^ (tier as u64 + 1)),
+            tier,
+            stats: RoundStats::default(),
+            below_cost: 0,
+            best: 0.0,
+            target: TIER_ROUNDS,
+        }
+    }
+
+    pub fn progress(&self) -> f32 {
+        (self.stats.rounds as f32 / self.target as f32).clamp(0.0, 1.0)
+    }
+
+    pub fn is_finished(&self) -> bool {
+        self.stats.rounds >= self.target
+    }
+
+    pub fn step(&mut self, data: &GameData) -> Option<TierProfile> {
+        for _ in 0..TIER_BUYS_PER_STEP {
+            if self.is_finished() {
+                break;
+            }
+            self.buy(data);
+        }
+        self.is_finished().then(|| self.finish())
+    }
+
+    /// One purchase, played out to the end.
+    fn buy(&mut self, data: &GameData) {
+        self.session.balance = SCRATCH_BANKROLL;
+        self.session.celebrations.clear();
+
+        let before = self.session.balance;
+        let Ok(purchase) = self.session.buy_feature(self.tier, data) else {
+            // Nothing should refuse a topped-up scratch session, but ending the
+            // measurement beats spinning on a menu that cannot be bought.
+            self.stats.rounds = self.target;
+            return;
+        };
+
+        while self.session.in_free_spins() {
+            if self.session.spin(data).is_err() {
+                break;
+            }
+        }
+        self.session.auto_play_bonus(data);
+        self.session.auto_play_holdspin(data);
+
+        let returned = self.session.balance - (before - purchase.price);
+        if returned < purchase.price {
+            self.below_cost += 1;
+        }
+        self.stats.record(returned, purchase.price);
+        self.best = self
+            .best
+            .max(returned as f64 / purchase.price.max(1) as f64);
+    }
+
+    fn finish(&self) -> TierProfile {
+        let buys = self.stats.rounds.max(1);
+        TierProfile {
+            rtp: self.stats.mean_return(),
+            below_cost: self.below_cost as f64 / buys as f64,
+            bands: self.stats.band_shares(),
+            best: self.best,
+            buys: self.stats.rounds,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tier_tests {
+    use super::*;
+    use crate::data::MACHINES;
+
+    fn profile(data: &GameData, tier: usize) -> TierProfile {
+        let mut profiler = TierProfiler::new(data, tier);
+        for _ in 0..10_000 {
+            if let Some(profile) = profiler.step(data) {
+                return profile;
+            }
+        }
+        panic!("the tier profiler never finished");
+    }
+
+    #[test]
+    fn every_tier_on_every_cabinet_profiles_near_its_price() {
+        // The tier profiler and `simulate_buys` are two loops over the same
+        // purchase. Both must land on the machine's target, because that is
+        // what the price was chosen to make true (§5.13).
+        for machine in MACHINES {
+            let data = GameData::load_machine(machine).unwrap();
+            let target = data.featurebuy.target_rtp_permille as f64 / 1000.0;
+
+            for (tier, def) in data.featurebuy.tiers.iter().enumerate() {
+                let profile = profile(&data, tier);
+                assert_eq!(profile.buys, TIER_ROUNDS);
+                assert!(
+                    (profile.rtp - target).abs() < 0.30,
+                    "{}/{} profiled at {:.3} against {:.3}",
+                    machine.id,
+                    def.id,
+                    profile.rtp,
+                    target
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn a_fairly_priced_buy_still_loses_most_of_the_time() {
+        // The point of the whole section. A tier priced at its expected value
+        // hands back less than it cost on most purchases, because a few large
+        // returns carry the average. If this ever came out near zero the
+        // headline figure would be worthless and something would be wrong with
+        // either the pricing or the measurement.
+        let data = GameData::load().unwrap();
+        for (tier, def) in data.featurebuy.tiers.iter().enumerate() {
+            let profile = profile(&data, tier);
+            assert!(
+                (0.2..0.95).contains(&profile.below_cost),
+                "{} comes back under the price {:.3} of the time",
+                def.id,
+                profile.below_cost
+            );
+        }
+    }
+
+    #[test]
+    fn the_bands_account_for_every_buy() {
+        let data = GameData::load().unwrap();
+        let profile = profile(&data, 0);
+        assert!((profile.bands.iter().sum::<f64>() - 1.0).abs() < 1e-9);
+        assert!(profile.best > 0.0);
+    }
+
+    #[test]
+    fn each_tier_is_measured_on_its_own_stream() {
+        // Sharing one seed across three tiers would make them three views of the
+        // same run of luck, and the comparison between them meaningless.
+        let data = GameData::load().unwrap();
+        let first = profile(&data, 0);
+        let second = profile(&data, 1);
+        assert_ne!(first.bands, second.bands);
+    }
+
+    #[test]
+    fn profiling_a_tier_does_not_touch_the_players_session() {
+        // Same rule as the machine profiler: opening the buy menu must not
+        // consume a draw the player's next spin was going to use.
+        let data = GameData::load().unwrap();
+        let mut untouched = GameSession::new(&data, 7_777);
+        let mut watched = GameSession::new(&data, 7_777);
+
+        let mut profiler = TierProfiler::new(&data, 0);
+        for _ in 0..3 {
+            profiler.step(&data);
+        }
+
+        for _ in 0..40 {
+            untouched.balance = 1_000_000;
+            watched.balance = 1_000_000;
+            untouched.celebrations.clear();
+            watched.celebrations.clear();
+            let a = untouched.spin(&data).unwrap();
+            let b = watched.spin(&data).unwrap();
+            assert_eq!(a.result.grid, b.result.grid);
+        }
+        assert_eq!(untouched.balance, watched.balance);
     }
 }

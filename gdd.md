@@ -1022,6 +1022,44 @@ the price test measured it and printed the answer.
 
 `data.rs` reached 848 lines and its feature configs moved to `data/features.rs`.
 
+### 5.22 Profiling the buy menu (post-v1)
+
+§5.13 closed with an admission: "the price tells a player what a feature costs
+but nothing about what to expect for it." §5.17 then built the machinery to fix
+that and pointed it at the cabinets instead. This points it at the tiers.
+
+**Each tier is measured the same way a machine is** — bought four thousand times
+on a scratch session and played out to the end — and shows the same band bar. But
+the headline is a statistic the machine profile has no use for and no real
+cabinet displays:
+
+> **71% of buys come back under the price.**
+
+That is the number a purchase actually turns on. All three of Dragon's Hoard's
+tiers are priced at exactly their expected value (§5.13), return the machine's
+RTP, and *still* hand back less than they cost about seven times in ten. Nothing
+is wrong: it is simply what "fair" means for a bet with a long tail. A few large
+returns carry the average while the median sits well below the price.
+
+A test pins it — `a_fairly_priced_buy_still_loses_most_of_the_time` asserts every
+tier lands between 20% and 95%. If it ever came out near zero the headline would
+be worthless and something would be wrong with either the pricing or the
+measurement.
+
+| Dragon's Hoard | price | under the price | best seen |
+|---|---|---|---|
+| Free Spins | 54× | **71%** | 15× |
+| Super Free Spins | 108× | 69% | 11× |
+| The Dragon's Wrath | 31× | 67% | 10× |
+
+**Tiers profile on their own slot**, not queued behind the machine profiler: the
+two are looked at on different screens, and sharing one would leave a panel blank
+for no reason. Each tier gets its own seed, or three tiers on one cabinet would
+be three views of the same run of luck.
+
+The same rule as §5.17 applies and is tested: profiling must not consume a draw
+the player's next spin was going to use.
+
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
 - Winning lines: pulse highlight (`blink`/`pulse`), floating win amounts
@@ -1389,6 +1427,12 @@ and a Project Roost deployment record. Verified live — see §15.
   in hit frequency (a reskin fails), must not share a save slot (sharing one
   would silently overwrite a balance and hoard), must not share a symbol set,
   and an unknown machine id falls back to the first rather than failing.
+- **Buy-tier profiles (`state/profile.rs`):** every tier on every cabinet
+  profiles near its price, since the tier profiler and `simulate_buys` are two
+  loops over the same purchase; **a fairly priced buy still loses most of the
+  time**, which is the figure the panel exists to show; the bands account for
+  every buy; each tier is measured on its own stream; and profiling a tier does
+  not touch the player's session.
 - **Refining free spins (`state/tests/refine.rs`):** the burn deepens one symbol
   per free spin and stops at the length of the order; **a refined strip really
   loses the symbol**, or the feature would be N ordinary spins with a longer
@@ -1603,23 +1647,23 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus sixteen post-v1 systems
+## 15. Current State — v1 shipped, plus seventeen post-v1 systems
 
-**All five phases are done, every item in §14 is met**, and sixteen systems have
+**All five phases are done, every item in §14 is met**, and seventeen systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
 machines (§5.8), achievements (§5.9), the Vault Pick (§5.10), the reel-feel pass
 (§5.11), the Dragon's Wrath (§5.12), the Feature Buy (§5.13), ways-to-win
 (§5.14), cascading reels (§5.15), the Dragon's Gamble (§5.16), live machine
 profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
-shifting reels (§5.20) and refining free spins (§5.21). The game is
+shifting reels (§5.20), refining free spins (§5.21) and buy-tier profiles
+(§5.22). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-285 tests pass here and 148 in `macroquad-toolkit`; `cargo fmt --check`,
+290 tests pass here and 148 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
-release build are clean. Every `.rs` file is under the 800-line limit; `data.rs`
-reached 848 adding refining and its feature configs were split into
-`data/features.rs`, leaving it (741) and `ui/reels.rs` (738) the largest.
+release build are clean. Every `.rs` file is under the 800-line limit, `data.rs`
+(741) and `ui/reels.rs` (738) the largest.
 
 Measured RTP over 1,000,000 spins: Dragon's Hoard **0.9612** at **0.411** hit
 frequency, Frost Wyrm **0.9491** at **0.259**, Emberfall **0.9596** at **0.622**
@@ -1694,9 +1738,8 @@ accruing. That closes the gap this section previously listed.
 - The cascade multiplier badge overlaps the top-right symbol. It is transient
   and only appears above ×1, but a real cabinet would find it somewhere of its
   own rather than over a cell.
-- The buy menu is still a plain list. §5.17 built the machinery to fix it —
-  a tier could be profiled the same way a cabinet is — and did not wire it up.
-- The buy menu is a plain list. A real cabinet would show each feature's
+- The reel-feel work in `state/spin.rs` is the last thing left worth promoting
+  into `macroquad-toolkit`, now that the synthesis has gone (§5.19). A real cabinet would show each feature's
   volatility or a sample of what it pays; the price alone tells a player what it
   costs but not what to expect for it.
 - **Listen to the effects.** The waveform panel closed the part of this that is

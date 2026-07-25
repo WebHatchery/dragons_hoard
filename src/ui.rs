@@ -154,7 +154,7 @@ pub fn draw_game_ui(ctx: UiContext<'_>) -> Vec<UiAction> {
     }
 
     if ctx.show_featurebuy {
-        featurebuy::draw(ctx.data, ctx.session, mouse, &mut actions);
+        featurebuy::draw(ctx.data, ctx.session, ctx.profiles, mouse, &mut actions);
     }
 
     // The bonus board sits over the game but under a card, so the Hatch card
