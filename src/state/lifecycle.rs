@@ -42,6 +42,7 @@ impl GameSession {
             &pending.result.stops,
             self.preferences.time_scale(),
             &anticipating,
+            &spin::reel_feel(),
         ));
         self.pending = Some(pending);
         Ok(())

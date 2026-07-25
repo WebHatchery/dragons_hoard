@@ -267,7 +267,7 @@ impl Game {
             }
 
             let anticipates = self.session.phase.spinner().is_some_and(|spinner| {
-                (0..self.data.config.reel_count).any(|r| spinner.is_anticipating(r))
+                (0..self.data.config.reel_count).any(|r| spinner.is_held(r))
             });
 
             if anticipates {
@@ -282,9 +282,9 @@ impl Game {
                         .filter(|reel| spinner.is_moving(*reel))
                         .collect();
                     if !moving.is_empty()
-                        && moving.iter().all(|reel| {
-                            self.session.phase.spinner().unwrap().is_anticipating(*reel)
-                        })
+                        && moving
+                            .iter()
+                            .all(|reel| self.session.phase.spinner().unwrap().is_held(*reel))
                     {
                         return;
                     }

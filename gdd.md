@@ -1060,6 +1060,44 @@ be three views of the same run of luck.
 The same rule as §5.17 applies and is tested: profiling must not consume a draw
 the player's next spin was going to use.
 
+### 5.23 Reel motion promoted to the toolkit (post-v1)
+
+The last item on §15's list. §5.11 built motion blur, a landing bounce and
+anticipation; §5.19 noted that none of it is specific to a slot machine and any
+game with a spinning or scrolling strip would want it. It is now
+`macroquad_toolkit::strip`.
+
+`state/spin.rs` went from **615 lines to 298**. What moved is the mechanism —
+`StripAnimation`, `StripSpinner`, the blur offsets. What stayed is the judgement:
+
+- **The tuning**, as a `StripFeel` this cabinet returns. How long a reel should
+  turn for is a decision about *this* game, and the toolkit ships defaults rather
+  than opinions.
+- **The anticipation trigger.** `anticipating_reels` asks whether the scatters
+  still showing could complete a free-spins award, which is slot logic. The
+  toolkit knows only that a strip can be *held* and turns for longer when it is.
+
+**The invariant travelled with the code.** The module documents why travel must
+be a whole number of revolutions, and names the bug: `2.0 + index * 0.5` shipped
+for five iterations, landing strips 2 and 4 exactly half a strip from their stop.
+`StripAnimation::travel_symbols` is public so a caller can assert it directly,
+and the toolkit's own test sweeps six indices rather than one.
+
+Two tests were added that this game never had. `no_time_scale_drops_a_stop`
+sweeps four time scales asserting no strip is lost to a compressed duration — the
+game tested one scale. And `blur_offsets_straddle_the_position_and_sum_to_nothing`
+pins the smear symmetrical, which had only ever been inline arithmetic.
+
+**Proof the move changed nothing:** all five cabinets measure exactly the RTP
+they did before — 0.9612, 0.9491, 0.9596, 0.9552, 0.9429, unmoved to four
+decimal places. The animation touches no outcome, and now there is a
+million-spin run per machine saying so across a crate boundary.
+
+The game keeps a test of its own for the part the toolkit cannot know:
+`this_cabinets_feel_still_lands_every_reel_on_its_stop`, because a `base_time` or
+`revolutions` edit here is exactly the sort of change that could break the
+landing without the toolkit noticing.
+
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
 - Winning lines: pulse highlight (`blink`/`pulse`), floating win amounts
@@ -1427,6 +1465,13 @@ and a Project Roost deployment record. Verified live — see §15.
   in hit frequency (a reskin fails), must not share a save slot (sharing one
   would silently overwrite a balance and hoard), must not share a symbol set,
   and an unknown machine id falls back to the first rather than failing.
+- **Strip motion (`macroquad-toolkit/src/strip.rs`):** a strip lands exactly on
+  its target from every index and from a ragged frame rate; **every strip travels
+  a whole number of revolutions**; the bounce never changes where it stops; a
+  strip that does not move still turns a full revolution; a held strip takes
+  longer and still lands right; strips report stopping once each in order;
+  **no time scale drops a stop**; speed falls to nothing as a strip settles; and
+  the blur offsets straddle the position and sum to nothing.
 - **Buy-tier profiles (`state/profile.rs`):** every tier on every cabinet
   profiles near its price, since the tier profiler and `simulate_buys` are two
   loops over the same purchase; **a fairly priced buy still loses most of the
@@ -1647,23 +1692,24 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus seventeen post-v1 systems
+## 15. Current State — v1 shipped, plus eighteen post-v1 systems
 
-**All five phases are done, every item in §14 is met**, and seventeen systems have
+**All five phases are done, every item in §14 is met**, and eighteen systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
 machines (§5.8), achievements (§5.9), the Vault Pick (§5.10), the reel-feel pass
 (§5.11), the Dragon's Wrath (§5.12), the Feature Buy (§5.13), ways-to-win
 (§5.14), cascading reels (§5.15), the Dragon's Gamble (§5.16), live machine
 profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
-shifting reels (§5.20), refining free spins (§5.21) and buy-tier profiles
-(§5.22). The game is
+shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
+and the reel-motion promotion (§5.23). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-290 tests pass here and 148 in `macroquad-toolkit`; `cargo fmt --check`,
+282 tests pass here and 158 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
 release build are clean. Every `.rs` file is under the 800-line limit, `data.rs`
-(741) and `ui/reels.rs` (738) the largest.
+(741) and `ui/reels.rs` (738) the largest — `state/spin.rs` dropped from 615 to
+298 when its motion moved to the toolkit.
 
 Measured RTP over 1,000,000 spins: Dragon's Hoard **0.9612** at **0.411** hit
 frequency, Frost Wyrm **0.9491** at **0.259**, Emberfall **0.9596** at **0.622**
@@ -1738,8 +1784,9 @@ accruing. That closes the gap this section previously listed.
 - The cascade multiplier badge overlaps the top-right symbol. It is transient
   and only appears above ×1, but a real cabinet would find it somewhere of its
   own rather than over a cell.
-- The reel-feel work in `state/spin.rs` is the last thing left worth promoting
-  into `macroquad-toolkit`, now that the synthesis has gone (§5.19). A real cabinet would show each feature's
+- Nothing is left on the promotion list. `audio.rs` went in §5.19 and the reel
+  motion in §5.23; what remains in this project is either this game's tuning or
+  this game's rules. A real cabinet would show each feature's
   volatility or a sample of what it pays; the price alone tells a player what it
   costs but not what to expect for it.
 - **Listen to the effects.** The waveform panel closed the part of this that is

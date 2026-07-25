@@ -10,6 +10,7 @@ use crate::engine::evaluate::WinSource;
 use crate::state::{jackpot, GameSession};
 use crate::ui::{palette, symbols};
 use macroquad::prelude::*;
+use macroquad_toolkit::strip::blur_offsets;
 use macroquad_toolkit::ui::{
     draw_surface, draw_text_centered_in_box_ex, draw_ui_text_ex, RectExt, SurfaceStyle, TextStyle,
 };
@@ -328,7 +329,7 @@ fn draw_spinning_reel(
     let rows = session.display_grid().rows_on(reel).max(1);
     let spinner = session.phase.spinner();
     let blurred = spinner.is_some_and(|spinner| spinner.is_blurred(reel));
-    let anticipating = spinner.is_some_and(|spinner| spinner.is_anticipating(reel));
+    let anticipating = spinner.is_some_and(|spinner| spinner.is_held(reel));
 
     if anticipating {
         draw_anticipation_frame(data, reel, shake, bounds);
@@ -364,14 +365,9 @@ fn draw_spinning_reel(
         },
     );
 
-    for pass in 0..passes {
-        // Spread the passes either side of the reel's current position, so the
-        // streak covers the ground it crossed this frame.
-        let lag = if passes == 1 {
-            0.0
-        } else {
-            smear * (pass as f32 / (passes - 1) as f32 - 0.5)
-        };
+    // Spread either side of the reel's current position, so the streak covers
+    // the ground it crossed this frame.
+    for lag in blur_offsets(smear, passes) {
         draw_strip_pass(
             data,
             reel,
