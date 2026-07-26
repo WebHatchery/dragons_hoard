@@ -148,6 +148,13 @@ impl Game {
                 self.notifications
                     .info(format!("Free spins set to {} of them", spins));
             }
+            ActionOutcome::SessionOverDismissed => {
+                // Put the account away without pretending the cap has lifted:
+                // the reels stay stopped and the summary is one press away
+                // again (§5.68).
+                self.session_over_dismissed = true;
+                self.sound.play(Sfx::Click);
+            }
             ActionOutcome::LinesToggled => {
                 self.show_lines = !self.show_lines;
                 self.sound.play(Sfx::Click);
@@ -264,6 +271,8 @@ impl Game {
                 // is cleared, and any loosening the player filed lands (§5.30).
                 self.limits.new_session();
                 self.reality_check = false;
+                // A new session has nothing to close (§5.68).
+                self.session_over_dismissed = false;
                 self.history.clear();
                 let preferences = self.session.preferences.clone();
                 self.session = GameSession::new(&self.data, random_u64());

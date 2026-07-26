@@ -3227,6 +3227,57 @@ lists go stale. What it does have is the property that matters: **the default is
 writes down which kind of thing it is. Getting out of it takes a sentence, in a
 place a reader will see.
 
+### 5.68 That is the session (post-v1)
+
+§5.30 lets a player cap their losses, their time or their spins, and the caps
+work — play stops the moment one binds. What happened *then* was that the SPIN
+button went grey and a notification said:
+
+> You have reached your 5,000 credit loss limit. Start a new game to play on.
+
+That was all of it. A toast, gone in a few seconds, telling someone who had just
+hit a limit **they set for themselves** how to get around it. The single moment
+where this game most owes a player a clear account of what happened, and it was a
+line of disappearing text with a workaround in it.
+
+So there is a screen now, and it is an account rather than a funnel:
+
+```
+That is the session
+You set a 20-minute limit on this session, and it is up.
+
+Played for                                          25 minutes
+Spins                                                       91
+Staked                                                  18,200
+Came back                                               10,449
+Net                                                     -7,751
+Best single win                                          1,240
+
+One session is far too little play to say anything about the cabinet.
+```
+
+**Every part of that is a decision.** The cap is stated first and in the player's
+own terms — *you set this* — because they did, and they are owed the reason
+before they are shown anything else. The figures come from the same
+`SessionClock` the cap was measured against, so the summary cannot be a second
+opinion about the thing that just stopped play. The caveat about sample size is
+the one the Ledger makes at length (§5.18), said once here rather than dropped.
+
+And "New session" is second, smaller, and on the other side of the panel. It
+exists because the caps are the player's own and §5.30's asymmetry already
+governs what happens to them — a loosened cap waits for the next session, a
+tightened one binds at once — but a screen that led with it would be selling the
+next session instead of closing this one.
+
+Closing it puts the account away without pretending the cap has lifted: the reels
+stay stopped, because the cap is what stopped them.
+
+**Registering it cost one line and bought the whole audit.** `Screen::SessionOver`
+joined the registry (§5.50) and the eighteenth screen was swept at three text
+sizes, six themes, three widths and a 40% translation without the harness being
+touched — it asks the game for its screen list (§5.53) rather than keeping one.
+That is the second time in nine sections that adding a screen has been free.
+
 
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
@@ -3831,6 +3882,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
+| A session that ends with a toast | A cap that binds now closes with an account of the session — staked, returned, net, best moment (§5.68). The old answer was a greyed button and a notification suggesting a new game. |
 | A setting validated against the wrong topic | The coverage table is keyed by block *and* name (§5.67). Keyed by name alone, `featurebuy.tiers` was checked against the jackpot topic and passed by coincidence. |
 | A mechanic the game never mentions | Every free-spin setting must be declared a mechanic with a topic or excused as tuning in writing (§5.66). The rules validator could not see a mechanic nobody added a topic for, and §5.64 shipped one. |
 | A fair choice the player has to take on trust | Both free-spin shapes are measured over two thousand runs and the distribution is shown on the button (§5.65). Same mean, 0% blank against 7%, 840x against 1,927x. |
@@ -3903,7 +3955,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus sixty-two post-v1 systems
+## 15. Current State — v1 shipped, plus sixty-three post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
@@ -3914,11 +3966,11 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) a motion audit (§5.52) an answer for running out (§5.53) a size limit that is actually enforced (§5.54) one bankroll across six cabinets (§5.55) a web save that belongs to this game alone (§5.56) a floor-wide Grand (§5.57) a game that reads its own save (§5.58) a payline you can actually see (§5.59) a page of all twenty (§5.60) a badge that is off the reels (§5.61) a published build that is checked (§5.62) two more modules promoted (§5.63) a free-spin run you choose the shape of (§5.64) the measured feel of each (§5.65) a rules gate that fails closed (§5.66) and every feature setting declared (§5.67). The game is
+navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) a motion audit (§5.52) an answer for running out (§5.53) a size limit that is actually enforced (§5.54) one bankroll across six cabinets (§5.55) a web save that belongs to this game alone (§5.56) a floor-wide Grand (§5.57) a game that reads its own save (§5.58) a payline you can actually see (§5.59) a page of all twenty (§5.60) a badge that is off the reels (§5.61) a published build that is checked (§5.62) two more modules promoted (§5.63) a free-spin run you choose the shape of (§5.64) the measured feel of each (§5.65) a rules gate that fails closed (§5.66) every feature setting declared (§5.67) and a session that closes properly (§5.68). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-513 tests pass here and 322 in `macroquad-toolkit`; `cargo fmt --check`,
+516 tests pass here and 322 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
 release build are clean. Every `.rs` file is under the 800-line limit and a gate now says so
 (§5.54); `game.rs` (740) and `ui/reels.rs` (689) are the largest. `data.rs` went

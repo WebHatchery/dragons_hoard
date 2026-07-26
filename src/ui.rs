@@ -22,6 +22,7 @@ pub mod reality;
 pub mod reels;
 pub mod ruin;
 pub mod rules;
+pub mod sessionover;
 pub mod settings;
 pub mod shortcuts;
 pub mod symbols;
@@ -122,6 +123,8 @@ pub enum UiAction {
     ToggleLedger,
     /// The payline diagrams (§5.60).
     ToggleLines,
+    /// Put the closing summary away (§5.68).
+    DismissSessionOver,
     /// Run the free spins the chosen way (§5.64).
     ChooseFreeSpinShape(usize),
     /// Open or close the rules panel (§5.29).
@@ -185,6 +188,7 @@ pub struct UiContext<'a> {
     pub ledger: &'a crate::state::ledger::Ledger,
     pub show_ledger: bool,
     pub show_lines: bool,
+    pub session_over_dismissed: bool,
     pub show_rules: bool,
     pub limits: &'a crate::state::limits::LimitState,
     pub limit_choices: &'a crate::state::limits::LimitChoices,
@@ -317,6 +321,21 @@ pub fn draw_game_ui(ctx: UiContext<'_>, nav: &mut Nav) -> Vec<UiAction> {
             &mut actions,
             nav,
         );
+    }
+
+    // Over everything except the ruin panel: a cap the player set has stopped
+    // play and the account of it is the last word (§5.68).
+    if let Some(breach) = ctx.limits.breach() {
+        if !ctx.session_over_dismissed {
+            sessionover::draw(
+                breach,
+                &ctx.limits.clock,
+                ctx.session,
+                pointer,
+                &mut actions,
+                nav,
+            );
+        }
     }
 
     // Last of the overlays and over all of them: a player who cannot spin needs

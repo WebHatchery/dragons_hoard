@@ -47,6 +47,9 @@ pub struct Game {
     show_ledger: bool,
     /// The payline diagrams (§5.60).
     show_lines: bool,
+    /// Whether the closing summary has been put away (§5.68). Reset by a new
+    /// session, because a new session has nothing to close.
+    session_over_dismissed: bool,
     /// The rules panel (§5.29).
     show_rules: bool,
     /// Session limits and the clock behind them (§5.30).
@@ -198,6 +201,7 @@ impl Game {
             show_featurebuy: false,
             show_ledger: false,
             show_lines: false,
+            session_over_dismissed: false,
             show_rules: false,
             limits,
             limit_choices,
@@ -340,6 +344,7 @@ impl Game {
                 ledger: &self.ledger,
                 show_ledger: self.show_ledger,
                 show_lines: self.show_lines,
+                session_over_dismissed: self.session_over_dismissed,
                 show_rules: self.show_rules,
                 limits: &self.limits,
                 limit_choices: &self.limit_choices,

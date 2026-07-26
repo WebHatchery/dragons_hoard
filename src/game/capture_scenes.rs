@@ -200,6 +200,29 @@ impl Game {
                 }
                 std::process::exit(0);
             }
+            // A session a cap has ended (§5.68), with a played clock behind
+            // it — a summary of nothing would photograph the layout and none of
+            // the point.
+            "sessionover" => {
+                for _ in 0..90 {
+                    self.session.balance = 1_000_000;
+                    self.session.celebrations.clear();
+                    let staked = self.session.total_bet(&self.data);
+                    let round = match self.session.spin(&self.data) {
+                        Ok(round) => round,
+                        Err(_) => break,
+                    };
+                    self.limits.clock.record(
+                        staked,
+                        round.spin_credits + round.hatch_credits + round.wrath_credits,
+                    );
+                }
+                self.limits.clock.elapsed = 25.0 * 60.0;
+                let _ = self
+                    .limits
+                    .request(crate::state::limits::Cap::Time, Some(20));
+                let _ = self.limits.evaluate();
+            }
             "ruin" => {
                 // Set rather than played into: the pot a random session happens
                 // to reach is whatever it is, and this capture is about how the

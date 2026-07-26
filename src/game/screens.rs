@@ -58,6 +58,8 @@ pub enum Screen {
     /// The Dragon's Wrath respin round (§5.12). Advances itself on a beat, but
     /// the reels do not turn while it runs.
     Holdspin,
+    /// A cap the player set has ended the session (§5.68).
+    SessionOver,
     /// Out of credits (§5.53). Dealt by the balance rather than opened, and it
     /// holds the game in the strongest sense there is — the reels cannot turn
     /// until it is answered.
@@ -65,7 +67,7 @@ pub enum Screen {
 }
 
 impl Screen {
-    pub const ALL: [Screen; 17] = [
+    pub const ALL: [Screen; 18] = [
         Screen::Paytable,
         Screen::Rules,
         Screen::Limits,
@@ -83,6 +85,7 @@ impl Screen {
         Screen::Gamble,
         Screen::Holdspin,
         Screen::Ruin,
+        Screen::SessionOver,
     ];
 
     /// What the capture harness calls it.
@@ -105,6 +108,7 @@ impl Screen {
             Screen::Gamble => "gamble",
             Screen::Holdspin => "wrath",
             Screen::Ruin => "ruin",
+            Screen::SessionOver => "sessionover",
         }
     }
 
@@ -116,7 +120,7 @@ impl Screen {
     pub fn reachable_by_flag(self) -> bool {
         !matches!(
             self,
-            Screen::Bonus | Screen::Gamble | Screen::Holdspin | Screen::Ruin
+            Screen::Bonus | Screen::Gamble | Screen::Holdspin | Screen::Ruin | Screen::SessionOver
         )
     }
 }
@@ -142,6 +146,7 @@ impl Game {
             Screen::Gamble => self.session.gamble.is_some(),
             Screen::Holdspin => self.session.holdspin.is_some(),
             Screen::Ruin => self.session.is_ruined(&self.data),
+            Screen::SessionOver => self.limits.breach().is_some() && !self.session_over_dismissed,
         }
     }
 
@@ -171,7 +176,11 @@ impl Game {
             Screen::Vision => &mut self.show_vision,
             // Excluded by the gate above; the predicate is the one place that
             // decides, and the compiler holds this arm to it.
-            Screen::Bonus | Screen::Gamble | Screen::Holdspin | Screen::Ruin => unreachable!(),
+            Screen::Bonus
+            | Screen::Gamble
+            | Screen::Holdspin
+            | Screen::Ruin
+            | Screen::SessionOver => unreachable!(),
         })
     }
 
@@ -227,6 +236,9 @@ mod tests {
             .filter(|s| !s.reachable_by_flag())
             .map(|s| s.id())
             .collect();
-        assert_eq!(dealt, vec!["bonus", "gamble", "wrath", "ruin"]);
+        assert_eq!(
+            dealt,
+            vec!["bonus", "gamble", "wrath", "ruin", "sessionover"]
+        );
     }
 }
