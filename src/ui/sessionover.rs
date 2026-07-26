@@ -112,6 +112,20 @@ pub fn draw(
         TextStyle::new(14.0, palette::text_dim()),
     );
 
+    // The way to the log (§5.70). Beside the account rather than inside it: this
+    // session is one row of a longer story, and a player is more likely to want
+    // the story here than anywhere else in the game.
+    if virtual_button(
+        Rect::new(panel.center().x - 100.0, panel.bottom() - 58.0, 200.0, 34.0),
+        "Sessions before this",
+        true,
+        ButtonTone::Secondary,
+        pointer,
+        nav,
+    ) {
+        actions.push(UiAction::ToggleSessions);
+    }
+
     if virtual_button(
         Rect::new(panel.x + 20.0, panel.bottom() - 58.0, 200.0, 34.0),
         "Close",

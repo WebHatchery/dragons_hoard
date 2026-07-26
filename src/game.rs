@@ -47,6 +47,9 @@ pub struct Game {
     show_ledger: bool,
     /// The payline diagrams (§5.60).
     show_lines: bool,
+    show_sessions: bool,
+    /// Sessions already played (§5.70).
+    sessions: crate::state::sessions::SessionLog,
     /// Whether the closing summary has been put away (§5.68). Reset by a new
     /// session, because a new session has nothing to close.
     session_over_dismissed: bool,
@@ -201,6 +204,8 @@ impl Game {
             show_featurebuy: false,
             show_ledger: false,
             show_lines: false,
+            show_sessions: false,
+            sessions: crate::state::sessions::SessionLog::default(),
             session_over_dismissed: false,
             show_rules: false,
             limits,
@@ -231,6 +236,8 @@ impl Game {
         // session is built, because a fresh session invents a starting stack and
         // the wallet is what actually decides.
         game.restore_wallet();
+        // Sessions already played (§5.70).
+        game.sessions = crate::state::sessions::SessionLog::load(&game.data.config);
         game
     }
 
@@ -344,6 +351,8 @@ impl Game {
                 ledger: &self.ledger,
                 show_ledger: self.show_ledger,
                 show_lines: self.show_lines,
+                show_sessions: self.show_sessions,
+                sessions: &self.sessions,
                 session_over_dismissed: self.session_over_dismissed,
                 show_rules: self.show_rules,
                 limits: &self.limits,

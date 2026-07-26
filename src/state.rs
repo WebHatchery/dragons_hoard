@@ -23,6 +23,7 @@ pub mod profile;
 pub mod ruin;
 pub mod rules;
 pub mod save;
+pub mod sessions;
 pub mod spin;
 pub mod wallet;
 

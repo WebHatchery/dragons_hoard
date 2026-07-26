@@ -23,6 +23,7 @@ pub mod reels;
 pub mod ruin;
 pub mod rules;
 pub mod sessionover;
+pub mod sessions;
 pub mod settings;
 pub mod shortcuts;
 pub mod symbols;
@@ -123,6 +124,8 @@ pub enum UiAction {
     ToggleLedger,
     /// The payline diagrams (§5.60).
     ToggleLines,
+    /// The log of sessions played (§5.70).
+    ToggleSessions,
     /// Put the closing summary away (§5.68).
     DismissSessionOver,
     /// Run the free spins the chosen way (§5.64).
@@ -185,9 +188,11 @@ pub struct UiContext<'a> {
     pub show_achievements: bool,
     pub show_featurebuy: bool,
     pub profiles: &'a crate::state::profile::ProfileBook,
+    pub sessions: &'a crate::state::sessions::SessionLog,
     pub ledger: &'a crate::state::ledger::Ledger,
     pub show_ledger: bool,
     pub show_lines: bool,
+    pub show_sessions: bool,
     pub session_over_dismissed: bool,
     pub show_rules: bool,
     pub limits: &'a crate::state::limits::LimitState,
@@ -282,6 +287,10 @@ pub fn draw_game_ui(ctx: UiContext<'_>, nav: &mut Nav) -> Vec<UiAction> {
 
     if ctx.show_lines {
         lines::draw(ctx.data, pointer, &mut actions, nav);
+    }
+
+    if ctx.show_sessions {
+        sessions::draw(ctx.sessions, pointer, &mut actions, nav);
     }
 
     if ctx.show_ledger {

@@ -49,6 +49,8 @@ pub enum Screen {
     Ledger,
     /// The payline diagrams (§5.60).
     Lines,
+    /// The log of sessions played (§5.70).
+    Sessions,
     Waveforms,
     Vision,
     /// The Vault Pick board (§5.10). Waits on the player, so it holds the reels.
@@ -67,7 +69,7 @@ pub enum Screen {
 }
 
 impl Screen {
-    pub const ALL: [Screen; 18] = [
+    pub const ALL: [Screen; 19] = [
         Screen::Paytable,
         Screen::Rules,
         Screen::Limits,
@@ -79,6 +81,7 @@ impl Screen {
         Screen::FeatureBuy,
         Screen::Ledger,
         Screen::Lines,
+        Screen::Sessions,
         Screen::Waveforms,
         Screen::Vision,
         Screen::Bonus,
@@ -102,6 +105,7 @@ impl Screen {
             Screen::FeatureBuy => "featurebuy",
             Screen::Ledger => "ledger",
             Screen::Lines => "lines",
+            Screen::Sessions => "sessions",
             Screen::Waveforms => "waveforms",
             Screen::Vision => "vision",
             Screen::Bonus => "bonus",
@@ -140,6 +144,7 @@ impl Game {
             Screen::FeatureBuy => self.show_featurebuy,
             Screen::Ledger => self.show_ledger,
             Screen::Lines => self.show_lines,
+            Screen::Sessions => self.show_sessions,
             Screen::Waveforms => self.show_waveforms,
             Screen::Vision => self.show_vision,
             Screen::Bonus => self.session.bonus.is_some(),
@@ -172,6 +177,7 @@ impl Game {
             Screen::FeatureBuy => &mut self.show_featurebuy,
             Screen::Ledger => &mut self.show_ledger,
             Screen::Lines => &mut self.show_lines,
+            Screen::Sessions => &mut self.show_sessions,
             Screen::Waveforms => &mut self.show_waveforms,
             Screen::Vision => &mut self.show_vision,
             // Excluded by the gate above; the predicate is the one place that

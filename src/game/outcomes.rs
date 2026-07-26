@@ -155,6 +155,10 @@ impl Game {
                 self.session_over_dismissed = true;
                 self.sound.play(Sfx::Click);
             }
+            ActionOutcome::SessionsToggled => {
+                self.show_sessions = !self.show_sessions;
+                self.sound.play(Sfx::Click);
+            }
             ActionOutcome::LinesToggled => {
                 self.show_lines = !self.show_lines;
                 self.sound.play(Sfx::Click);
@@ -267,6 +271,11 @@ impl Game {
     fn apply_session_request(&mut self, request: SessionRequest) {
         match request {
             SessionRequest::NewGame => {
+                // Close the old one into the log before the clock is replaced
+                // (§5.70). This is the only moment the figures still exist —
+                // `new_session` throws them away, which is how every session
+                // before this one was lost.
+                self.close_session();
                 // A new game is a new session: the clock restarts, a bound cap
                 // is cleared, and any loosening the player filed lands (§5.30).
                 self.limits.new_session();

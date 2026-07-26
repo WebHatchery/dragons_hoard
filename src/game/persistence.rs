@@ -148,6 +148,23 @@ impl Game {
         self.session.stats.staked = wallet.staked;
     }
 
+    /// Bank the session that just ended (§5.70).
+    ///
+    /// Called before the clock is replaced, which is the only moment the
+    /// figures still exist. A session too short to be an evening is not
+    /// recorded, so an app opened and closed does not bury the real ones.
+    pub(crate) fn close_session(&mut self) {
+        let kept = self.sessions.record(
+            &self.limits.clock,
+            self.session.stats.biggest_win,
+            self.session.stats.staked,
+            self.limits.breach(),
+        );
+        if kept {
+            let _ = self.sessions.save(&self.data.config);
+        }
+    }
+
     pub(crate) fn refresh_save_state(&mut self) {
         self.save_exists = slot_exists(&self.data.config.game_name, &self.data.save_slot());
     }

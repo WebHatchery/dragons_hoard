@@ -223,6 +223,34 @@ impl Game {
                     .request(crate::state::limits::Cap::Time, Some(20));
                 let _ = self.limits.evaluate();
             }
+            // A log with evenings in it (§5.70). Recorded rather than
+            // invented, so the columns hold figures the game really produces.
+            "sessions" => {
+                for run in 0..6 {
+                    let mut clock = crate::state::limits::SessionClock::default();
+                    for spin in 0..(24 + run * 17) {
+                        self.session.balance = 1_000_000;
+                        self.session.celebrations.clear();
+                        let staked = self.session.total_bet(&self.data);
+                        let Ok(round) = self.session.spin(&self.data) else {
+                            break;
+                        };
+                        clock.record(
+                            staked,
+                            round.spin_credits + round.hatch_credits + round.wrath_credits,
+                        );
+                        let _ = spin;
+                    }
+                    clock.elapsed = 300.0 + run as f32 * 240.0;
+                    self.sessions.record(
+                        &clock,
+                        self.session.stats.biggest_win,
+                        0,
+                        (run % 2 == 0).then_some(crate::state::limits::Breach::Time(20)),
+                    );
+                }
+                self.show_sessions = true;
+            }
             "ruin" => {
                 // Set rather than played into: the pot a random session happens
                 // to reach is whatever it is, and this capture is about how the

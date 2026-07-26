@@ -36,6 +36,7 @@ pub enum ActionOutcome {
     FeatureBuyToggled,
     LedgerToggled,
     LinesToggled,
+    SessionsToggled,
     SessionOverDismissed,
     /// A free-spin run reshaped, and the spins it now holds (§5.64).
     FreeSpinShapeChosen(u32),
@@ -106,6 +107,7 @@ pub fn apply(
         UiAction::ToggleFeatureBuy => ActionOutcome::FeatureBuyToggled,
         UiAction::ToggleLedger => ActionOutcome::LedgerToggled,
         UiAction::ToggleLines => ActionOutcome::LinesToggled,
+        UiAction::ToggleSessions => ActionOutcome::SessionsToggled,
         UiAction::DismissSessionOver => ActionOutcome::SessionOverDismissed,
         UiAction::ChooseFreeSpinShape(index) => match session.choose_free_spin_shape(index, data) {
             Some(spins) => ActionOutcome::FreeSpinShapeChosen(spins),
