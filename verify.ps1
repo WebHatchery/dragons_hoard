@@ -87,13 +87,25 @@ function Cargo {
 function Audit {
     param([string]$Scene, [hashtable]$Vars, [string]$What)
 
+    # Start from a known state. A run that inherits the previous step's knobs
+    # measures a screen nobody asked about, and the findings look like faults on
+    # whatever screen happened to be next (§5.50).
+    foreach ($key in 'DRAGONS_HOARD_THEME', 'DRAGONS_HOARD_TEXT_SCALE', 'DRAGONS_HOARD_PSEUDO',
+                     'DRAGONS_HOARD_WINDOW_WIDTH', 'DRAGONS_HOARD_WINDOW_HEIGHT') {
+        if (-not ($Vars -and $Vars.ContainsKey($key))) {
+            [Environment]::SetEnvironmentVariable($key, $null)
+        }
+    }
+
     $saved = @{}
     foreach ($key in $Vars.Keys) {
         $saved[$key] = [Environment]::GetEnvironmentVariable($key)
         [Environment]::SetEnvironmentVariable($key, $Vars[$key])
     }
     [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_SCENE', $Scene)
-    [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_PATH', (Join-Path $env:TEMP "verify_$Scene.png"))
+    # `audit:<screen>` carries a colon, which Windows will not take in a path.
+    $file = 'verify_' + ($Scene -replace '[^A-Za-z0-9_]', '_') + '.png'
+    [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_PATH', (Join-Path $env:TEMP $file))
     [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_FRAMES', '3')
     $previous = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
@@ -147,6 +159,26 @@ Step 'aspects'    { foreach ($w in '1000', '1280', '1600') { Audit -Scene 'layou
 
 Write-Host ''
 Write-Host 'One screen at a time' -ForegroundColor Cyan
+# Every screen in the registry, measured the same way (§5.50). The list is not
+# repeated here on purpose — `audit:<id>` looks the screen up in `Screen::ALL`
+# and asserts it actually opened, so a screen added to the game and forgotten
+# here fails loudly rather than going unmeasured for twelve iterations.
+$Screens = 'paytable', 'rules', 'limits', 'history', 'reality', 'settings',
+           'machines', 'achievements', 'featurebuy', 'ledger', 'waveforms',
+           'vision', 'bonus', 'gamble', 'wrath'
+Step 'every screen' {
+    foreach ($screen in $Screens) {
+        Audit -Scene "audit:$screen" -What "the $screen screen has a layout, contrast or collision fault"
+    }
+}
+# The one crossed pair in this harness, and it earned the exception: sweeping
+# the screens under a 40% translation found an overlay slicing the cabinet name
+# that was invisible at English widths (§5.50).
+Step 'every screen, translated' {
+    foreach ($screen in $Screens) {
+        Audit -Scene "audit:$screen" -Vars @{ DRAGONS_HOARD_PSEUDO = '1' } -What "the $screen screen breaks under a 40% translation"
+    }
+}
 Step 'collisions and touch targets' {
     foreach ($scene in 'touch_audit', 'touch_audit_settings', 'touch_audit_buy') {
         foreach ($w in '1000', '1280') {

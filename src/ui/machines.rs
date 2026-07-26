@@ -18,6 +18,19 @@ use macroquad_toolkit::ui::{
 };
 
 const ROW_HEIGHT: f32 = 140.0;
+const COLUMNS: usize = 2;
+const COLUMN_GAP: f32 = 20.0;
+/// Wide enough that a half-width row still leaves the blurb room beside the
+/// Play button.
+const PANEL_WIDTH: f32 = 1180.0;
+
+/// How many rows the grid needs for the cabinets that exist.
+///
+/// Read by the layout and by the test that holds the panel inside the screen,
+/// so adding a seventh cabinet changes both together.
+fn panel_rows() -> usize {
+    MACHINES.len().div_ceil(COLUMNS)
+}
 
 pub fn draw(
     data: &GameData,
@@ -34,8 +47,15 @@ pub fn draw(
         Color::new(0.0, 0.0, 0.0, 0.82),
     );
 
-    let height = 120.0 + MACHINES.len() as f32 * ROW_HEIGHT;
-    let panel = frame::centred(720.0, height);
+    // Six cabinets at 140px each wanted a 960px panel inside a 720px frame, so
+    // the panel was clamped, the last two rows were drawn past the bottom edge
+    // and the sixth cabinet could not be chosen at all (§5.50). A single column
+    // cannot hold six rows this tall; the grid is the fix, and `panel_rows`
+    // below is the rule that stops it happening again.
+    let rows = panel_rows();
+    let height = 120.0 + rows as f32 * ROW_HEIGHT;
+    let panel = frame::centred(PANEL_WIDTH, height);
+    let column_w = (panel.w - 40.0 - COLUMN_GAP) / COLUMNS as f32;
     // Everything drawn below is measured against this panel (§5.37).
     let _region = Region::on(panel, palette::stone());
     draw_surface(
@@ -62,11 +82,14 @@ pub fn draw(
         actions.push(UiAction::ToggleMachines);
     }
 
+    // Column-major would put Frost Wyrm below Dragon's Hoard and Emberfall at
+    // the top of the second column; reading order keeps the catalog's order the
+    // order on screen.
     for (index, machine) in MACHINES.iter().enumerate() {
         let row = Rect::new(
-            panel.x + 20.0,
-            panel.y + 62.0 + index as f32 * ROW_HEIGHT,
-            panel.w - 40.0,
+            panel.x + 20.0 + (index % COLUMNS) as f32 * (column_w + COLUMN_GAP),
+            panel.y + 62.0 + (index / COLUMNS) as f32 * ROW_HEIGHT,
+            column_w,
             ROW_HEIGHT - 12.0,
         );
         draw_row(data, profiles, machine, row, pointer, actions, nav);
@@ -126,13 +149,14 @@ fn draw_row(
         TextStyle::new(23.0, palette::gold_bright()).params(),
     );
     // Clipped to leave the Play button alone — the longest blurb ran straight
-    // under it.
+    // under it. At half width (§5.50) it needs two lines rather than one, and
+    // the profile below moves down to make room.
     draw_text_block(
         machine.blurb,
         row.x + 18.0,
-        row.y + 46.0,
+        row.y + 44.0,
         row.w - 220.0,
-        22.0,
+        40.0,
         15.0,
         2.0,
         palette::text(),
@@ -141,7 +165,7 @@ fn draw_row(
     draw_profile(
         profiles,
         machine.id,
-        Rect::new(row.x + 18.0, row.y + 68.0, row.w - 200.0, 56.0),
+        Rect::new(row.x + 18.0, row.y + 86.0, row.w - 36.0, 40.0),
     );
 
     if playing {
@@ -272,4 +296,43 @@ fn draw_measured(profile: &MachineProfile, rect: Rect) {
         bar.bottom() + 14.0,
         TextStyle::new(12.0, palette::text_dim()),
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ui::frame;
+
+    /// The bug this grid exists to stop, stated as a rule rather than a fix.
+    ///
+    /// Six cabinets in one column wanted a 960px panel inside a 720px frame.
+    /// The panel was clamped, the last rows were drawn past the bottom edge and
+    /// the sixth cabinet could not be chosen — a machine present in the catalog
+    /// and unreachable in the picker. Nothing said the picker had to fit.
+    #[test]
+    fn every_cabinet_in_the_catalog_fits_on_the_screen() {
+        let height = 120.0 + panel_rows() as f32 * ROW_HEIGHT;
+        assert!(
+            height <= frame::HEIGHT,
+            "{} cabinets need a {}px picker in a {}px frame — the last row would \
+             be drawn off the bottom and could not be clicked",
+            MACHINES.len(),
+            height,
+            frame::HEIGHT
+        );
+    }
+
+    /// A half-width row still has to hold its parts side by side: the Play
+    /// button is anchored 180px from the right, and the blurb is clipped to
+    /// `row.w - 220` so it stops short of it.
+    #[test]
+    fn a_column_is_wide_enough_for_a_row() {
+        let column_w = (PANEL_WIDTH - 40.0 - COLUMN_GAP) / COLUMNS as f32;
+        assert!(
+            column_w - 220.0 >= 240.0,
+            "a {}px column leaves the blurb only {}px beside the Play button",
+            column_w,
+            column_w - 220.0
+        );
+    }
 }

@@ -4,6 +4,7 @@ mod capture_scenes;
 mod feedback;
 mod outcomes;
 mod persistence;
+mod screens;
 
 use crate::audio::{Sfx, SoundBank};
 use crate::data::GameData;
@@ -147,7 +148,11 @@ impl Game {
         // there being any translation (§5.39). Set here rather than in the
         // audit scene so any capture can be taken under it — the point is as
         // much to *look* at a pseudolocalised panel as to measure one.
-        if std::env::var("DRAGONS_HOARD_PSEUDO").is_ok() {
+        // An *empty* value means off, not on. A harness that clears the knob by
+        // setting it to "" turned the pseudolocale on for every later run, and
+        // the findings that produced looked like faults on innocent screens
+        // (§5.50).
+        if std::env::var("DRAGONS_HOARD_PSEUDO").is_ok_and(|value| !value.is_empty()) {
             macroquad_toolkit::ui::pseudo_enable(macroquad_toolkit::ui::Pseudo::default());
         }
 
@@ -252,17 +257,7 @@ impl Game {
             self.events.push(action);
         }
         if is_key_pressed(KeyCode::Escape) {
-            self.show_settings = false;
-            self.show_paytable = false;
-            self.show_machines = false;
-            self.show_achievements = false;
-            self.show_featurebuy = false;
-            self.show_ledger = false;
-            self.show_rules = false;
-            self.show_limits = false;
-            self.show_history = false;
-            self.show_waveforms = false;
-            self.show_vision = false;
+            self.close_screens();
         }
 
         let actions: Vec<UiAction> = self.events.drain().collect();
@@ -623,20 +618,12 @@ impl Game {
     /// lists every overlay on purpose: one added without a line here is one a
     /// hint would draw over.
     fn any_overlay_open(&self) -> bool {
-        self.show_paytable
-            || self.show_rules
-            || self.show_limits
-            || self.show_history
-            || self.reality_check
-            || self.show_settings
-            || self.show_machines
-            || self.show_achievements
-            || self.show_featurebuy
-            || self.show_ledger
-            || self.show_waveforms
-            || self.show_vision
-            || self.session.bonus.is_some()
-            || self.session.gamble.is_some()
+        // Derived from the registry rather than listed again (§5.50). A state
+        // that holds the game has to appear there, which is what makes it
+        // auditable — the two facts are now the same fact.
+        screens::Screen::ALL
+            .iter()
+            .any(|screen| self.screen_open(*screen))
     }
 
     fn switch_machine(&mut self, index: usize) {

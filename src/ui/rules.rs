@@ -37,7 +37,7 @@ use macroquad_toolkit::ui::{
 
 /// Sized per frame, now that the screen can change shape (§5.46).
 fn panel() -> Rect {
-    frame::centred_at(1040.0, 44.0, 632.0)
+    frame::centred_at(1040.0, frame::BELOW_HEADER, 620.0)
 }
 const COLUMN_GAP: f32 = 28.0;
 const PADDING: f32 = 22.0;

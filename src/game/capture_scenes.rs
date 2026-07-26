@@ -313,6 +313,41 @@ impl Game {
                 macroquad_toolkit::ui::begin_audit();
                 macroquad_toolkit::ui::begin_collision_audit();
             }
+            // One audit scene per screen, named from the registry (§5.50). The
+            // three that are dealt rather than opened reuse the scenes that
+            // already knew how to reach them, which is why they can finally be
+            // audited at all.
+            scene if scene.starts_with("audit:") => {
+                let wanted = &scene["audit:".len()..];
+                let Some(screen) = crate::game::screens::Screen::ALL
+                    .iter()
+                    .find(|s| s.id() == wanted)
+                    .copied()
+                else {
+                    panic!("no screen called '{}'", wanted);
+                };
+                if !self.open_screen(screen) {
+                    // Dealt, not opened: play until the game produces one.
+                    self.begin_capture_scene(screen.id());
+                }
+                // The dispatcher below ends in `_ => {}`, so asking for a scene
+                // that does not exist does nothing at all and the audit then
+                // reports the *base game* as clean. That is not a hypothetical:
+                // it is indistinguishable from the twelve iterations these three
+                // screens spent unaudited. So the registry has to prove it
+                // arrived, not assume it (§5.50).
+                assert!(
+                    self.screen_open(screen),
+                    "audit:{} did not reach the screen — the capture scene named \
+                     '{}' is missing or no longer opens it, and auditing from \
+                     here would measure the wrong screen and pass",
+                    wanted,
+                    screen.id()
+                );
+                macroquad_toolkit::ui::begin_audit();
+                macroquad_toolkit::ui::begin_collision_audit();
+                macroquad_toolkit::ui::begin_target_audit();
+            }
             "rules" => self.show_rules = true,
             "limits" => {
                 // One cap tightened and one loosened, so the panel shows both

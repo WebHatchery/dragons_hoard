@@ -24,7 +24,7 @@ pub fn draw(ctx: &UiContext<'_>, pointer: Pointer, actions: &mut Vec<UiAction>, 
     // Tall enough for four paragraphs of rules under nine symbol rows. The
     // Dragon's Wrath note (§5.12) overflowed the old 580 and spilled onto the
     // footer behind the overlay.
-    let rect = frame::centred_at(920.0, 44.0, 632.0);
+    let rect = frame::centred_at(920.0, frame::BELOW_HEADER, 620.0);
     // Everything drawn below is measured against this panel (§5.37).
     let _region = Region::on(rect, palette::stone());
     draw_surface(

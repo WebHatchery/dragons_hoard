@@ -10,12 +10,15 @@ use crate::ui::{logical_width, palette, symbols, UiAction, LOGICAL_HEIGHT};
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::Pointer;
 use macroquad_toolkit::ui::{
-    draw_surface, draw_text_centered_in_box_ex, draw_ui_text_ex, RectExt, SurfaceStyle, TextStyle,
+    draw_surface, draw_text_centered_in_box_ex, draw_ui_text_ex, RectExt, Region, SurfaceStyle,
+    TextStyle,
 };
 
 const COLUMNS: usize = 4;
 const CELL: f32 = 128.0;
 const GAP: f32 = 14.0;
+/// Opaque on purpose: the board hides the reels rather than tinting them.
+const BOARD: Color = Color::new(0.14, 0.10, 0.04, 1.0);
 
 pub fn draw(
     round: &BonusRound,
@@ -43,9 +46,13 @@ pub fn draw(
         grid_h + 152.0,
     );
 
+    // The board is opaque and covers the reel window, the jackpot ladder and the
+    // win line. Saying so is what lets the audit tell a real collision from the
+    // layer underneath (§5.50) — and is why this screen was never measurable.
+    let _region = Region::on(panel, BOARD);
     draw_surface(
         panel,
-        &SurfaceStyle::new(Color::new(0.14, 0.10, 0.04, 1.0))
+        &SurfaceStyle::new(BOARD)
             .with_border(2.0, palette::gold())
             .with_header(52.0, palette::stone_header())
             .with_header_divider(1.0, palette::gold_dim()),

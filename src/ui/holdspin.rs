@@ -14,10 +14,14 @@ use crate::ui::naming;
 use crate::ui::{logical_width, palette, reels, LOGICAL_HEIGHT};
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::{
-    draw_surface, draw_text_centered_in_box_ex, draw_ui_text_ex, RectExt, SurfaceStyle, TextStyle,
+    draw_surface, draw_text_centered_in_box_ex, draw_ui_text_ex, RectExt, Region, SurfaceStyle,
+    TextStyle,
 };
 
 const CELL_PADDING: f32 = 8.0;
+/// The frozen reel window and its banner. Both opaque — see `draw_banner`.
+const WINDOW: Color = Color::new(0.10, 0.04, 0.01, 1.0);
+const BANNER: Color = Color::new(0.16, 0.06, 0.01, 1.0);
 /// How long a freshly locked coin flashes, in `ui_time` seconds.
 const FLASH: f32 = 0.45;
 
@@ -32,9 +36,13 @@ pub fn draw(data: &GameData, round: &HoldSpinRound, ui_time: f32) {
         LOGICAL_HEIGHT,
         Color::new(0.02, 0.0, 0.0, 0.62),
     );
+    let window = grid.inset(-10.0);
+    // Opaque, and now declared so (§5.50). The reels and the win line under this
+    // are gone, not dimmed, which is why the coins are not colliding with them.
+    let _region = Region::on(window, WINDOW);
     draw_surface(
-        grid.inset(-10.0),
-        &SurfaceStyle::new(Color::new(0.10, 0.04, 0.01, 1.0)).with_border(3.0, palette::ember()),
+        window,
+        &SurfaceStyle::new(WINDOW).with_border(3.0, palette::ember()),
     );
 
     let rows = data.config.row_count.max(1);
@@ -88,6 +96,18 @@ fn draw_coin(cell: Rect, credits: i64, fresh: bool, ui_time: f32) {
     draw_circle(centre.x, centre.y, radius * 0.86, palette::gold());
     draw_circle_lines(centre.x, centre.y, radius, 2.0, palette::gold_bright());
 
+    // The label sits on the gold disc, not on the dark window behind it. Saying
+    // which surface it is on is the difference between 1.1:1 and legible — and
+    // the bounds are the disc rather than the cell on purpose, so the claim
+    // below that the type shrinks to fit is the thing being measured.
+    let disc = Rect::new(
+        centre.x - radius,
+        centre.y - radius,
+        radius * 2.0,
+        radius * 2.0,
+    );
+    let _region = Region::on(disc, palette::gold());
+
     // Long numbers have to fit inside the disc, so the type shrinks with the
     // digit count rather than spilling over the rim.
     let label = naming::credits(credits);
@@ -119,11 +139,14 @@ fn draw_empty(cell: Rect) {
 /// Title, respins left and the running total, over the reel window.
 fn draw_banner(round: &HoldSpinRound, grid: Rect) {
     let banner = Rect::new(grid.x, grid.y - 66.0, grid.w, 56.0);
+    // Fully opaque: at 0.96 the jackpot ladder underneath read straight through
+    // the banner and the two sets of numbers fought. That was fixed in pixels
+    // and never told to the audit, so the ladder kept "colliding" with the
+    // banner it sits behind — the region is the half that was missing (§5.50).
+    let _banner_region = Region::on(banner, BANNER);
     draw_surface(
         banner,
-        // Fully opaque: at 0.96 the jackpot ladder underneath read straight
-        // through the banner and the two sets of numbers fought.
-        &SurfaceStyle::new(Color::new(0.16, 0.06, 0.01, 1.0)).with_border(2.0, palette::ember()),
+        &SurfaceStyle::new(BANNER).with_border(2.0, palette::ember()),
     );
 
     draw_ui_text_ex(

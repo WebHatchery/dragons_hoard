@@ -2340,6 +2340,80 @@ changed (§5.38, §5.30), a ledger naming a cabinet that no longer exists (§5.4
 renamed most of them), and a session cap stored as a value rather than an index,
 which is why a changed list of offered caps cannot strand one.
 
+### 5.50 Every screen, measured the same way (post-v1)
+
+§5.37 built the layout audit and ended by naming what it did not cover: "the
+gamble, the Vault Pick board and the respin round draw from session state rather
+than a flag and are not yet in the scene." That was **twelve iterations ago**.
+Three modal screens a player certainly sees had never been through the layout,
+contrast, collision or touch checks, because adding a scene was always something
+to do next time.
+
+Three more scenes would have closed it and would have gone stale the same way.
+The debt was never that three screens were missing — it was that **nothing said
+they were**.
+
+**So the list became the definition.** `Screen::ALL` is the single registry, and
+`Game::any_overlay_open` is *derived* from it. A screen that holds the reels must
+appear there, because that is now what holding the reels means, and appearing
+there is what the audit enumerates. A new modal cannot be added without becoming
+auditable; it would not hold the reels at all. Same move §5.49 made for saves:
+replace a maintained list with a property that cannot be forgotten.
+
+`Screen::reachable_by_flag` names the two kinds. Twelve are a flag the player
+raises; three are **session state** — an open Vault Pick, a gamble in flight, a
+respin round. That is exactly why those three were skipped: there is no boolean
+to set, and reaching them means playing until the game deals one. The predicate
+is the gate rather than a description of one, so the flag map cannot drift from
+it, and `audit:<screen>` **asserts the screen actually opened** before measuring
+anything — the scene dispatcher ends in a fallthrough, so asking for a scene that
+does not exist would otherwise measure the base game and report it clean, which
+is indistinguishable from the twelve iterations of silence.
+
+**Six findings on the first run, and they were the fix rather than the fault.**
+The Vault Pick and the Wrath board were the only two panels in the game that
+never declared a surface, so the audit was measuring their text against the
+jackpot ladder and the win line *behind* them. The Wrath banner even carried a
+comment reading "fully opaque: at 0.96 the jackpot ladder underneath read
+straight through" — the defect had been fixed in pixels and never told to the
+audit. Declaring the surfaces cleared all six, and exposed four more: the coin
+values were being judged against the dark window rather than the gold disc they
+are printed on, which is a different surface and now says so.
+
+**Then the sweep found what the ad-hoc scenes never had.** Measuring all fifteen
+the same way failed four more screens, and the largest was not a layout fault at
+all: six cabinets at 140px each wanted a **960px picker inside a 720px frame**.
+The panel was clamped, the last rows were drawn past the bottom edge, and
+**Tidepool could not be selected** — a cabinet present in the catalog and
+unreachable in the game. A two-column grid fits all six, and the rule that the
+picker must fit the screen is now a test rather than an assumption.
+
+The other three were one bug with one cause: an overlay centred tall enough to
+start *above* the header sliced the cabinet name through the middle of the
+glyphs. `frame::BELOW_HEADER` is the line, `Frame::panel` clamps to it, and a
+fourth panel that only showed the fault under a 40% translation was fixed by the
+same clamp.
+
+**And the detector needed the same treatment as the code.** Occlusion had been
+decided by whether an element's *centre* fell inside the covering panel, which
+gets both cases wrong: a title sliced clean through went unreported while its
+centre stayed outside, and a label whose tail a panel hides — ordinary layering —
+was reported as a collision. The sharp question is not how much is covered but
+**which way the cut runs**. A panel edge landing inside a line of text severs
+every glyph in it; a panel edge landing mid-label hides the tail and shows whole
+letters up to the edge. The first is always wrong, the second is what overlays
+are for.
+
+One harness bug fell out of it: `DRAGONS_HOARD_PSEUDO` was read with
+`env::var(...).is_ok()`, so clearing it by setting it to `""` turned the
+pseudolocale **on** for every later run, and the findings that produced looked
+like faults on innocent screens. An empty value now means off, and each audit
+starts from a known state rather than inheriting the last one's knobs.
+
+Fifteen screens now pass at English widths and under a 40% translation. That
+crossed pair is the one exception to §5.48's one-axis-at-a-time rule, and it
+earned the exception on its first run.
+
 
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
@@ -2941,6 +3015,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
+| A screen nobody ever measured | Every screen that holds the reels is in `Screen::ALL`, and `any_overlay_open` is derived from it (§5.50). Three screens went twelve iterations unaudited because the list of them was a note rather than the definition. |
 | A save that a later build cannot read | Every persisted type must load from `{}` and ignore fields it has never heard of (§5.49). The rule was stated a dozen times and enforced by an attribute nobody checked. |
 | A gate that nobody remembers to run | `verify.ps1` runs all fourteen in one command (§5.48). Its first complete run found hit areas overlapping at a width nothing had ever been checked at. |
 | Text drawn straight through a button | Every string and control records its footprint and collisions are reported, with labels, strokes and occluded panels excluded (§5.47). Overflow and collision are different questions. |
@@ -2994,7 +3069,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus forty-four post-v1 systems
+## 15. Current State — v1 shipped, plus forty-five post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
@@ -3005,11 +3080,11 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) and a save-compatibility gate (§5.49). The game is
+navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) and a screen registry every audit enumerates (§5.50). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-458 tests pass here and 266 in `macroquad-toolkit`; `cargo fmt --check`,
+463 tests pass here and 302 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
 release build are clean. Every `.rs` file is under the 800-line limit, `data.rs`
 (792) and `ui/reels.rs` (734) the largest — `state/spin.rs` dropped from 615 to

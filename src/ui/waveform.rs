@@ -55,7 +55,7 @@ pub fn draw(
         Color::new(0.0, 0.0, 0.0, 0.86),
     );
 
-    let panel = frame::centred_at(980.0, 48.0, 624.0);
+    let panel = frame::centred_at(980.0, frame::BELOW_HEADER, 612.0);
     // Everything drawn below is measured against this panel (§5.37).
     let _region = Region::on(panel, palette::stone());
     draw_surface(

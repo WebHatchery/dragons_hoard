@@ -95,6 +95,13 @@ pub struct Frame {
 
 /// Gap between the panels and the screen edge, and between panels.
 const MARGIN: f32 = 18.0;
+/// The highest row an overlay panel may occupy.
+///
+/// The header is drawn behind every overlay and is never covered by one, so a
+/// panel starting above this line slices the cabinet name in half — which three
+/// of them did, unnoticed, until every screen was audited the same way (§5.50).
+/// A test below holds this to the header rather than to the number.
+pub const BELOW_HEADER: f32 = 84.0;
 /// The wager panel's width at the design size. It holds a fixed set of controls
 /// and gains nothing from being wider, so extra width goes to the reels.
 const WAGER_WIDTH: f32 = 410.0;
@@ -135,13 +142,13 @@ impl Frame {
     /// it survives the screen changing shape.
     pub fn panel(&self, width: f32, height: f32) -> Rect {
         let width = width.min(self.width - MARGIN * 2.0);
-        let height = height.min(HEIGHT - MARGIN * 2.0);
-        Rect::new(
-            ((self.width - width) * 0.5).round(),
-            ((HEIGHT - height) * 0.5).round(),
-            width,
-            height,
-        )
+        let height = height.min(HEIGHT - BELOW_HEADER - MARGIN);
+        // A tall panel centres above the header and slices the cabinet name in
+        // half. Three panels were doing it and a fourth only showed it under a
+        // 40% translation, so the rule belongs here rather than in each of them
+        // (§5.50).
+        let top = ((HEIGHT - height) * 0.5).round().max(BELOW_HEADER);
+        Rect::new(((self.width - width) * 0.5).round(), top, width, height)
     }
 
     /// Centre an overlay horizontally but pin its top, for panels that are tall
@@ -202,6 +209,25 @@ mod tests {
     fn a_degenerate_window_falls_back_rather_than_dividing_by_zero() {
         assert_eq!(logical_width(1280.0, 0.0), DESIGN_WIDTH);
         assert_eq!(logical_width(f32::NAN, 720.0), DESIGN_WIDTH);
+    }
+
+    /// Overlays clear the header at every width, so none of them can slice the
+    /// cabinet name the way three did before §5.50 measured every screen.
+    #[test]
+    fn an_overlay_starting_at_the_line_clears_the_header() {
+        for width in [960.0, DESIGN_WIDTH, 1680.0] {
+            let frame = Frame::new(width);
+            assert!(
+                BELOW_HEADER >= frame.header.bottom(),
+                "an overlay at {} cuts into a header ending at {} (width {})",
+                BELOW_HEADER,
+                frame.header.bottom(),
+                width
+            );
+        }
+        // And it leaves a usable panel behind, or the rule would be satisfied by
+        // pushing every overlay off the bottom of the screen.
+        const { assert!(HEIGHT - BELOW_HEADER >= 560.0) };
     }
 
     #[test]
