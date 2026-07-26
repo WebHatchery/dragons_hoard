@@ -22,6 +22,14 @@ impl Game {
     ///
     /// Not just an assignment: a cabinet brings its palette with it (§5.43), and
     /// six scenes setting `self.data` directly would each have to remember that.
+    /// Always called with `machine_by_id`, never with an index (§5.61).
+    ///
+    /// The `cascade` scene asked for `MACHINES[3]` and got **Wyrmspire**, which
+    /// has no cascades at all — so `hold_a_cascade` searched four thousand
+    /// spins for a chain that could never come and the capture photographed a
+    /// board doing nothing. Six iterations, with `ui_cascade` listed among this
+    /// game's verification captures the whole time. A position in an array is
+    /// not a name, and the six cabinets are not in the order anyone assumes.
     fn use_machine(&mut self, machine: &'static crate::data::MachineDef) {
         self.data = crate::data::GameData::load_machine(machine)
             .unwrap_or_else(|err| panic!("{}: {}", machine.id, err));
@@ -104,7 +112,7 @@ impl Game {
             "cascade" => {
                 // Mid-chain, at a step where the multiplier has climbed —
                 // a resting Avalanche board looks like any other cabinet.
-                self.use_machine(&crate::data::MACHINES[3]);
+                self.use_machine(crate::data::machine_by_id("avalanche"));
                 self.session = GameSession::new(&self.data, 0xD2A6_0F1E);
                 self.hold_a_cascade();
             }
@@ -118,7 +126,7 @@ impl Game {
             "ways" => {
                 // The 243-ways cabinet (§5.14). Fast-forwarded to a win, because
                 // a resting board says nothing about how differently it pays.
-                self.use_machine(&crate::data::MACHINES[2]);
+                self.use_machine(crate::data::machine_by_id("ways"));
                 self.session = GameSession::new(&self.data, 0xD2A6_0F1E);
                 self.fast_forward_to(|session| session.last_win > 0);
             }
@@ -140,7 +148,7 @@ impl Game {
                 let _ = self.session.begin_spin(&self.data);
             }
             "frost" => {
-                self.use_machine(&crate::data::MACHINES[1]);
+                self.use_machine(crate::data::machine_by_id("frost"));
                 self.session = GameSession::new(&self.data, 0xD2A6_0F1E);
                 self.fast_forward_to(|session| session.last_win > 0);
             }
@@ -522,7 +530,12 @@ impl Game {
     fn hold_a_cascade(&mut self) {
         for _ in 0..4_000 {
             self.session.balance = 1_000_000;
+            // A card holds `update_spin`, and so does an open Vault Pick board
+            // (§8.2.1) — clearing only the first left this searching behind a
+            // bonus that never closed, so the `cascade` capture photographed a
+            // chest board for six iterations rather than a cascade (§5.61).
             self.session.celebrations.clear();
+            self.session.bonus = None;
             if self.session.begin_spin(&self.data).is_err() {
                 break;
             }
@@ -543,6 +556,7 @@ impl Game {
                     // A card holds `update_spin` outright (§8.2.1), so the reels
                     // would never advance.
                     self.session.celebrations.clear();
+                    self.session.bonus = None;
                     self.session.update_spin(&self.data, 1.0 / 60.0);
                 }
                 return;
@@ -552,6 +566,7 @@ impl Game {
                     break;
                 }
                 self.session.celebrations.clear();
+                self.session.bonus = None;
                 self.session.update_spin(&self.data, 1.0 / 60.0);
             }
         }

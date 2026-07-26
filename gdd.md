@@ -2942,6 +2942,47 @@ A cabinet with no paylines gets a sentence saying so rather than an empty panel,
 because three of the six pay by ways or clusters and a blank screen reads as a
 bug.
 
+### 5.61 The badge over the symbol, and the capture that photographed the wrong cabinet (post-v1)
+
+§15's remaining-work list has carried this for six iterations:
+
+> The cascade multiplier badge overlaps the top-right symbol. It is transient and
+> only appears above ×1, but a real cabinet would find it somewhere of its own
+> rather than over a cell.
+
+Named every time, fixed never, and **no gate could see it**. §5.47's collision
+audit compares text against *text*; a symbol is art, and nothing records it. The
+badge is now in the panel's title row, and the rule is stated where it can be
+checked without a window: no furniture the panel draws for itself may intersect
+the symbol window, at any width. Putting the badge back where it was fails it by
+name.
+
+That the grid is what the player is watching is not decoration. On a cascading
+cabinet the covered cell is one that is about to be cleared, which is precisely
+the thing being watched.
+
+**Then fixing it exposed something worse.** Photographing the badge meant running
+the `cascade` capture scene, and it did not show a cascade. It did not show one
+because it asked for `MACHINES[3]` — and the cabinets are `dragon, frost, ways,
+wyrmspire, avalanche, tidepool`, so index three is **Wyrmspire**, which has no
+cascades at all.
+
+`hold_a_cascade` then searched four thousand spins for a chain that could never
+come, gave up, and photographed a board doing nothing. `ui_cascade` has been
+listed among this game's verification captures the entire time. Two other scenes
+were picking cabinets the same way and happened to be right.
+
+A position in an array is not a name, and six cabinets are not in the order
+anyone assumes. Every scene names its cabinet now.
+
+The search had a second fault of its own: it cleared celebration cards each
+round, because a card holds `update_spin` outright — and an open Vault Pick board
+holds it for the same reason (§8.2.1) and was not cleared. So even pointed at the
+right cabinet it would have stalled behind a chest board. Both halves were
+invisible for the same reason: **nobody had looked at the picture**, and a
+capture that renders successfully looks exactly like a capture that renders the
+right thing.
+
 
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
@@ -3546,6 +3587,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
+| A capture that photographs the wrong thing | Scenes name their cabinet instead of indexing it (§5.61). The `cascade` capture had been shooting Wyrmspire, which has no cascades, for six iterations. |
 | Lines you can only learn by winning on them | All twenty are drawn on a screen of their own, in the colours the reels use (§5.60). Registering it put it through every audit with no harness change. |
 | A win the player cannot see the shape of | The winning payline is drawn across the grid and named from the data (§5.59). The game said "line 17" for fifty-eight systems and never drew a line. |
 | An autosave nobody reads | Booting loads the cabinet through the same path as switching to it, checked by planting a save and reading it back (§5.58). The game had autosaved since it shipped and never once opened the file. |
@@ -3611,7 +3653,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus fifty-five post-v1 systems
+## 15. Current State — v1 shipped, plus fifty-six post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
@@ -3622,11 +3664,11 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) a motion audit (§5.52) an answer for running out (§5.53) a size limit that is actually enforced (§5.54) one bankroll across six cabinets (§5.55) a web save that belongs to this game alone (§5.56) a floor-wide Grand (§5.57) a game that reads its own save (§5.58) a payline you can actually see (§5.59) and a page of all twenty (§5.60). The game is
+navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) a motion audit (§5.52) an answer for running out (§5.53) a size limit that is actually enforced (§5.54) one bankroll across six cabinets (§5.55) a web save that belongs to this game alone (§5.56) a floor-wide Grand (§5.57) a game that reads its own save (§5.58) a payline you can actually see (§5.59) a page of all twenty (§5.60) and a badge that is off the reels (§5.61). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-504 tests pass here and 313 in `macroquad-toolkit`; `cargo fmt --check`,
+506 tests pass here and 313 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
 release build are clean. Every `.rs` file is under the 800-line limit and a gate now says so
 (§5.54); `game.rs` (740) and `ui/reels.rs` (689) are the largest. `data.rs` went
@@ -3694,31 +3736,26 @@ A jackpot **has** now been seen: the `jackpot` capture scene photographs a real
 Mini win, with its ladder plate reset to seed while the other three keep
 accruing. That closes the gap this section previously listed.
 
-- **Confirm audio works in the browser build**, not just natively. This is what
-  is left of the old "listen to the SFX" item: §5.51 measured the mix, rebalanced
-  it against a stated order, and removed the aliasing that made the bright
-  effects harsh, so the sound is no longer unexamined — but nobody has still
-  *heard* it, and whether it plays at all under WASM is untested.
-- Work is committed per iteration following `rust_management/docs/COMMIT_STYLE.md`
-  — a diegetic subject, a plain parenthetical tag, and a prose body.
-- `audio.rs` **has** been promoted (§5.19). Still outstanding is the
-  blur/bounce/anticipation work in `state/spin.rs` — none of it is specific to a
-  slot machine beyond the anticipation trigger, and any game with a spinning or
-  scrolling strip would want it.
-- The gamble panel is the only screen where a **losing** decision is possible,
-  and it has no confirmation. That is deliberate — a cabinet that asked "are you
-  sure?" on every flip would be unusable — but it does mean a misclick on Ember
-  costs the whole win.
-- The cascade multiplier badge overlaps the top-right symbol. It is transient
-  and only appears above ×1, but a real cabinet would find it somewhere of its
-  own rather than over a cell.
-- Nothing is left on the promotion list. `audio.rs` went in §5.19 and the reel
-  motion in §5.23; what remains in this project is either this game's tuning or
-  this game's rules.
-- The promotion list is empty again. Three modules have gone into the toolkit
-  now — synthesis, strip motion, and the rasteriser — and each left this project
-  smaller and better tested than it found it. A real cabinet would show each feature's
-  volatility or a sample of what it pays; the price alone tells a player what it
-  costs but not what to expect for it.
-- **Listen to the effects.** The waveform panel closed the visible part and
-  §5.51 the measurable part; what is left is a human ear and a browser.
+This list had grown two contradictory bullets about the promotion queue, the
+audio item twice, and a note about commit style that was never work at all.
+Cleared out in §5.61 down to what is actually outstanding:
+
+- **Nobody has heard the sound, and the browser build's audio is untested.**
+  §5.51 measured the mix, rebalanced it against a stated order and removed the
+  aliasing that made the bright effects harsh, so it is no longer unexamined —
+  but measurement is not listening, and whether it plays at all under WASM has
+  never been checked.
+- **Nothing on the web build has been checked by opening it.** The same is true
+  of persistence, which §5.56 found silently sharing a `localStorage` key with
+  four other games, and of touch input on a real device. Everything about the
+  published build is verified by reasoning and by a native binary.
+- **The gamble has no confirmation on a losing decision.** Deliberate — a cabinet
+  that asked "are you sure?" on every flip would be unusable — but a misclick on
+  Ember still costs the whole win, and that is the only place in the game where
+  a single stray press can.
+- **The blur, bounce and anticipation work in `state/spin.rs` has not been
+  promoted.** None of it is specific to a slot machine beyond the anticipation
+  trigger, and any game with a spinning or scrolling strip would want it. The
+  three modules that have gone across — synthesis, strip motion and the
+  rasteriser — each left this project smaller and better tested than they found
+  it, which is the argument for the fourth.
