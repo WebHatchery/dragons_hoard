@@ -11,6 +11,12 @@
 //! What stays here is the part that is actually this game's: which effects exist
 //! and what each one is made of.
 
+/// The audit is a gate rather than a feature: nothing in the running game asks
+/// what its own sound looks like, the same way `state::compat` is only ever a
+/// test. Compiling it into the binary would be dead weight in the WASM build.
+#[cfg(test)]
+pub mod audit;
+
 use macroquad::audio::{load_sound_from_bytes, play_sound, PlaySoundParams, Sound};
 use macroquad_toolkit::synth::{render_wav, SynthConfig, Voice, Wave};
 use std::collections::HashMap;
@@ -72,35 +78,35 @@ pub fn voices_for(sfx: Sfx) -> Vec<Voice> {
         // a reel merely stopping. Nothing in the test suite could see that; it
         // only ever asked whether the peak was above zero and below the limiter.
         Sfx::WinSmall => vec![
-            Voice::tone(0.0, 0.12, 880.0, 0.80).wave(Wave::Triangle),
-            Voice::tone(0.09, 0.18, 1318.0, 0.80).wave(Wave::Triangle),
+            Voice::tone(0.0, 0.12, 880.0, 1.06).wave(Wave::Triangle),
+            Voice::tone(0.09, 0.18, 1318.0, 1.06).wave(Wave::Triangle),
         ],
         // A four-note arpeggio, held at the top.
         // Likewise: a big win came in under a reel stop.
         Sfx::WinBig => vec![
-            Voice::tone(0.00, 0.13, 659.0, 0.62).wave(Wave::Triangle),
-            Voice::tone(0.09, 0.13, 880.0, 0.62).wave(Wave::Triangle),
-            Voice::tone(0.18, 0.13, 1046.0, 0.62).wave(Wave::Triangle),
-            Voice::tone(0.27, 0.34, 1318.0, 0.70).wave(Wave::Triangle),
-            Voice::tone(0.27, 0.34, 1760.0, 0.34),
+            Voice::tone(0.00, 0.13, 659.0, 0.80).wave(Wave::Triangle),
+            Voice::tone(0.09, 0.13, 880.0, 0.80).wave(Wave::Triangle),
+            Voice::tone(0.18, 0.13, 1046.0, 0.80).wave(Wave::Triangle),
+            Voice::tone(0.27, 0.34, 1318.0, 0.90).wave(Wave::Triangle),
+            Voice::tone(0.27, 0.34, 1760.0, 0.44),
         ],
         // A long shimmer upward — the scatter is the "something is coming" cue.
         Sfx::Scatter => vec![
-            Voice::tone(0.0, 0.55, 440.0, 0.45)
+            Voice::tone(0.0, 0.55, 440.0, 0.62)
                 .wave(Wave::Triangle)
                 .glide(1760.0)
                 .attack(0.15),
-            Voice::tone(0.0, 0.55, 660.0, 0.22)
+            Voice::tone(0.0, 0.55, 660.0, 0.30)
                 .glide(2640.0)
                 .attack(0.2),
         ],
         // The biggest sound in the game: a low swell, a chord, and a hiss.
         Sfx::Hatch => vec![
-            Voice::tone(0.0, 0.7, 110.0, 0.5).glide(220.0).attack(0.25),
-            Voice::tone(0.18, 0.6, 523.0, 0.34).wave(Wave::Triangle),
-            Voice::tone(0.18, 0.6, 659.0, 0.30).wave(Wave::Triangle),
-            Voice::tone(0.18, 0.6, 784.0, 0.30).wave(Wave::Triangle),
-            Voice::tone(0.0, 0.45, 2000.0, 0.16)
+            Voice::tone(0.0, 0.7, 110.0, 0.64).glide(220.0).attack(0.25),
+            Voice::tone(0.18, 0.6, 523.0, 0.44).wave(Wave::Triangle),
+            Voice::tone(0.18, 0.6, 659.0, 0.39).wave(Wave::Triangle),
+            Voice::tone(0.18, 0.6, 784.0, 0.39).wave(Wave::Triangle),
+            Voice::tone(0.0, 0.45, 2000.0, 0.21)
                 .wave(Wave::Noise)
                 .glide(400.0),
         ],
@@ -213,18 +219,32 @@ mod tests {
     /// all quieter than a reel stopping, which the waveform panel (§5.19) made
     /// obvious the moment it existed. This test failed, which is what it is for.
     const BASELINE: [(Sfx, usize, u64); 8] = [
-        (Sfx::SpinStart, 8_864, 1_094_828),
+        (Sfx::SpinStart, 8_864, 1_099_123),
         (Sfx::ReelStop, 5_778, 699_881),
-        (Sfx::WinSmall, 11_952, 1_488_632),
-        (Sfx::WinBig, 26_946, 3_340_559),
-        (Sfx::Scatter, 24_300, 3_273_537),
-        (Sfx::Hatch, 34_442, 4_209_312),
-        (Sfx::CoinLock, 7_100, 852_418),
-        (Sfx::Click, 2_250, 276_370),
+        (Sfx::WinSmall, 11_952, 1_496_569),
+        (Sfx::WinBig, 26_946, 3_360_240),
+        (Sfx::Scatter, 24_300, 2_997_188),
+        (Sfx::Hatch, 34_442, 4_254_136),
+        (Sfx::CoinLock, 7_100, 825_784),
+        (Sfx::Click, 2_250, 272_193),
     ];
 
     fn checksum(bytes: &[u8]) -> u64 {
         bytes.iter().map(|byte| *byte as u64).sum()
+    }
+
+    #[test]
+    #[ignore = "prints the table for the test below; run after changing a sound"]
+    fn print_the_baseline() {
+        for sfx in Sfx::ALL {
+            let bytes = render_wav(&voices_for(sfx), &config(), 0xA11CE);
+            println!(
+                "        (Sfx::{:?}, {}, {}),",
+                sfx,
+                bytes.len(),
+                checksum(&bytes)
+            );
+        }
     }
 
     #[test]

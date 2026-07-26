@@ -373,7 +373,7 @@ pub fn waveform(track: Track) -> Vec<f32> {
 }
 
 /// Quieter than the effects share, and with the headroom four tracks need.
-fn config() -> SynthConfig {
+pub fn config() -> SynthConfig {
     SynthConfig {
         master_gain: 0.22,
         ..SynthConfig::default()
