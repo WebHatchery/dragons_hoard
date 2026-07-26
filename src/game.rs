@@ -5,7 +5,7 @@ mod feedback;
 mod motion;
 mod outcomes;
 mod persistence;
-mod screens;
+pub mod screens;
 
 use crate::audio::{Sfx, SoundBank};
 use crate::data::GameData;
@@ -47,6 +47,7 @@ pub struct Game {
     show_ledger: bool,
     /// The payline diagrams (§5.60).
     show_lines: bool,
+    show_menu: bool,
     show_sessions: bool,
     /// Sessions already played (§5.70).
     sessions: crate::state::sessions::SessionLog,
@@ -204,6 +205,7 @@ impl Game {
             show_featurebuy: false,
             show_ledger: false,
             show_lines: false,
+            show_menu: false,
             show_sessions: false,
             sessions: crate::state::sessions::SessionLog::default(),
             session_over_dismissed: false,
@@ -351,6 +353,7 @@ impl Game {
                 ledger: &self.ledger,
                 show_ledger: self.show_ledger,
                 show_lines: self.show_lines,
+                show_menu: self.show_menu,
                 show_sessions: self.show_sessions,
                 sessions: &self.sessions,
                 session_over_dismissed: self.session_over_dismissed,

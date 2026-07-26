@@ -14,6 +14,7 @@ pub mod legibility;
 pub mod limits;
 pub mod lines;
 pub mod machines;
+pub mod menu;
 pub mod naming;
 pub mod nav;
 pub mod paylines;
@@ -124,6 +125,10 @@ pub enum UiAction {
     ToggleLedger,
     /// The payline diagrams (§5.60).
     ToggleLines,
+    /// The way in to everything else (§5.72).
+    ToggleMenu,
+    /// Open a screen by name, from the menu.
+    OpenScreen(crate::game::screens::Screen),
     /// The log of sessions played (§5.70).
     ToggleSessions,
     /// Put the closing summary away (§5.68).
@@ -192,6 +197,7 @@ pub struct UiContext<'a> {
     pub ledger: &'a crate::state::ledger::Ledger,
     pub show_ledger: bool,
     pub show_lines: bool,
+    pub show_menu: bool,
     pub show_sessions: bool,
     pub session_over_dismissed: bool,
     pub show_rules: bool,
@@ -283,6 +289,10 @@ pub fn draw_game_ui(ctx: UiContext<'_>, nav: &mut Nav) -> Vec<UiAction> {
             &mut actions,
             nav,
         );
+    }
+
+    if ctx.show_menu {
+        menu::draw(pointer, &mut actions, nav);
     }
 
     if ctx.show_lines {
@@ -437,15 +447,20 @@ fn draw_header(ctx: &UiContext<'_>, pointer: Pointer, actions: &mut Vec<UiAction
     ) {
         actions.push(UiAction::ToggleFeatureBuy);
     }
+    // The door to everything the header has no room for (§5.72). It takes the
+    // slot Awards used to have: the header is full by design — the cabinet name
+    // gets whatever the buttons leave — and Awards has a row in the menu like
+    // everything else, whereas four screens had no door at all. One of them was
+    // the colour-vision panel, an accessibility feature that needed a keyboard.
     if virtual_button(
         Rect::new(rect.right() - 828.0, rect.y + 18.0, 108.0, 28.0),
-        "Awards",
+        "More",
         true,
         ButtonTone::Secondary,
         pointer,
         nav,
     ) {
-        actions.push(UiAction::ToggleAchievements);
+        actions.push(UiAction::ToggleMenu);
     }
     if virtual_button(
         Rect::new(rect.right() - 710.0, rect.y + 18.0, 108.0, 28.0),

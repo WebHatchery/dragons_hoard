@@ -85,6 +85,7 @@ impl Game {
                 let _ = self.session.begin_spin(&self.data);
             }
             "paytable" => self.show_paytable = true,
+            "menu" => self.show_menu = true,
             "lines" => self.show_lines = true,
             "machines" => self.show_machines = true,
             "bonus" => {

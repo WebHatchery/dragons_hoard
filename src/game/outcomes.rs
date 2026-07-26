@@ -159,6 +159,17 @@ impl Game {
                 self.show_sessions = !self.show_sessions;
                 self.sound.play(Sfx::Click);
             }
+            ActionOutcome::MenuToggled => {
+                self.show_menu = !self.show_menu;
+                self.sound.play(Sfx::Click);
+            }
+            ActionOutcome::ScreenOpened(screen) => {
+                // The menu closes behind the choice: leaving it up would put a
+                // list of doors on top of the door just opened (§5.72).
+                self.show_menu = false;
+                self.open_screen(screen);
+                self.sound.play(Sfx::Click);
+            }
             ActionOutcome::LinesToggled => {
                 self.show_lines = !self.show_lines;
                 self.sound.play(Sfx::Click);

@@ -47,6 +47,8 @@ pub enum Screen {
     Achievements,
     FeatureBuy,
     Ledger,
+    /// The way in to everything else, for anyone without a keyboard (§5.72).
+    Menu,
     /// The payline diagrams (§5.60).
     Lines,
     /// The log of sessions played (§5.70).
@@ -69,7 +71,7 @@ pub enum Screen {
 }
 
 impl Screen {
-    pub const ALL: [Screen; 19] = [
+    pub const ALL: [Screen; 20] = [
         Screen::Paytable,
         Screen::Rules,
         Screen::Limits,
@@ -80,6 +82,7 @@ impl Screen {
         Screen::Achievements,
         Screen::FeatureBuy,
         Screen::Ledger,
+        Screen::Menu,
         Screen::Lines,
         Screen::Sessions,
         Screen::Waveforms,
@@ -104,6 +107,7 @@ impl Screen {
             Screen::Achievements => "achievements",
             Screen::FeatureBuy => "featurebuy",
             Screen::Ledger => "ledger",
+            Screen::Menu => "menu",
             Screen::Lines => "lines",
             Screen::Sessions => "sessions",
             Screen::Waveforms => "waveforms",
@@ -114,6 +118,51 @@ impl Screen {
             Screen::Ruin => "ruin",
             Screen::SessionOver => "sessionover",
         }
+    }
+
+    /// What a menu calls it.
+    ///
+    /// Separate from [`id`](Self::id), which is what the capture harness asks
+    /// for and must never change; this is what a player reads and may. The
+    /// dealt screens have one too even though nothing offers them, because the
+    /// alternative is an `Option` that every caller has to think about for the
+    /// sake of five variants nobody lists.
+    pub fn label(self) -> &'static str {
+        match self {
+            Screen::Menu => "Everything else",
+            Screen::Paytable => "Paytable",
+            Screen::Rules => "How this cabinet plays",
+            Screen::Limits => "Session limits",
+            Screen::History => "This session's graph",
+            Screen::RealityCheck => "Reality check",
+            Screen::Settings => "Settings",
+            Screen::Machines => "Machines",
+            Screen::Achievements => "Awards",
+            Screen::FeatureBuy => "Buy a feature",
+            Screen::Ledger => "The Ledger",
+            Screen::Lines => "The paylines",
+            Screen::Sessions => "Your sessions",
+            Screen::Waveforms => "Sound",
+            Screen::Vision => "Colour vision",
+            Screen::Bonus => "The Vault Pick",
+            Screen::Gamble => "The Gamble",
+            Screen::Holdspin => "The Dragon's Wrath",
+            Screen::Ruin => "Out of credits",
+            Screen::SessionOver => "That is the session",
+        }
+    }
+
+    /// Screens a menu should offer, in the order it should offer them.
+    ///
+    /// Everything a player can open, minus the menu itself and minus the ones
+    /// the game deals rather than the player opens (§5.72). Derived from
+    /// [`ALL`](Self::ALL) rather than listed, so a screen added to the registry
+    /// is reachable without a keyboard the moment it exists — which four of them
+    /// were not, including the colour-vision panel.
+    pub fn in_menu() -> impl Iterator<Item = Screen> {
+        Self::ALL
+            .into_iter()
+            .filter(|screen| screen.reachable_by_flag() && *screen != Screen::Menu)
     }
 
     /// Can it be opened by setting a flag?
@@ -143,6 +192,7 @@ impl Game {
             Screen::Achievements => self.show_achievements,
             Screen::FeatureBuy => self.show_featurebuy,
             Screen::Ledger => self.show_ledger,
+            Screen::Menu => self.show_menu,
             Screen::Lines => self.show_lines,
             Screen::Sessions => self.show_sessions,
             Screen::Waveforms => self.show_waveforms,
@@ -176,6 +226,7 @@ impl Game {
             Screen::Achievements => &mut self.show_achievements,
             Screen::FeatureBuy => &mut self.show_featurebuy,
             Screen::Ledger => &mut self.show_ledger,
+            Screen::Menu => &mut self.show_menu,
             Screen::Lines => &mut self.show_lines,
             Screen::Sessions => &mut self.show_sessions,
             Screen::Waveforms => &mut self.show_waveforms,
