@@ -3278,6 +3278,45 @@ sizes, six themes, three widths and a 40% translation without the harness being
 touched — it asks the game for its screen list (§5.53) rather than keeping one.
 That is the second time in nine sections that adding a screen has been free.
 
+### 5.69 The gate that counted the wrong lines (post-v1)
+
+§5.54 added a check that no `.rs` file passes the 800-line limit this workspace
+has always stated and never enforced. It found the shared toolkit over the limit,
+it was disproved with a 900-line probe file, and it has been green ever since.
+
+Two files in this game are over the limit. `state/profile.rs` is 832 lines and
+`state/rules.rs` is 819, and they have been for two iterations.
+
+**The gate was counting non-empty lines.** `Get-Content | Measure-Object -Line`
+sounds like it counts lines and does not — it counts lines *with something on
+them*. On a Rust file that is about ninety percent of the real figure, so the
+limit was being enforced at roughly 890 and nothing said so.
+
+**And the disproof could not have caught it.** The 900-line probe from §5.54 was
+`// probe` repeated nine hundred times, with no blank line anywhere in it. It was
+a probe of exactly the shape that makes the bug invisible — clean, uniform, and
+unlike any real source file. The lesson is not "write a probe", which §5.54 did:
+it is that a probe has to resemble the thing being measured. The new one is 450
+lines of `// probe` and 450 blank, and the old counter scores it 450.
+
+Counting `@(Get-Content $file).Count` instead, the gate immediately named both
+files.
+
+**Both splits were along seams the files had been asking for.** `profile.rs` had
+grown three profilers of the same shape by accretion — a cabinet measured by
+paying for spins (§5.17), a buy tier measured by buying it (§5.22), a free-spin
+shape measured by being granted a run of it (§5.65) — with `ProfileBook` carrying
+two separate impl blocks, one of which was entirely tier and shape accessors. The
+two feature profilers moved to `profile/features.rs`; 832 becomes 373 and 478.
+
+`rules.rs` had the machinery of §5.29, §5.66 and §5.67 sitting on top of three
+hundred lines of prose that grows a paragraph every time the game learns
+something. The writing moved to `rules/prose.rs`; 819 becomes 486 and 355. Rules
+about rules on one side, the writing on the other.
+
+The largest file in the game is now `ui/reels.rs` at 790, which is close enough
+that the gate will be heard from again — correctly, this time.
+
 
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
@@ -3882,6 +3921,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
+| A gate measuring the wrong thing | The size gate counted only non-empty lines, enforcing the 800-line limit at about 890 (§5.69). Two files sat over it for two iterations, and the original probe was too clean to reveal it. |
 | A session that ends with a toast | A cap that binds now closes with an account of the session — staked, returned, net, best moment (§5.68). The old answer was a greyed button and a notification suggesting a new game. |
 | A setting validated against the wrong topic | The coverage table is keyed by block *and* name (§5.67). Keyed by name alone, `featurebuy.tiers` was checked against the jackpot topic and passed by coincidence. |
 | A mechanic the game never mentions | Every free-spin setting must be declared a mechanic with a topic or excused as tuning in writing (§5.66). The rules validator could not see a mechanic nobody added a topic for, and §5.64 shipped one. |
@@ -3955,7 +3995,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus sixty-three post-v1 systems
+## 15. Current State — v1 shipped, plus sixty-four post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
@@ -3966,14 +4006,15 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) a motion audit (§5.52) an answer for running out (§5.53) a size limit that is actually enforced (§5.54) one bankroll across six cabinets (§5.55) a web save that belongs to this game alone (§5.56) a floor-wide Grand (§5.57) a game that reads its own save (§5.58) a payline you can actually see (§5.59) a page of all twenty (§5.60) a badge that is off the reels (§5.61) a published build that is checked (§5.62) two more modules promoted (§5.63) a free-spin run you choose the shape of (§5.64) the measured feel of each (§5.65) a rules gate that fails closed (§5.66) every feature setting declared (§5.67) and a session that closes properly (§5.68). The game is
+navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) a motion audit (§5.52) an answer for running out (§5.53) a size limit that is actually enforced (§5.54) one bankroll across six cabinets (§5.55) a web save that belongs to this game alone (§5.56) a floor-wide Grand (§5.57) a game that reads its own save (§5.58) a payline you can actually see (§5.59) a page of all twenty (§5.60) a badge that is off the reels (§5.61) a published build that is checked (§5.62) two more modules promoted (§5.63) a free-spin run you choose the shape of (§5.64) the measured feel of each (§5.65) a rules gate that fails closed (§5.66) every feature setting declared (§5.67) a session that closes properly (§5.68) and a size gate that counts (§5.69). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
 516 tests pass here and 322 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
-release build are clean. Every `.rs` file is under the 800-line limit and a gate now says so
-(§5.54); `game.rs` (740) and `ui/reels.rs` (689) are the largest. `data.rs` went
+release build are clean. Every `.rs` file is under the 800-line limit and a gate that
+counts every line now says so (§5.54, §5.69); `ui/reels.rs` (790) and `game.rs`
+(780) are the largest. `data.rs` went
 from 799 to 531, `music.rs` from 793 to 680, and the toolkit's `ui/font.rs` from
 851 — over the limit, unnoticed — to 656. `state/spin.rs` is 239, from 615 before
 its mechanics were promoted (§5.23, §5.63).

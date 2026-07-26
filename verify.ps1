@@ -144,7 +144,12 @@ function Sizes {
     param([string]$Dir, [string]$What)
     $over = Get-ChildItem -Path (Join-Path $Dir 'src') -Filter '*.rs' -Recurse |
         ForEach-Object {
-            $lines = (Get-Content $_.FullName | Measure-Object -Line).Lines
+            # Every line, blank ones included. `Measure-Object -Line` counts
+            # only non-empty lines, so this under-reported by about a tenth and
+            # let two files sit over the limit for two iterations (§5.69). The
+            # disproof at the time could not have caught it: the 900-line probe
+            # was `// probe` repeated, with no blank lines in it.
+            $lines = @(Get-Content $_.FullName).Count
             if ($lines -gt 800) { "{0}: {1} lines" -f $_.FullName.Substring($Dir.Length + 1), $lines }
         }
     if ($over) { throw ($What + "`n" + ($over -join "`n")) }
