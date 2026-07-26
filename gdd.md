@@ -2727,6 +2727,50 @@ The gate is a fingerprint of the save directory taken either side of five captur
 scenes, and it was disproved the same way as everything else here: removing the
 guard makes it fail and name `ledger.json`.
 
+### 5.56 Every game on the site was saving into one drawer (post-v1)
+
+§5.55 went looking for the next thing a cabinet switch quietly reset. It found
+something bigger, one layer down, and not in this game at all.
+
+**The toolkit stored web saves under a key with no game in it.** The native path
+writes `{app_data}/{game_name}/save_{slot}.json`, so two games can both have an
+"autosave" and never meet — the directory does the qualifying for free. The web
+path built `save_{slot}` and discarded the game name outright, with a comment
+saying so: `let _ = game_name; // unused in WASM`.
+
+`localStorage` is scoped to an **origin**, not a page. Every game in this
+workspace is published to the same host.
+
+That is not a hypothetical collision. Across the catalog **three games ship with
+`save_slot: "autosave"`** — `biofoundry`, `dragons_den`, `iron_fauna` — and two
+more with `"campaign"`. On the web they were all writing the same key. Playing
+one overwrote another's save, silently, with no error and nothing in either game
+able to notice: a save that loads is a save that loads, whoever wrote it.
+
+**The tell was inside the toolkit.** `persistence::keys`, which stores
+preferences and the like, had always qualified its keys by game. Only
+`persistence::slots` — the module holding the actual game — did not. Two
+sibling modules, one storage backend, and a disagreement about whether the game
+name mattered.
+
+Dragon's Hoard escaped by accident: its slots carry a machine id, so
+`dragon_autosave` was unlikely to collide. Except for `save_wallet`, added one
+iteration earlier, which is exactly the kind of generic name that would have.
+
+**Fixed by qualifying the key, and by adopting what is already there.** A key
+that changes is a save that vanishes, so a read that misses the qualified key
+falls back to the legacy one and the next write moves it across (§5.49's rule:
+adding content must never strand a player). Two players of different games stop
+colliding; a player mid-game keeps their game.
+
+The four tests run on **every** target, not just `wasm32`. The rule they encode
+is the one that lost saves, and a rule that can only be checked by opening a
+browser is a rule nobody checks — which is how it survived this long. Reverting
+the key to its old form fails two of them by name.
+
+This one is worth more outside this game than inside it: twenty games share that
+crate, and five of them were demonstrably colliding.
+
 
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
@@ -3328,6 +3372,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
+| Two games sharing a browser save | Web storage keys are qualified by game, with the old key adopted forward (§5.56). Five games in the catalog were writing the same `localStorage` key. |
 | A cabinet switch that refills the wallet | One bankroll travels with the player; hoards and jackpots stay with the machine (§5.55). Six separate balances made running out cost nothing. |
 | A test harness that overwrites the game | Capture runs are read-only, checked by fingerprinting the save directory (§5.55). Every capture scene had been autosaving fabricated state over the player's save since the harness was written. |
 | A rule written down and never checked | The 800-line limit is a gate in `verify.ps1`, and the data validator has thirteen mutations proving it refuses things (§5.54). The toolkit was already over the limit; the validator had never once been seen to reject anything. |
@@ -3388,7 +3433,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus fifty post-v1 systems
+## 15. Current State — v1 shipped, plus fifty-one post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
@@ -3399,11 +3444,11 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) a motion audit (§5.52) an answer for running out (§5.53) a size limit that is actually enforced (§5.54) and one bankroll across six cabinets (§5.55). The game is
+navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) a motion audit (§5.52) an answer for running out (§5.53) a size limit that is actually enforced (§5.54) one bankroll across six cabinets (§5.55) and a web save that belongs to this game alone (§5.56). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-491 tests pass here and 309 in `macroquad-toolkit`; `cargo fmt --check`,
+491 tests pass here and 313 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
 release build are clean. Every `.rs` file is under the 800-line limit and a gate now says so
 (§5.54); `game.rs` (740) and `ui/reels.rs` (689) are the largest. `data.rs` went
