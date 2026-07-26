@@ -179,6 +179,34 @@ Step 'pseudolocale' { Audit -Scene 'layout_audit' -Vars @{ DRAGONS_HOARD_PSEUDO 
 Step 'aspects'    { foreach ($w in '1000', '1280', '1600') { Audit -Scene 'layout_audit' -Vars @{ DRAGONS_HOARD_WINDOW_WIDTH = $w; DRAGONS_HOARD_WINDOW_HEIGHT = '720' } -What "layout breaks at ${w}x720" } }
 
 Write-Host ''
+Write-Host 'The published build' -ForegroundColor Cyan
+# Everything about the web build had been verified by reasoning and a native
+# binary. The wasm's import section is a precise contract — every `env.<name>` in
+# it must be provided by a script the page loads — and nothing had ever read it.
+# It found six GL entry points missing, because the runtime was downloaded from a
+# samples website rather than taken from the crate the games compile against, and
+# miniquad stubs anything absent instead of failing (§5.62).
+Step 'the page provides what the wasm asks for' {
+    $root = if ($env:PREVIEW_GAMES_ROOT) { $env:PREVIEW_GAMES_ROOT } else { 'D:/xampp/htdocs/games' }
+    $deployed = Join-Path $root 'dragons_hoard'
+    if (-not (Test-Path (Join-Path $deployed 'index.html'))) {
+        Write-Host '(not published yet) ' -NoNewline -ForegroundColor DarkGray
+        return
+    }
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $checker = Join-Path $ProjectRoot 'tools/check_web_build.py'
+        $output = & python $checker $deployed 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            throw ("the published web build is missing something the wasm imports`n" + ($output | Out-String))
+        }
+    } finally {
+        $ErrorActionPreference = $previous
+    }
+}
+
+Write-Host ''
 Write-Host "The player's game" -ForegroundColor Cyan
 # The harness used to overwrite the save it was verifying (§5.55). Every capture
 # scene deals a fabricated state, the loop autosaves when a spin resolves, and

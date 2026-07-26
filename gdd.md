@@ -2983,6 +2983,51 @@ invisible for the same reason: **nobody had looked at the picture**, and a
 capture that renders successfully looks exactly like a capture that renders the
 right thing.
 
+### 5.62 What the published build actually asks for (post-v1)
+
+§15 said it plainly: *nothing on the web build has been checked by opening it*.
+Sixty systems verified against a native binary, and the thing players are
+actually served had never been examined at all.
+
+It cannot be opened here, but it does not have to be. **A wasm module's import
+section is a precise contract**: every `env.<name>` in it must be provided by one
+of the scripts the page loads. That is 113 names for this game, it is readable
+straight out of the binary, and nothing had ever read it.
+
+Six were missing.
+
+```
+glBlitFramebuffer  glCheckFramebufferStatus  glDeleteRenderbuffers
+glFramebufferRenderbuffer  glReadBuffer  glRenderbufferStorageMultisample
+```
+
+**And the game did not crash, which is why nobody knew.** miniquad calls
+`add_missing_functions_stabs` before instantiating: anything the host does not
+provide is filled with a stub. So the module loads, the game runs, and six GL
+entry points are silent no-ops. A `LinkError` would have been *better* — it would
+have said so on the first load.
+
+**The cause was in the publish pipeline, and it affects every game here.**
+`publish.ps1` downloaded the runtime from
+`https://not-fl3.github.io/miniquad-samples/mq_js_bundle.js` — a page hosting
+whatever version those demos happen to use. The workspace compiles against
+miniquad 0.4.10, whose own `js/gl.js` defines all six. The JS half of the engine
+was being fetched from a website while the Rust half came from the crate, and
+they had drifted.
+
+It is taken from the crate now, read out of the cargo registry at the version
+`Cargo.lock` resolves to, with the download left as a fallback. **A version that
+cannot disagree is worth more than a fresh download.** The deployed bundle is now
+byte-identical to miniquad 0.4.10's, and the check reports 0 unsatisfied.
+
+**Three times in one session, the same escaping trap.** Writing these scripts
+through Python heredocs turned `\b` into a backspace inside a regex, `\r` into a
+carriage return inside a Windows path, and had earlier turned a replacement into
+a control character. The first one made the checker report **105 of 113 imports
+missing** — the detector describing itself, again — and the second silently sent
+the publish script looking for `.cargo` + carriage-return + `egistry`. Both were
+found by printing the bytes rather than reading the text.
+
 
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
@@ -3587,6 +3632,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
+| A web build nobody has opened | The wasm's import section is checked against the scripts the page loads (§5.62). Six GL functions were missing and stubbed silently, because the runtime came from a samples website rather than the crate. |
 | A capture that photographs the wrong thing | Scenes name their cabinet instead of indexing it (§5.61). The `cascade` capture had been shooting Wyrmspire, which has no cascades, for six iterations. |
 | Lines you can only learn by winning on them | All twenty are drawn on a screen of their own, in the colours the reels use (§5.60). Registering it put it through every audit with no harness change. |
 | A win the player cannot see the shape of | The winning payline is drawn across the grid and named from the data (§5.59). The game said "line 17" for fifty-eight systems and never drew a line. |
@@ -3653,7 +3699,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus fifty-six post-v1 systems
+## 15. Current State — v1 shipped, plus fifty-seven post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
@@ -3664,7 +3710,7 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) a motion audit (§5.52) an answer for running out (§5.53) a size limit that is actually enforced (§5.54) one bankroll across six cabinets (§5.55) a web save that belongs to this game alone (§5.56) a floor-wide Grand (§5.57) a game that reads its own save (§5.58) a payline you can actually see (§5.59) a page of all twenty (§5.60) and a badge that is off the reels (§5.61). The game is
+navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) a motion audit (§5.52) an answer for running out (§5.53) a size limit that is actually enforced (§5.54) one bankroll across six cabinets (§5.55) a web save that belongs to this game alone (§5.56) a floor-wide Grand (§5.57) a game that reads its own save (§5.58) a payline you can actually see (§5.59) a page of all twenty (§5.60) a badge that is off the reels (§5.61) and a published build that is checked (§5.62). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
@@ -3745,10 +3791,11 @@ Cleared out in §5.61 down to what is actually outstanding:
   aliasing that made the bright effects harsh, so it is no longer unexamined —
   but measurement is not listening, and whether it plays at all under WASM has
   never been checked.
-- **Nothing on the web build has been checked by opening it.** The same is true
-  of persistence, which §5.56 found silently sharing a `localStorage` key with
-  four other games, and of touch input on a real device. Everything about the
-  published build is verified by reasoning and by a native binary.
+- **Nobody has opened the web build in a browser.** §5.62 now checks that the
+  deployed page provides every function the wasm imports — which found six
+  missing and traced them to the runtime being downloaded from a samples site
+  rather than taken from the crate — but that is a contract check, not a person
+  watching the reels turn. Touch input on a real device is in the same position.
 - **The gamble has no confirmation on a losing decision.** Deliberate — a cabinet
   that asked "are you sure?" on every flip would be unusable — but a misclick on
   Ember still costs the whole win, and that is the only place in the game where
