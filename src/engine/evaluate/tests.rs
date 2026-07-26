@@ -226,7 +226,7 @@ fn the_free_spin_multiplier_lifts_wins_but_not_scatters() {
     let free = evaluate(
         &fixture.data,
         &grid,
-        &EvalContext::free_spin(&fixture.data, 10),
+        &EvalContext::free_spin_at(&fixture.data, 10, fixture.data.freespins.multiplier),
     );
 
     assert!(base.win_credits > 0);

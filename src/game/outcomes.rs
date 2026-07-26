@@ -143,6 +143,11 @@ impl Game {
                 }
                 self.sound.play(Sfx::Click);
             }
+            ActionOutcome::FreeSpinShapeChosen(spins) => {
+                self.sound.play(Sfx::Click);
+                self.notifications
+                    .info(format!("Free spins set to {} of them", spins));
+            }
             ActionOutcome::LinesToggled => {
                 self.show_lines = !self.show_lines;
                 self.sound.play(Sfx::Click);

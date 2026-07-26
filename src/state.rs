@@ -67,6 +67,26 @@ pub struct FreeSpinState {
     /// extra spins a punishment.
     #[serde(default)]
     pub burned: usize,
+    /// What wins are multiplied by for this run (§5.64).
+    ///
+    /// On the state rather than read from config, because the player chooses it
+    /// when the feature triggers and two runs on the same cabinet can differ.
+    /// `default` of zero means "whatever the cabinet says", so a save written
+    /// before the choice existed still loads and plays as it always did.
+    #[serde(default)]
+    pub multiplier: i64,
+}
+
+impl FreeSpinState {
+    /// The multiplier in force, falling back to the cabinet's own.
+    pub fn multiplier(&self, data: &GameData) -> i64 {
+        if self.multiplier > 0 {
+            self.multiplier
+        } else {
+            data.freespins.multiplier
+        }
+        .max(1)
+    }
 }
 
 /// What a single resolved spin did to the session.
@@ -590,6 +610,7 @@ impl GameSession {
                         line_bet,
                         total_won: 0,
                         burned: 0,
+                        multiplier: 0,
                     });
                 }
             }

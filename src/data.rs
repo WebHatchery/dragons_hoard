@@ -297,6 +297,45 @@ pub struct FreeSpinsConfig {
     /// cabinet whose free spins are simply N of the same spin.
     #[serde(default)]
     pub refine: Option<Refine>,
+    /// The ways this feature can be run (§5.64), all worth the same.
+    ///
+    /// Empty on a refining cabinet, and that is a decision rather than an
+    /// omission: burning symbols off the strips makes a late free spin worth
+    /// more than an early one, so trading spins for multiplier there would
+    /// change the return. A cabinet that cannot price a choice fairly does not
+    /// offer one.
+    #[serde(default)]
+    pub shapes: Vec<FreeSpinShape>,
+}
+
+/// One way of running the feature: fewer spins worth more, or more worth less.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FreeSpinShape {
+    pub id: String,
+    pub name: String,
+    /// Share of the awarded spins this shape grants, in permille.
+    pub spin_permille: i64,
+    /// What wins are multiplied by while it runs.
+    pub multiplier: i64,
+}
+
+impl FreeSpinShape {
+    /// Spins × multiplier: what makes two shapes worth the same.
+    ///
+    /// The whole design rests on this being equal across every shape, so it is
+    /// a named thing that a validator and a test can both point at rather than
+    /// an arithmetic coincidence in a JSON file.
+    pub fn value(&self) -> i64 {
+        self.spin_permille * self.multiplier
+    }
+
+    /// Spins this shape grants for an award of `spins`.
+    ///
+    /// At least one: a shape that granted none would take the feature away
+    /// entirely, which no amount of multiplier makes up for.
+    pub fn spins(&self, awarded: u32) -> u32 {
+        ((awarded as i64 * self.spin_permille) / 1000).max(1) as u32
+    }
 }
 
 /// Progressive symbol removal during free spins (§5.21).

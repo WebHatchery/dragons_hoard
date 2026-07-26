@@ -72,9 +72,14 @@ impl EvalContext {
         }
     }
 
-    pub fn free_spin(data: &GameData, line_bet: i64) -> Self {
+    /// A free spin running at a chosen multiplier (§5.64).
+    ///
+    /// The cabinet's own is the default rather than the only option: a run can
+    /// be traded for fewer spins worth more, and which one is in force belongs
+    /// to the run rather than to the machine.
+    pub fn free_spin_at(data: &GameData, line_bet: i64, multiplier: i64) -> Self {
         Self {
-            win_multiplier: data.freespins.multiplier.max(1),
+            win_multiplier: multiplier.max(1),
             ..Self::base(data, line_bet)
         }
     }

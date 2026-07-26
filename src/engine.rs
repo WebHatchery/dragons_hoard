@@ -30,6 +30,9 @@ pub enum SpinMode {
     /// strips by the time it runs (§5.21). Zero on a cabinet without one.
     FreeSpin {
         burned: usize,
+        /// What this run multiplies wins by (§5.64). Zero means the cabinet's
+        /// own, which is what every caller wanted before the choice existed.
+        multiplier: i64,
     },
 }
 
@@ -65,7 +68,7 @@ pub fn spin(data: &GameData, rng: &mut SeededRng, line_bet: i64, mode: SpinMode)
     // is actually spinning.
     let reels = match mode {
         SpinMode::Base => data.reels.clone(),
-        SpinMode::FreeSpin { burned } => data.refined_reels(burned),
+        SpinMode::FreeSpin { burned, .. } => data.refined_reels(burned),
     };
     let stops = reels::pick_stops_on(&reels, rng);
     // Heights are drawn *after* the stops so a fixed cabinet's stream is
@@ -76,13 +79,18 @@ pub fn spin(data: &GameData, rng: &mut SeededRng, line_bet: i64, mode: SpinMode)
 
     let (grid, ctx) = match mode {
         SpinMode::Base => (landed, EvalContext::base(data, line_bet)),
-        SpinMode::FreeSpin { .. } => {
+        SpinMode::FreeSpin { multiplier, .. } => {
             let grid = if data.freespins.expanding_wilds {
                 expand_wilds(data, &landed)
             } else {
                 landed
             };
-            (grid, EvalContext::free_spin(data, line_bet))
+            let multiplier = if multiplier > 0 {
+                multiplier
+            } else {
+                data.freespins.multiplier
+            };
+            (grid, EvalContext::free_spin_at(data, line_bet, multiplier))
         }
     };
 
@@ -143,7 +151,15 @@ mod tests {
 
         let mut rng = SeededRng::new(99);
         for _ in 0..400 {
-            let result = spin(&data, &mut rng, 10, SpinMode::FreeSpin { burned: 0 });
+            let result = spin(
+                &data,
+                &mut rng,
+                10,
+                SpinMode::FreeSpin {
+                    burned: 0,
+                    multiplier: 0,
+                },
+            );
             for reel in 0..result.grid.reel_count() {
                 if result.grid.reel_contains(reel, wild) {
                     assert!(

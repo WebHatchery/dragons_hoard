@@ -248,6 +248,30 @@ impl GameData {
                 return Err("shifting reels need ways evaluation".to_owned());
             }
         }
+        // Every shape of the free-spin feature must be worth the same (§5.64).
+        // This is the one rule the whole choice rests on: if two shapes differ
+        // in expectation then picking one is picking a better game, and the
+        // measured RTP depends on what the player pressed.
+        if let Some(first) = self.freespins.shapes.first() {
+            for shape in &self.freespins.shapes {
+                if shape.value() != first.value() {
+                    return Err(format!(
+                        "free-spin shape '{}' is worth {} against '{}' at {} — every                          shape must trade spins for multiplier exactly",
+                        shape.id,
+                        shape.value(),
+                        first.id,
+                        first.value()
+                    ));
+                }
+            }
+            if self.freespins.refine.is_some() {
+                return Err(
+                    "a refining cabinet cannot offer free-spin shapes: burning symbols makes a                      late spin worth more than an early one, so trading spins for multiplier                      would move the return"
+                        .to_owned(),
+                );
+            }
+        }
+
         if self.gamble.max_steps == 0 {
             return Err("a gamble with no steps could never be taken".to_owned());
         }

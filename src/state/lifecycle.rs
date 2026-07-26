@@ -216,7 +216,9 @@ impl GameSession {
                 }
                 None => 0,
             };
-            SpinMode::FreeSpin { burned }
+            // The run's own multiplier, chosen when the feature opened (§5.64).
+            let multiplier = self.free_spins.as_ref().map_or(0, |state| state.multiplier);
+            SpinMode::FreeSpin { burned, multiplier }
         } else {
             SpinMode::Base
         };

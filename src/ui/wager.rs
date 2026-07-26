@@ -181,7 +181,8 @@ fn draw_feature_banner(ctx: &UiContext<'_>, content: Rect, y: f32) {
             format!("{} free spins left", free_spins.remaining),
             format!(
                 "x{} wilds expand  |  won {}",
-                ctx.data.freespins.multiplier, free_spins.total_won
+                free_spins.multiplier(ctx.data),
+                free_spins.total_won
             ),
         )),
         None if ctx.session.autospin_remaining() > 0 => Some((
@@ -230,10 +231,40 @@ fn draw_spin_button(
     let secondary_y = below - 12.0 - 38.0;
     let spin_y = secondary_y - 10.0 - 70.0;
 
-    // The rules panel (§5.29) gets its own full-width button in the gap above
-    // the spin block, and gets it because R alone is not an affordance — a
-    // shortcut nobody is told about is the problem the panel exists to fix.
-    if virtual_button(
+    // The free-spin choice takes the rules button's place while it is open
+    // (§5.64). It is the only thing on screen worth pressing at that moment,
+    // and it closes itself the instant the first spin goes — so it cannot sit
+    // there stale, and pressing SPIN instead is a valid answer that takes the
+    // cabinet's own shape.
+    let shapes = ctx.session.free_spin_shapes(ctx.data);
+    if !shapes.is_empty() {
+        let width = (content.w - 8.0) / shapes.len() as f32;
+        for (index, shape) in shapes.iter().enumerate() {
+            let spins = ctx
+                .session
+                .free_spins
+                .as_ref()
+                .map_or(0, |run| shape.spins(run.awarded));
+            if virtual_button(
+                Rect::new(
+                    content.x + index as f32 * (width + 8.0),
+                    spin_y - 46.0,
+                    width,
+                    34.0,
+                ),
+                &format!("{} spins at x{}", spins, shape.multiplier),
+                true,
+                ButtonTone::Primary,
+                pointer,
+                nav,
+            ) {
+                actions.push(UiAction::ChooseFreeSpinShape(index));
+            }
+        }
+    } else if virtual_button(
+        // The rules panel (§5.29) otherwise gets this gap, and gets it because
+        // R alone is not an affordance — a shortcut nobody is told about is the
+        // problem the panel exists to fix.
         Rect::new(content.x, spin_y - 46.0, content.w, 34.0),
         &format!("How {} plays", ctx.data.config.display_name),
         true,

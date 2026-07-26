@@ -20,6 +20,37 @@ use crate::data::{FeatureAward, GameData};
 use macroquad_toolkit::timing::Timer;
 
 impl GameSession {
+    /// Shapes this cabinet offers for a free-spin run that has not started yet
+    /// (§5.64).
+    ///
+    /// Empty once a spin has been played: the choice is about how to run the
+    /// feature, and changing it partway through would let a player take the
+    /// long odds and switch to the short ones the moment they looked bad.
+    pub fn free_spin_shapes<'a>(&self, data: &'a GameData) -> &'a [crate::data::FreeSpinShape] {
+        match self.free_spins.as_ref() {
+            Some(state) if state.remaining == state.awarded && state.total_won == 0 => {
+                &data.freespins.shapes
+            }
+            _ => &[],
+        }
+    }
+
+    /// Run the feature the chosen way.
+    ///
+    /// Returns the spins it will now run for, or `None` if the choice is not
+    /// available — a stale press from a frame where the first spin had already
+    /// gone must not re-cut the deal.
+    pub fn choose_free_spin_shape(&mut self, index: usize, data: &GameData) -> Option<u32> {
+        let shape = self.free_spin_shapes(data).get(index)?;
+        let spins = shape.spins(self.free_spins.as_ref()?.awarded);
+        let multiplier = shape.multiplier;
+        let state = self.free_spins.as_mut()?;
+        state.awarded = spins;
+        state.remaining = spins;
+        state.multiplier = multiplier;
+        Some(spins)
+    }
+
     /// Turn a chest over. Credits the balance and raises the Hatch card when
     /// the round ends.
     pub fn pick_bonus(&mut self, index: usize, data: &GameData) -> Option<BonusOutcome> {
@@ -143,6 +174,7 @@ impl GameSession {
                     line_bet,
                     total_won: 0,
                     burned: 0,
+                    multiplier: 0,
                 });
                 self.celebrations
                     .push(CelebrationKind::FreeSpinsEntry { spins, scatters: 0 });

@@ -122,6 +122,8 @@ pub enum UiAction {
     ToggleLedger,
     /// The payline diagrams (§5.60).
     ToggleLines,
+    /// Run the free spins the chosen way (§5.64).
+    ChooseFreeSpinShape(usize),
     /// Open or close the rules panel (§5.29).
     ToggleRules,
     MusicVolumeUp,

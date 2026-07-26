@@ -36,6 +36,8 @@ pub enum ActionOutcome {
     FeatureBuyToggled,
     LedgerToggled,
     LinesToggled,
+    /// A free-spin run reshaped, and the spins it now holds (§5.64).
+    FreeSpinShapeChosen(u32),
     RulesToggled,
     LimitsToggled,
     HistoryToggled,
@@ -103,6 +105,11 @@ pub fn apply(
         UiAction::ToggleFeatureBuy => ActionOutcome::FeatureBuyToggled,
         UiAction::ToggleLedger => ActionOutcome::LedgerToggled,
         UiAction::ToggleLines => ActionOutcome::LinesToggled,
+        UiAction::ChooseFreeSpinShape(index) => match session.choose_free_spin_shape(index, data) {
+            Some(spins) => ActionOutcome::FreeSpinShapeChosen(spins),
+            // The run has started since the frame that drew the button.
+            None => ActionOutcome::Ignored,
+        },
         UiAction::ToggleRules => ActionOutcome::RulesToggled,
         UiAction::ToggleLimits => ActionOutcome::LimitsToggled,
         UiAction::ToggleHistory => ActionOutcome::HistoryToggled,

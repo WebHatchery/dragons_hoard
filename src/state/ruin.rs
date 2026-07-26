@@ -207,6 +207,7 @@ mod tests {
             line_bet: 1,
             total_won: 0,
             burned: 0,
+            multiplier: 0,
         });
         assert!(
             !session.is_ruined(&data),

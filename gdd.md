@@ -3069,6 +3069,51 @@ one test in a place where the next game gets it for nothing.
 is this cabinet's tuning — how long a reel turns, how fast a chain collapses —
 which is a judgement about *this* game and belongs nowhere else.
 
+### 5.64 Choosing how the free spins run (post-v1)
+
+The feature has always been the same shape: ten, fifteen or twenty spins at the
+cabinet's multiplier, take it or leave it. There was nothing to decide.
+
+Now there is — and the decision is deliberately **not** about how much you get.
+Each cabinet offers its run two ways:
+
+| | Dragon's Hoard | Avalanche, Emberfall, Wyrmspire |
+|---|---|---|
+| The Long Hunt | 15 spins at ×2 | 15 spins at ×3 |
+| The Swift Kill | 6 spins at ×5 | 9 spins at ×5 |
+
+Both are worth exactly thirty units of line bet, and forty-five. The choice is
+about **variance**: the same expected return arriving over fifteen chances or
+six. That is the honest version of a decision a slot machine can offer — it does
+not sell an advantage, it sells a shape.
+
+**Two things make that claim true rather than merely stated.** The validator
+refuses to load a cabinet whose shapes differ in `spins × multiplier`, so a data
+edit cannot quietly make one option better. And a **refining cabinet is not
+allowed to offer the choice at all**: Frost Wyrm burns symbols off its strips as
+the feature runs (§5.21), so a late spin is worth more than an early one and
+spins are not interchangeable. A cabinet that cannot price a choice fairly does
+not offer one.
+
+**The first version got it wrong, and the picture said so.** The shapes were
+exact — `1000 × 2` against `500 × 4`, both 2000 — and the *delivered* spins were
+not, because the count is a rounded fraction of the award. Half of fifteen is
+seven. Seven at ×4 is twenty-eight against fifteen at ×2 being **thirty**: the
+player lost seven percent of the feature by choosing, which is precisely what
+this design promises cannot happen.
+
+The arithmetic test passed the whole time, because it compared the shapes to each
+other and never to an award the cabinet actually gives. It was caught by
+capturing the screen and reading the button — *"7 spins at x4"* beside *"15 spins
+at x2"* — and the test that now holds it walks the real award table. The shapes
+were re-derived to satisfy it exactly rather than approximately.
+
+**And the multiplier belongs to the run, not the machine.** It moved onto
+`FreeSpinState`, which meant the two places the banner quoted
+`data.freespins.multiplier` were about to start lying — a cabinet saying ×2 over
+reels paying ×5. Both read the run now. The million-spin gate is unmoved, because
+the default shape is the feature exactly as it was.
+
 
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
@@ -3673,6 +3718,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
+| A choice that is secretly a worse deal | Free-spin shapes are validated to be worth the same on every award the cabinet gives (§5.64). The first version lost the player 7% on a fifteen-spin award and the arithmetic test did not notice. |
 | A general thing wearing a slot machine's name | `PayoutCounter` and `CascadeReveal` became `reveal::Countup` and `reveal::Stepper` (§5.63); renaming them found an `f32` that lost 512 credits on a large win. |
 | A web build nobody has opened | The wasm's import section is checked against the scripts the page loads (§5.62). Six GL functions were missing and stubbed silently, because the runtime came from a samples website rather than the crate. |
 | A capture that photographs the wrong thing | Scenes name their cabinet instead of indexing it (§5.61). The `cascade` capture had been shooting Wyrmspire, which has no cascades, for six iterations. |
@@ -3741,7 +3787,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus fifty-eight post-v1 systems
+## 15. Current State — v1 shipped, plus fifty-nine post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
@@ -3752,11 +3798,11 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) a motion audit (§5.52) an answer for running out (§5.53) a size limit that is actually enforced (§5.54) one bankroll across six cabinets (§5.55) a web save that belongs to this game alone (§5.56) a floor-wide Grand (§5.57) a game that reads its own save (§5.58) a payline you can actually see (§5.59) a page of all twenty (§5.60) a badge that is off the reels (§5.61) a published build that is checked (§5.62) and two more modules promoted (§5.63). The game is
+navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) a motion audit (§5.52) an answer for running out (§5.53) a size limit that is actually enforced (§5.54) one bankroll across six cabinets (§5.55) a web save that belongs to this game alone (§5.56) a floor-wide Grand (§5.57) a game that reads its own save (§5.58) a payline you can actually see (§5.59) a page of all twenty (§5.60) a badge that is off the reels (§5.61) a published build that is checked (§5.62) two more modules promoted (§5.63) and a free-spin run you choose the shape of (§5.64). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-506 tests pass here and 322 in `macroquad-toolkit`; `cargo fmt --check`,
+512 tests pass here and 322 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
 release build are clean. Every `.rs` file is under the 800-line limit and a gate now says so
 (§5.54); `game.rs` (740) and `ui/reels.rs` (689) are the largest. `data.rs` went

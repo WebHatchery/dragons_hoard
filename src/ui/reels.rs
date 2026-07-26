@@ -177,9 +177,17 @@ pub fn draw_reels(data: &GameData, session: &GameSession, shake: Vec2, ui_time: 
 /// strips, because the escalation is invisible otherwise — the reels simply feel
 /// luckier and the player has no way to know why.
 fn feature_title(data: &GameData, session: &GameSession) -> String {
+    // The *run's* multiplier, not the cabinet's — they differ once the player
+    // has traded spins for it (§5.64), and a banner quoting the machine while
+    // the reels pay something else is the kind of small lie this game does not
+    // tell.
     let base = format!(
         "The Vault — Free Spins  ·  wilds expand  ·  line wins x{}",
-        data.freespins.multiplier.max(1)
+        session
+            .free_spins
+            .as_ref()
+            .map_or(data.freespins.multiplier.max(1), |state| state
+                .multiplier(data))
     );
     let Some(refine) = data.freespins.refine.as_ref() else {
         return base;

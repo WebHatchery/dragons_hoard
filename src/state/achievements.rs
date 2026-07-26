@@ -369,6 +369,7 @@ mod tests {
             line_bet: 1,
             total_won: 0,
             burned: 0,
+            multiplier: 0,
         });
         let free = a_spin(&mut session, &data);
         progress.observe("dragon", &free, 100);

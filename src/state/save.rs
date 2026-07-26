@@ -172,6 +172,7 @@ mod tests {
             line_bet: 5,
             total_won: 300,
             burned: 0,
+            multiplier: 0,
         });
 
         let reloaded = GameSession::from_save(&data, session.to_save(&data.config.version));

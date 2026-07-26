@@ -6,5 +6,19 @@
   },
   "retrigger": true,
   "multiplier": 3,
-  "expanding_wilds": true
+  "expanding_wilds": true,
+  "shapes": [
+    {
+      "id": "long",
+      "name": "The Long Hunt",
+      "spin_permille": 1000,
+      "multiplier": 3
+    },
+    {
+      "id": "swift",
+      "name": "The Swift Kill",
+      "spin_permille": 600,
+      "multiplier": 5
+    }
+  ]
 }
