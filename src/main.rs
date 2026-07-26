@@ -27,6 +27,13 @@ fn window_conf() -> Conf {
 async fn main() {
     let mut game = Game::new().await;
 
+    // Random-play harness (§5.76): ten thousand arbitrary presses, checked
+    // after every one. Before the capture branch because it is not a capture —
+    // it draws nothing and exits with a code.
+    if let Some(config) = game::drift::DriftConfig::from_env() {
+        std::process::exit(game.drift(&config));
+    }
+
     // Screenshot harness: when DRAGONS_HOARD_CAPTURE_PATH is set, seed the
     // requested scene, render deterministic frames, write a PNG, and exit.
     if let Some(config) = capture::CaptureConfig::from_env("DRAGONS_HOARD") {

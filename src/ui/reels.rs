@@ -146,7 +146,15 @@ pub fn draw_reels(data: &GameData, session: &GameSession, shake: Vec2, ui_time: 
         .params(),
     );
 
-    draw_jackpot_ladder(data, session, shake, ui_time);
+    // Not while the Dragon's Wrath is running. Its banner sits in this strip
+    // and covers the plates — opaquely, so it looks right, but it *slices* the
+    // numbers rather than hiding whole rows, and the collision audit is
+    // correct to call that a fault (§5.47, §5.76). Drawing one or the other is
+    // the honest fix; layering the banner over live numbers was never anything
+    // but a coincidence of geometry that held on some cabinets and not others.
+    if session.holdspin.is_none() {
+        draw_jackpot_ladder(data, session, shake, ui_time);
+    }
 
     let bounds = grid_rect().offset(shake);
     let highlights = winning_cells(data, session);

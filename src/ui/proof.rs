@@ -167,19 +167,33 @@ fn heading(panel: Rect, y: f32) {
 fn row(panel: Rect, y: f32, entry: &Commitment, verdict: Option<&Verdict>) {
     let style = TextStyle::new(15.0, palette::text_bright());
     draw_ui_text_ex(&entry.seq.to_string(), panel.x + 24.0, y, style.params());
-    draw_ui_text_ex(
+    // Fitted to its column. "Emberfall — 243 Ways" is already long and the 40%
+    // pseudolocale (§5.39) pushes it into the hex beside it — the same fault
+    // the footer had, in the panel written one section earlier (§5.76).
+    draw_text_block(
         &entry.machine_name,
         panel.x + 92.0,
-        y,
-        TextStyle::new(15.0, palette::text_dim()).params(),
+        y - 12.0,
+        168.0,
+        18.0,
+        15.0,
+        0.0,
+        palette::text_dim(),
     );
     // Monospaced by nothing but luck, so it is left alone rather than padded:
     // sixteen hex digits is already a fixed width.
+    //
+    // `text`, not `gold_dim`. The dim gold reads as 2.8:1 on this cabinet's
+    // palette against the 4.5 the contrast gate wants (§5.40), and it went
+    // unnoticed for a whole section because the audit happened to be running
+    // under a different cabinet's theme — the one a stray harness run had left
+    // in the preferences. This is the number the player is invited to copy out
+    // and check by hand; it is the last thing that should be hard to read.
     draw_ui_text_ex(
         &entry.state_hex(),
         panel.x + 268.0,
         y,
-        TextStyle::new(15.0, palette::gold_dim()).params(),
+        TextStyle::new(15.0, palette::text()).params(),
     );
     draw_text_right(&entry.line_bet.to_string(), panel.x + 560.0, y, style);
     draw_text_right(

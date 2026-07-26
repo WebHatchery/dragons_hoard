@@ -524,6 +524,26 @@ impl Game {
                 let _ = self.session.begin_spin(&self.data);
             }
             scene if scene.starts_with("audit:") => {
+                // Pin the cabinet before anything is measured (§5.76).
+                //
+                // The sweep used to run on whatever machine the *player's
+                // preferences file* named, because that is what boot loads. So
+                // its subject was decided by a file outside the repository, and
+                // it audited a different game on every computer. Resetting one
+                // machine's preferences from Emberfall back to Dragon's Hoard
+                // immediately turned up two collisions and a 2.8:1 contrast
+                // failure that had been sitting there, unswept, behind a
+                // cabinet nobody's copy happened to have selected.
+                //
+                // `DRAGONS_HOARD_MACHINE` names it; without one it is the first
+                // cabinet in the catalog. Either way it is the same everywhere.
+                let machine = std::env::var("DRAGONS_HOARD_MACHINE")
+                    .ok()
+                    .filter(|id| !id.is_empty())
+                    .unwrap_or_else(|| crate::data::MACHINES[0].id.to_owned());
+                self.use_machine(crate::data::machine_by_id(&machine));
+                self.session = GameSession::new(&self.data, 0xD2A6_0F1E);
+
                 let wanted = &scene["audit:".len()..];
                 let Some(screen) = crate::game::screens::Screen::ALL
                     .iter()

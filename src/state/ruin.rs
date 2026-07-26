@@ -80,9 +80,18 @@ impl GameSession {
     /// Not the current bet: a player at the top of the ladder is not out of
     /// credits while they can still drop to the bottom of it, and offering a
     /// rescue to someone with twenty playable spins left would be absurd.
+    /// The least a spin can cost *as the player has the machine set up*.
+    ///
+    /// The ante is part of it (§5.75). This asked `total_bet` and so ignored the
+    /// side bet entirely, which put the player in a state the game had no name
+    /// for: on Tidepool with the ante on, twenty credits and a minimum stake of
+    /// twenty-four, `can_spin` was false and `is_ruined` was false. No ruin
+    /// screen, no lifeline, no explanation — just a Spin button that did
+    /// nothing, and one way out that the game never mentioned. Found by ten
+    /// thousand random presses (§5.76) on the fourth seed.
     pub fn cheapest_spin(&self, data: &GameData) -> i64 {
         let cheapest = data.config.line_bets.iter().copied().min().unwrap_or(1);
-        data.total_bet(cheapest)
+        data.staked(cheapest, self.ante(data))
     }
 
     /// Is the player actually stuck?

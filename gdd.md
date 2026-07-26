@@ -3624,6 +3624,73 @@ point it was built for: adding an input to `engine::spin` broke exactly three
 call sites and **two of them were the commitment record**. A proof that did not
 have to change when the engine gained an input would not have been a proof.
 
+### 5.76 Ten thousand arbitrary presses (post-v1)
+
+§5.37 checks a screen's layout. §5.50 sweeps every screen, one at a time. §5.52
+watches a spin frame by frame. Every one of them looks at the game **in a state
+somebody arranged**. Nothing had ever asked what happens when a player does ten
+thousand arbitrary things in a row — which is the state a real player is in
+constantly.
+
+A seeded generator presses buttons; the frame step is fixed; a failure prints
+the seed and the last twenty presses, so re-running replays the same evening
+exactly. `Load` is the one press it will not make, because reading whatever save
+is on the machine would make the run depend on something other than the seed.
+
+**Four things it checks**, and the last is the reason it exists: the balance
+never goes negative, a payout never breaks a ceiling, every committed spin still
+verifies (§5.74), and **the game never locks**. A lock is the game *holding* the
+reels, so an open board, a gamble or a card that never clears — the fault §5.27
+found by hand on the Vault Pick, generalised.
+
+**Most of the work went into disbelieving it.** Its first three verdicts were
+worthless and each was wrong differently:
+
+- "Nothing broke" after ten thousand presses — having managed **five spins**,
+  because it read the spin count off the session and `New Game` is one of the
+  presses. A probe the thing being probed can zero is not a measurement.
+- Then 461 spins, because uniform weighting made it reset the game 154 times.
+- Then a lock reported on a perfectly healthy game, three times over: a spin in
+  flight is not settled; a session cap stops the reels *on purpose*; a player
+  left on max bet has a minus button.
+
+Its own settle procedure was wrong twice more. It "closed" every screen using
+`OpenScreen`, which **sets** the flag — it was raising the panels it believed it
+was shutting. And it pressed the minus button before letting the reels stop,
+where the bet controls are locked by design, so all sixty-four presses were
+refused.
+
+**And it ate the save.** Ten thousand presses including `Save` and `Delete Save`
+went straight into the player's real slots, and the save-compatibility gate
+caught it one step later. That is §5.55's exact fault arriving by a door nobody
+had locked — because `may_persist` still answered the question itself instead of
+asking `persist::may_write`. Two answers to one question, and only one of them
+had been told.
+
+**Then it found a real one.** On Tidepool with the ante on: twenty credits, a
+minimum stake of twenty-four, `can_spin` false and `is_ruined` false. No ruin
+screen, no lifeline, no explanation — a Spin button that did nothing and one way
+out the game never mentioned. `cheapest_spin` asked `total_bet` and so knew
+nothing about the side bet §5.75 had added one section earlier.
+
+**And it found something bigger by accident.** Repairing the preferences the
+harness had trampled changed the boot cabinet back from Emberfall to Dragon's
+Hoard — and the screen sweep immediately turned up five faults that had been
+sitting there untouched: a 2.8:1 contrast failure on the very hex digits §5.74
+invites the player to copy out, the Wrath banner slicing the jackpot plates, the
+reality-check panel doing the same, the footer's hoard line running through the
+shortcut list, and the proofs panel's cabinet column running into the hex.
+
+None of them were new. **The sweep took its cabinet from the player's
+preferences file**, so its subject was decided by something outside the
+repository, and it had been auditing a different game on every computer that
+ever ran it. It pins the cabinet now (`DRAGONS_HOARD_MACHINE`, defaulting to the
+first in the catalog). Sweeping all six is the obvious next step and is not done
+yet.
+
+That is the shape of the whole section: the harness found one bug on purpose and
+five by having its own foundations kicked.
+
 
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
@@ -4228,6 +4295,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
+| A state machine nobody has ever stress-tested | Ten thousand seeded random presses, checked after every one (§5.76). It found a stake the ruin screen could not see, and — by trampling the preferences — that the screen sweep had been auditing whichever cabinet the machine last had open. |
 | A side bet sold without saying what it costs you | The ante's price is measured from what the extra features are worth, so the return is unchanged (§5.75). The first version returned 685%, the second was a scam, and one cabinet turned out to have no fair price at all. |
 | A slot machine you have to take on trust | Every spin's deciding number is written down before the draw, and the panel re-runs it through the same engine (§5.74). Eight of the nine tests try to forge a record. |
 | A hint whose only instruction is a keypress | A hint names a screen and the bar draws a button that opens it (§5.73). Every one of the five said "Press R" or "Press C" to a player who may have no keyboard. |
@@ -4309,7 +4377,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus seventy post-v1 systems
+## 15. Current State — v1 shipped, plus seventy-one post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
@@ -4320,7 +4388,7 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) a motion audit (§5.52) an answer for running out (§5.53) a size limit that is actually enforced (§5.54) one bankroll across six cabinets (§5.55) a web save that belongs to this game alone (§5.56) a floor-wide Grand (§5.57) a game that reads its own save (§5.58) a payline you can actually see (§5.59) a page of all twenty (§5.60) a badge that is off the reels (§5.61) a published build that is checked (§5.62) two more modules promoted (§5.63) a free-spin run you choose the shape of (§5.64) the measured feel of each (§5.65) a rules gate that fails closed (§5.66) every feature setting declared (§5.67) a session that closes properly (§5.68) a size gate that counts (§5.69) a log of the sessions played (§5.70) one that survives the window closing (§5.71) a way into every screen without a keyboard (§5.72) hints that open what they name (§5.73) a spin you can check yourself (§5.74) and a side bet priced by measurement (§5.75). The game is
+navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) a motion audit (§5.52) an answer for running out (§5.53) a size limit that is actually enforced (§5.54) one bankroll across six cabinets (§5.55) a web save that belongs to this game alone (§5.56) a floor-wide Grand (§5.57) a game that reads its own save (§5.58) a payline you can actually see (§5.59) a page of all twenty (§5.60) a badge that is off the reels (§5.61) a published build that is checked (§5.62) two more modules promoted (§5.63) a free-spin run you choose the shape of (§5.64) the measured feel of each (§5.65) a rules gate that fails closed (§5.66) every feature setting declared (§5.67) a session that closes properly (§5.68) a size gate that counts (§5.69) a log of the sessions played (§5.70) one that survives the window closing (§5.71) a way into every screen without a keyboard (§5.72) hints that open what they name (§5.73) a spin you can check yourself (§5.74) a side bet priced by measurement (§5.75) and a player who presses everything (§5.76). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 

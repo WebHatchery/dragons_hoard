@@ -36,7 +36,16 @@ pub fn draw(clock: &SessionClock, pointer: Pointer, actions: &mut Vec<UiAction>,
         Color::new(0.0, 0.0, 0.0, 0.86),
     );
 
-    let panel = frame::centred_at(600.0, 176.0, 368.0);
+    // Below the jackpot ladder, not across it. At 176 the panel's top edge
+    // landed inside the plate row and sliced "1,000" and "5,000" in half —
+    // ordinary layering to look at, a row of severed digits to the audit, and
+    // it is right (§5.47). The dim behind is 86%, not opaque, so what is under
+    // the panel is genuinely still on screen.
+    //
+    // Never seen until the sweep stopped taking its cabinet from the player's
+    // preferences file (§5.76): the plates sit at different heights per
+    // cabinet, and this one was not the cabinet being swept.
+    let panel = frame::centred_at(600.0, 214.0, 368.0);
     // Everything drawn below is measured against this panel (§5.37).
     let _region = Region::on(panel, palette::stone());
     draw_surface(

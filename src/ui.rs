@@ -188,6 +188,69 @@ pub enum UiAction {
     Load,
     DeleteSave,
 }
+impl UiAction {
+    /// A stable name for this press.
+    ///
+    /// The match is exhaustive on purpose (§5.76). A new action cannot be added
+    /// without the build stopping here, which is the moment to decide whether
+    /// the random-play harness should be pressing it — the alternative is a
+    /// button nothing has ever tried.
+    pub fn name(&self) -> &'static str {
+        match self {
+            UiAction::Spin => "spin",
+            UiAction::BetUp => "bet_up",
+            UiAction::BetDown => "bet_down",
+            UiAction::MaxBet => "max_bet",
+            UiAction::ToggleAutospin => "toggle_autospin",
+            UiAction::TogglePaytable => "toggle_paytable",
+            UiAction::ToggleSettings => "toggle_settings",
+            UiAction::ToggleMachines => "toggle_machines",
+            UiAction::ToggleAchievements => "toggle_achievements",
+            UiAction::ToggleFeatureBuy => "toggle_feature_buy",
+            UiAction::ToggleLedger => "toggle_ledger",
+            UiAction::ToggleLines => "toggle_lines",
+            UiAction::ToggleMenu => "toggle_menu",
+            UiAction::ToggleAnte => "toggle_ante",
+            UiAction::ToggleProofs => "toggle_proofs",
+            UiAction::CheckProofs => "check_proofs",
+            UiAction::OpenScreen(..) => "open_screen",
+            UiAction::ToggleSessions => "toggle_sessions",
+            UiAction::DismissSessionOver => "dismiss_session_over",
+            UiAction::ChooseFreeSpinShape(..) => "choose_free_spin_shape",
+            UiAction::ToggleRules => "toggle_rules",
+            UiAction::MusicVolumeUp => "music_volume_up",
+            UiAction::MusicVolumeDown => "music_volume_down",
+            UiAction::ToggleHistory => "toggle_history",
+            UiAction::ToggleLimits => "toggle_limits",
+            UiAction::CycleLimit(..) => "cycle_limit",
+            UiAction::CycleRealityCheck => "cycle_reality_check",
+            UiAction::AcknowledgeRealityCheck => "acknowledge_reality_check",
+            UiAction::DismissHint => "dismiss_hint",
+            UiAction::ToggleWaveforms => "toggle_waveforms",
+            UiAction::ToggleVision => "toggle_vision",
+            UiAction::OfferGamble => "offer_gamble",
+            UiAction::Gamble(..) => "gamble",
+            UiAction::GambleHalf(..) => "gamble_half",
+            UiAction::TakeGamble => "take_gamble",
+            UiAction::BuyFeature(..) => "buy_feature",
+            UiAction::SelectMachine(..) => "select_machine",
+            UiAction::VolumeUp => "volume_up",
+            UiAction::VolumeDown => "volume_down",
+            UiAction::CycleTextScale => "cycle_text_scale",
+            UiAction::CycleSpinSpeed => "cycle_spin_speed",
+            UiAction::CycleAutospinLength => "cycle_autospin_length",
+            UiAction::ToggleShake => "toggle_shake",
+            UiAction::ToggleParticles => "toggle_particles",
+            UiAction::PickBonus(..) => "pick_bonus",
+            UiAction::DismissCelebration => "dismiss_celebration",
+            UiAction::NewGame => "new_game",
+            UiAction::TakeLifeline => "take_lifeline",
+            UiAction::Save => "save",
+            UiAction::Load => "load",
+            UiAction::DeleteSave => "delete_save",
+        }
+    }
+}
 
 pub struct UiContext<'a> {
     pub data: &'a GameData,
@@ -548,14 +611,24 @@ fn draw_footer(ctx: &UiContext<'_>) {
             hoard.count, ctx.data.config.hoard_capacity
         )),
     );
-    draw_ui_text_ex(
+    // Fitted to the room before the shortcut line, not set at 15px and left to
+    // run. The shortcut line beside it has been width-fitted since §5.29; this
+    // sentence never was, so under the 40% pseudolocale (§5.39) it ran straight
+    // through it — 315px² of overlap that nothing saw for as long as the sweep
+    // was running on a cabinet whose pot happened to be a shorter number
+    // (§5.76).
+    draw_text_block(
         &format!(
             "Fill the hoard to hatch a prize worth {}x the banked pot ({}).",
             ctx.data.config.hatch_pot_multiplier, hoard.pot
         ),
         rect.x + 18.0,
-        rect.y + 56.0,
-        TextStyle::new(15.0, palette::text_dim()).params(),
+        rect.y + 44.0,
+        SHORTCUT_LINE_X - 30.0,
+        22.0,
+        15.0,
+        0.0,
+        palette::text_dim(),
     );
 
     let stats = &ctx.session.stats;
@@ -587,7 +660,7 @@ fn draw_footer(ctx: &UiContext<'_>) {
         // Sized to fit rather than set at 15: the line is generated from the
         // shortcut table now (§5.29), so adding a binding lengthens it and a
         // fixed size would quietly clip the last one off the right edge.
-        let left = rect.x + 470.0;
+        let left = rect.x + SHORTCUT_LINE_X;
         draw_text_block(
             &shortcuts::footer_line(),
             left,
@@ -600,6 +673,13 @@ fn draw_footer(ctx: &UiContext<'_>) {
         );
     }
 }
+
+/// Where the shortcut line starts, measured from the footer's left edge.
+///
+/// Named because two things depend on it and they used to disagree: the
+/// shortcut line was fitted to the space from here rightwards, and the hoard
+/// sentence to its left was not fitted to anything at all.
+const SHORTCUT_LINE_X: f32 = 470.0;
 
 fn virtual_button(
     rect: Rect,

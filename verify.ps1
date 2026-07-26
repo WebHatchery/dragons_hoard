@@ -309,6 +309,24 @@ Step 'collisions and touch targets' {
     }
 }
 
+Write-Host ''
+Write-Host 'A player at random' -ForegroundColor Cyan
+Step 'ten thousand presses' {
+    # Three seeds rather than one. The harness is deterministic on purpose, so a
+    # single seed is a single evening — and the two faults it found while being
+    # written both showed on some seeds and not others (§5.76).
+    foreach ($seed in '946309677721361986', '11', '22') {
+        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_DRIFT', '10000')
+        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_DRIFT_SEED', $seed)
+        $out = & $Exe 2>&1 | Where-Object { $_ -notmatch '^warn' }
+        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_DRIFT', $null)
+        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_DRIFT_SEED', $null)
+        if ($LASTEXITCODE -ne 0) {
+            throw ("the game broke under random play (seed $seed)`n  " + ($out -join "`n  "))
+        }
+    }
+}
+
 if ($Long) {
     Write-Host ''
     Write-Host 'Maths' -ForegroundColor Cyan

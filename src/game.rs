@@ -1,6 +1,7 @@
 //! High-level game loop: owns the session, routes intents, drives feedback.
 
 mod capture_scenes;
+pub mod drift;
 mod feedback;
 mod motion;
 mod outcomes;
@@ -95,7 +96,16 @@ impl Game {
         // live, then honour the cabinet the player last chose.
         // Before anything reads or writes a save: a capture run must not
         // overwrite the game it is verifying (§5.55).
-        crate::state::persist::set_read_only(capture::capture_requested("DRAGONS_HOARD"));
+        // The drift harness counts too, and this line is the whole reason it has
+        // to (§5.76). Its ten thousand presses include Save, New Game and Delete
+        // Save; the first run of it through verify.ps1 overwrote the player's
+        // real save and the save-compatibility gate caught it one step later.
+        // That is §5.55's fault — a harness eating the save — arriving again by a
+        // door nobody had thought to lock.
+        crate::state::persist::set_read_only(
+            capture::capture_requested("DRAGONS_HOARD")
+                || crate::game::drift::DriftConfig::from_env().is_some(),
+        );
 
         let bootstrap = GameData::load()
             .unwrap_or_else(|err| panic!("Dragon's Hoard embedded data failed to load: {}", err));

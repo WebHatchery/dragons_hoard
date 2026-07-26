@@ -28,8 +28,16 @@ impl Game {
     ///
     /// Muting the audio was already conditional on exactly this (a headless run
     /// has no sound card); nobody asked the same question about the disk.
+    /// Deferred to [`persist::may_write`] rather than answered here (§5.76).
+    ///
+    /// This used to ask the capture flag directly, which made it a *second*
+    /// answer to a question §5.55 had already given one place to live — and the
+    /// two disagreed the moment the drift harness arrived, because only one of
+    /// them had been told about it. Ten thousand random presses, including
+    /// Save and Delete Save, went into the player's real slots. One gate, or it
+    /// is not a gate.
     fn may_persist(&self) -> bool {
-        !macroquad_toolkit::capture::capture_requested("DRAGONS_HOARD")
+        crate::state::persist::may_write()
     }
 
     /// Autosave once a spin has fully resolved. Mid-feature state is not saved:
