@@ -77,6 +77,7 @@ impl Game {
                 let _ = self.session.begin_spin(&self.data);
             }
             "paytable" => self.show_paytable = true,
+            "lines" => self.show_lines = true,
             "machines" => self.show_machines = true,
             "bonus" => {
                 self.fast_forward_to(|session| session.bonus.is_some());

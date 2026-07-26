@@ -2904,6 +2904,44 @@ to quote the payline's *id*, because the index would have been off by one agains
 the paytable; it now requires the text and the drawn line to name the same thing,
 which is the same guard pointed at the thing that can now actually go wrong.
 
+### 5.60 The twenty lines, on a page (post-v1)
+
+§5.59 draws the winning line and names it, which answers the question **after** it
+has been asked. A player who wants to know what the twenty lines are — before one
+pays, or to work out why a near miss was not a win — still had nowhere to look.
+
+The paytable is the obvious place and does not have the room. It ends with about
+a hundred spare pixels; twenty diagrams need five times that. So the lines get a
+screen, and that turned out to be the right shape for them rather than a
+consolation: five across and four down, each a miniature of the grid with the
+line's own path on it, drawn **in the colour the reels will use**. That last part
+is the whole point — a blue zig-zag called Mid Trough here is the same blue
+zig-zag that appears over the grid when it pays, because both come from one
+function. Two palettes would have made this a decoration instead of a reference.
+
+The names turn out to be worth showing on their own: Dive, Climb, Low Cradle,
+High Cradle, Arch Down, Zig Up, Top Dip, Bottom Bump, Mid Trough, Wide Weave.
+Twenty shapes that a player can now recognise, all of which have been sitting in
+`paylines.json` since the game shipped.
+
+**Registering it was the cheap part, and that is the result.** Adding `Screen::Lines`
+to the registry (§5.50) is what put the new panel through the layout, contrast,
+collision and touch audits, at three text sizes, six themes, three window widths
+and a 40% translation — without a line of harness being touched, because
+`verify.ps1` asks the game for its screen list rather than keeping one (§5.53). A
+seventeenth screen appeared and seventeen were swept. That is the whole argument
+for the registry, finally paid out.
+
+**And the footer stopped being ambiguous.** It read "Every payout above is a
+multiple of the line bet, at the 10 line bet you have set" — which sounds like the
+numbers in the table are already at that bet. They are multipliers. It now works
+the sum: "at your 10 line bet, an x10 pays 100". A cabinet that shows its
+arithmetic is harder to mistrust than one that asserts it.
+
+A cabinet with no paylines gets a sentence saying so rather than an empty panel,
+because three of the six pay by ways or clusters and a blank screen reads as a
+bug.
+
 
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
@@ -3508,6 +3546,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
+| Lines you can only learn by winning on them | All twenty are drawn on a screen of their own, in the colours the reels use (§5.60). Registering it put it through every audit with no harness change. |
 | A win the player cannot see the shape of | The winning payline is drawn across the grid and named from the data (§5.59). The game said "line 17" for fifty-eight systems and never drew a line. |
 | An autosave nobody reads | Booting loads the cabinet through the same path as switching to it, checked by planting a save and reading it back (§5.58). The game had autosaved since it shipped and never once opened the file. |
 | A jackpot nobody could ever win | The Grand is shared by every cabinet, fed by all of them and payable on any (§5.57). Six independent pots at 625,000 spins each were decoration. |
@@ -3572,7 +3611,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus fifty-four post-v1 systems
+## 15. Current State — v1 shipped, plus fifty-five post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
@@ -3583,11 +3622,11 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) a motion audit (§5.52) an answer for running out (§5.53) a size limit that is actually enforced (§5.54) one bankroll across six cabinets (§5.55) a web save that belongs to this game alone (§5.56) a floor-wide Grand (§5.57) a game that reads its own save (§5.58) and a payline you can actually see (§5.59). The game is
+navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) a motion audit (§5.52) an answer for running out (§5.53) a size limit that is actually enforced (§5.54) one bankroll across six cabinets (§5.55) a web save that belongs to this game alone (§5.56) a floor-wide Grand (§5.57) a game that reads its own save (§5.58) a payline you can actually see (§5.59) and a page of all twenty (§5.60). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-502 tests pass here and 313 in `macroquad-toolkit`; `cargo fmt --check`,
+504 tests pass here and 313 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
 release build are clean. Every `.rs` file is under the 800-line limit and a gate now says so
 (§5.54); `game.rs` (740) and `ui/reels.rs` (689) are the largest. `data.rs` went

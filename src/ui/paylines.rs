@@ -147,7 +147,7 @@ fn cell_centre(data: &GameData, cell: usize, shake: Vec2) -> Option<Vec2> {
 
 /// A hue per line, so two wins on screen in successive beats are visibly
 /// different lines rather than the same gold path moving.
-fn line_colour(line: usize) -> Color {
+pub fn line_colour(line: usize) -> Color {
     const WHEEL: [Color; 5] = [
         Color::new(1.00, 0.84, 0.40, 1.0),
         Color::new(0.55, 0.85, 1.00, 1.0),

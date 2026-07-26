@@ -45,6 +45,8 @@ pub struct Game {
     show_achievements: bool,
     show_featurebuy: bool,
     show_ledger: bool,
+    /// The payline diagrams (§5.60).
+    show_lines: bool,
     /// The rules panel (§5.29).
     show_rules: bool,
     /// Session limits and the clock behind them (§5.30).
@@ -195,6 +197,7 @@ impl Game {
             show_achievements: false,
             show_featurebuy: false,
             show_ledger: false,
+            show_lines: false,
             show_rules: false,
             limits,
             limit_choices,
@@ -336,6 +339,7 @@ impl Game {
                 show_featurebuy: self.show_featurebuy,
                 ledger: &self.ledger,
                 show_ledger: self.show_ledger,
+                show_lines: self.show_lines,
                 show_rules: self.show_rules,
                 limits: &self.limits,
                 limit_choices: &self.limit_choices,

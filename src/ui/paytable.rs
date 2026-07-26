@@ -2,6 +2,11 @@
 
 use crate::ui::frame;
 use crate::ui::nav::Nav;
+
+/// The multiplier the footer works through, so "a multiple of the line bet" is
+/// a sum rather than a claim. Ten because the arithmetic is invisible and the
+/// point is the shape of it (§5.60).
+const EXAMPLE_MULTIPLE: i64 = 10;
 use crate::ui::{
     logical_width, palette, symbols, virtual_button, UiAction, UiContext, LOGICAL_HEIGHT,
 };
@@ -97,9 +102,11 @@ pub fn draw(ctx: &UiContext<'_>, pointer: Pointer, actions: &mut Vec<UiAction>, 
     // live in `state::rules` now, derived from this machine's own config.
     draw_text_block(
         &format!(
-            "Every payout above is a multiple of the line bet, at the {} line bet you have set.
+            "Every payout above is a multiple of the line bet — at your {} line bet, an x{} pays {}.
              Press R for how {} plays — its win model, its features, and what each of them is worth.",
             ctx.session.line_bet(ctx.data),
+            EXAMPLE_MULTIPLE,
+            crate::ui::naming::credits(ctx.session.line_bet(ctx.data) * EXAMPLE_MULTIPLE),
             ctx.data.config.display_name,
         ),
         rect.x + 20.0,
@@ -110,6 +117,22 @@ pub fn draw(ctx: &UiContext<'_>, pointer: Pointer, actions: &mut Vec<UiAction>, 
         6.0,
         palette::text_dim(),
     );
+
+    // The way to the diagrams (§5.60). Beside the footer rather than in the
+    // header, because it belongs to the sentence about lines that sits above
+    // it — and the panel had a hundred spare pixels there doing nothing.
+    if !ctx.data.paylines.is_empty()
+        && virtual_button(
+            Rect::new(rect.x + 20.0, rect.bottom() - 52.0, 220.0, 32.0),
+            &format!("See the {} lines", ctx.data.paylines.len()),
+            true,
+            ButtonTone::Secondary,
+            pointer,
+            nav,
+        )
+    {
+        actions.push(UiAction::ToggleLines);
+    }
 
     if virtual_button(
         Rect::new(rect.right() - 130.0, rect.y + 10.0, 110.0, 30.0),

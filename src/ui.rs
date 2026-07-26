@@ -12,6 +12,7 @@ pub mod holdspin;
 pub mod ledger;
 pub mod legibility;
 pub mod limits;
+pub mod lines;
 pub mod machines;
 pub mod naming;
 pub mod nav;
@@ -119,6 +120,8 @@ pub enum UiAction {
     ToggleFeatureBuy,
     /// Open or close the Ledger panel (§5.18).
     ToggleLedger,
+    /// The payline diagrams (§5.60).
+    ToggleLines,
     /// Open or close the rules panel (§5.29).
     ToggleRules,
     MusicVolumeUp,
@@ -179,6 +182,7 @@ pub struct UiContext<'a> {
     pub profiles: &'a crate::state::profile::ProfileBook,
     pub ledger: &'a crate::state::ledger::Ledger,
     pub show_ledger: bool,
+    pub show_lines: bool,
     pub show_rules: bool,
     pub limits: &'a crate::state::limits::LimitState,
     pub limit_choices: &'a crate::state::limits::LimitChoices,
@@ -268,6 +272,10 @@ pub fn draw_game_ui(ctx: UiContext<'_>, nav: &mut Nav) -> Vec<UiAction> {
             &mut actions,
             nav,
         );
+    }
+
+    if ctx.show_lines {
+        lines::draw(ctx.data, pointer, &mut actions, nav);
     }
 
     if ctx.show_ledger {

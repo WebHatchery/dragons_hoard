@@ -143,6 +143,10 @@ impl Game {
                 }
                 self.sound.play(Sfx::Click);
             }
+            ActionOutcome::LinesToggled => {
+                self.show_lines = !self.show_lines;
+                self.sound.play(Sfx::Click);
+            }
             ActionOutcome::LedgerToggled => {
                 self.show_ledger = !self.show_ledger;
                 if self.show_ledger {
