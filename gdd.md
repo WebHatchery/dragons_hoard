@@ -3154,6 +3154,48 @@ thousand of them each way and watches the means arrive together. If they ever do
 not, something about the feature is not linear in the multiplier and the whole
 premise is wrong — which is a thing worth being able to find out.
 
+### 5.66 The gate that did not fire (post-v1)
+
+§5.29 opens with a promise:
+
+> Add a cabinet with a mechanic and forget to describe it and the build fails
+> naming the topic — which is the failure that should have fired three iterations
+> ago and could not, because there was nothing to compare the prose against.
+
+§5.64 added a mechanic. The free-spin run can now be traded short and sharp, and
+**nothing in the game said so**. No rule, no paytable line, nothing. The build
+did not fail. Two iterations shipped a decision the cabinet never mentioned,
+which is the exact fault §5.29 was written to make impossible.
+
+**The hole is that `Topic::present` is a hand-written list.** It compares the
+prose against a set of topics and cannot notice a mechanic nobody added a topic
+for. That is the same shape as §5.50's screen registry and §5.53's copy of it in
+the harness: *a list that must be maintained is a list that goes stale, and
+staleness looks exactly like correctness.*
+
+So the question is turned round. Every key in the free-spin data must be declared
+either **a mechanic** — named by a topic that has to be present whenever the key
+is switched on — or **tuning**, excused in writing. A key that is neither fails
+the test by name. Adding a field to `freespins.json` now forces a decision
+instead of permitting silence: the default is "explain this", and getting out of
+it means saying why somewhere a reader will see.
+
+Disproved by deleting the `shapes` entry, which reproduces exactly what shipped:
+
+```
+dragon: freespins.json carries 'shapes' and nothing here says whether it is a
+mechanic that must be explained or tuning that need not be.
+```
+
+**Then writing the missing rule broke the panel, twice.** The prose gate caught
+it as an essay at 420 characters, which is a good rule and was correctly applied
+to me. And with a thirteenth topic, Wyrmspire — six mechanics, the most of any
+cabinet — no longer fitted two columns even at the minimum readable size. §5.60
+had already widened the panel once for §5.59's line diagrams.
+
+It has three columns now. The alternative was to stop explaining something, and
+this panel exists because the game used to do exactly that.
+
 
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
@@ -3758,6 +3800,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
+| A mechanic the game never mentions | Every free-spin setting must be declared a mechanic with a topic or excused as tuning in writing (§5.66). The rules validator could not see a mechanic nobody added a topic for, and §5.64 shipped one. |
 | A fair choice the player has to take on trust | Both free-spin shapes are measured over two thousand runs and the distribution is shown on the button (§5.65). Same mean, 0% blank against 7%, 840x against 1,927x. |
 | A choice that is secretly a worse deal | Free-spin shapes are validated to be worth the same on every award the cabinet gives (§5.64). The first version lost the player 7% on a fifteen-spin award and the arithmetic test did not notice. |
 | A general thing wearing a slot machine's name | `PayoutCounter` and `CascadeReveal` became `reveal::Countup` and `reveal::Stepper` (§5.63); renaming them found an `f32` that lost 512 credits on a large win. |
@@ -3828,7 +3871,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus sixty post-v1 systems
+## 15. Current State — v1 shipped, plus sixty-one post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
@@ -3839,11 +3882,11 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) a motion audit (§5.52) an answer for running out (§5.53) a size limit that is actually enforced (§5.54) one bankroll across six cabinets (§5.55) a web save that belongs to this game alone (§5.56) a floor-wide Grand (§5.57) a game that reads its own save (§5.58) a payline you can actually see (§5.59) a page of all twenty (§5.60) a badge that is off the reels (§5.61) a published build that is checked (§5.62) two more modules promoted (§5.63) a free-spin run you choose the shape of (§5.64) and the measured feel of each (§5.65). The game is
+navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) a motion audit (§5.52) an answer for running out (§5.53) a size limit that is actually enforced (§5.54) one bankroll across six cabinets (§5.55) a web save that belongs to this game alone (§5.56) a floor-wide Grand (§5.57) a game that reads its own save (§5.58) a payline you can actually see (§5.59) a page of all twenty (§5.60) a badge that is off the reels (§5.61) a published build that is checked (§5.62) two more modules promoted (§5.63) a free-spin run you choose the shape of (§5.64) the measured feel of each (§5.65) and a rules gate that fails closed (§5.66). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-512 tests pass here and 322 in `macroquad-toolkit`; `cargo fmt --check`,
+513 tests pass here and 322 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
 release build are clean. Every `.rs` file is under the 800-line limit and a gate now says so
 (§5.54); `game.rs` (740) and `ui/reels.rs` (689) are the largest. `data.rs` went

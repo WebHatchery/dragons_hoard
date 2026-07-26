@@ -121,9 +121,19 @@ pub fn draw(ctx: &UiContext<'_>, pointer: Pointer, actions: &mut Vec<UiAction>, 
     }
 }
 
+/// Columns the panel is laid out in.
+///
+/// Two until §5.64 added a thirteenth topic and Wyrmspire — which has the most
+/// mechanics of any cabinet, six of them — stopped fitting even at the minimum
+/// readable size. Three is the honest answer: the alternative was to stop
+/// explaining something, and this panel exists because the game used to do
+/// exactly that (§5.29).
+const COLUMNS: usize = 3;
+
 /// Column width and the vertical room a column has.
 fn geometry() -> (f32, f32) {
-    let column_width = (panel().w - PADDING * 2.0 - COLUMN_GAP) / 2.0;
+    let column_width =
+        (panel().w - PADDING * 2.0 - COLUMN_GAP * (COLUMNS as f32 - 1.0)) / COLUMNS as f32;
     let available = panel().bottom() - (panel().y + HEADER) - PADDING;
     (column_width, available)
 }
@@ -172,7 +182,7 @@ fn block_height(rule: &Rule, width: f32, body: f32, measure: Measure<'_>) -> f32
 fn fitting_size(rules: &[Rule], _column_width: f32, _available: f32, measure: Measure<'_>) -> f32 {
     let mut size = MAX_BODY;
     while size > MIN_BODY {
-        if columns_used(rules, size, measure) <= 2 {
+        if columns_used(rules, size, measure) <= COLUMNS {
             return size;
         }
         size -= 0.5;
@@ -180,7 +190,7 @@ fn fitting_size(rules: &[Rule], _column_width: f32, _available: f32, measure: Me
     MIN_BODY
 }
 
-/// How many columns this set takes at `body`. Two is a fit.
+/// How many columns this set takes at `body`. Up to `COLUMNS` is a fit.
 fn columns_used(rules: &[Rule], body: f32, measure: Measure<'_>) -> usize {
     plan(rules, body, measure)
         .last()
@@ -216,15 +226,16 @@ mod tests {
     }
 
     #[test]
-    fn every_cabinet_fits_in_two_columns() {
+    fn every_cabinet_fits_in_the_columns_it_has() {
         let (column_width, available) = geometry();
         for data in every_machine() {
             let rules = rules::rules(&data);
             let body = fitting_size(&rules, column_width, available, measure());
             assert!(
-                columns_used(&rules, body, measure()) <= 2,
-                "{} needs a third column even at {}px",
+                columns_used(&rules, body, measure()) <= COLUMNS,
+                "{} needs more than {} columns even at {}px",
                 data.machine.id,
+                COLUMNS,
                 body
             );
         }
