@@ -6,7 +6,6 @@
 //! reels are told where to land before they start moving. That is what keeps the
 //! maths (and the Monte-Carlo sim, which skips this module entirely) honest.
 
-use macroquad_toolkit::math::ease_out_quad;
 use macroquad_toolkit::strip::{StripFeel, StripSpinner};
 use macroquad_toolkit::timing::Timer;
 
@@ -25,6 +24,26 @@ pub fn reel_feel() -> StripFeel {
     }
 }
 
+/// Steps through a decided cascade chain so the player sees each collapse
+/// rather than the last grid appearing all at once (§5.63).
+///
+/// The toolkit's [`Stepper`](macroquad_toolkit::reveal::Stepper) with this
+/// game's beat baked in. It holds no symbols of its own — the chain lives on
+/// the pending spin and this is only a cursor into it, so nothing here can
+/// change what was decided (§8.2).
+pub fn cascade_reveal(steps: usize, scale: f32) -> CascadeReveal {
+    CascadeReveal::new(steps, CASCADE_BEAT, scale)
+}
+
+/// Counts a win up rather than snapping it on. The toolkit's
+/// [`Countup`](macroquad_toolkit::reveal::Countup) at this game's pace.
+pub fn payout_counter(target: i64, scale: f32) -> PayoutCounter {
+    PayoutCounter::new(target, PAYOUT_TIME, scale)
+}
+
+pub type CascadeReveal = macroquad_toolkit::reveal::Stepper;
+pub type PayoutCounter = macroquad_toolkit::reveal::Countup;
+
 /// Reels mid-flight. The slot's name for the toolkit's spinner.
 pub type ReelSpinner = StripSpinner;
 
@@ -34,59 +53,6 @@ const PAYOUT_TIME: f32 = 0.75;
 /// collapse is its own small reveal, and running them faster turns a chain into
 /// a flicker.
 const CASCADE_BEAT: f32 = 0.55;
-/// Steps through a decided cascade chain so the player sees each collapse
-/// rather than the last grid appearing all at once.
-///
-/// Holds no symbols of its own — the chain lives on the pending spin, and this
-/// is only a cursor into it. Nothing here can change what was decided (§8.2).
-#[derive(Debug, Clone)]
-pub struct CascadeReveal {
-    step: usize,
-    steps: usize,
-    /// Set when the *last* grid has had its beat, not when it is reached.
-    /// Without this the final grid of a chain settled the instant the reveal
-    /// arrived at it and was never shown as part of the chain at all.
-    done: bool,
-    beat: Timer,
-    scale: f32,
-}
-
-impl CascadeReveal {
-    pub fn new(steps: usize, scale: f32) -> Self {
-        Self {
-            step: 0,
-            steps,
-            done: false,
-            beat: Timer::new(CASCADE_BEAT * scale),
-            scale,
-        }
-    }
-
-    pub fn step(&self) -> usize {
-        self.step
-    }
-
-    /// Advance on the beat. Returns `true` on the tick that moves to a new grid,
-    /// so the orchestrator can make a noise exactly once per collapse.
-    pub fn tick(&mut self, dt: f32) -> bool {
-        if self.done || !self.beat.tick(dt) {
-            return false;
-        }
-        if self.step + 1 >= self.steps {
-            // The last grid has now had its beat; the chain is over.
-            self.done = true;
-            return false;
-        }
-        self.step += 1;
-        self.beat = Timer::new(CASCADE_BEAT * self.scale);
-        true
-    }
-
-    pub fn finished(&self) -> bool {
-        self.done
-    }
-}
-
 pub fn anticipating_reels(
     scatters_per_reel: &[usize],
     trigger_count: usize,
@@ -109,31 +75,6 @@ pub fn anticipating_reels(
         running += scatters;
     }
     flags
-}
-
-/// Counts a win up rather than snapping it on.
-#[derive(Debug, Clone)]
-pub struct PayoutCounter {
-    target: i64,
-    timer: Timer,
-}
-
-impl PayoutCounter {
-    pub fn new(target: i64, time_scale: f32) -> Self {
-        Self {
-            target,
-            timer: Timer::new(PAYOUT_TIME * time_scale.clamp(0.05, 4.0)),
-        }
-    }
-
-    /// Returns true on the tick that finishes the count-up.
-    pub fn tick(&mut self, dt: f32) -> bool {
-        self.timer.tick(dt)
-    }
-
-    pub fn value(&self) -> i64 {
-        (self.target as f32 * ease_out_quad(self.timer.progress())) as i64
-    }
 }
 
 /// Where the machine is in the spin cycle. Only the dispatcher advances it; the
@@ -271,7 +212,10 @@ mod tests {
 
     #[test]
     fn the_payout_counter_starts_at_zero_and_ends_on_target() {
-        let mut counter = PayoutCounter::new(1234, 1.0);
+        // The mechanism is the toolkit's (§5.63); what is checked here is that
+        // *this game's* pacing produces a counter that actually completes
+        // within the time a spin allows it.
+        let mut counter = payout_counter(1234, 1.0);
         assert_eq!(counter.value(), 0);
 
         let mut finished = false;
@@ -285,7 +229,7 @@ mod tests {
 
     #[test]
     fn the_payout_counter_finishes_exactly_once() {
-        let mut counter = PayoutCounter::new(10, 1.0);
+        let mut counter = payout_counter(10, 1.0);
         let mut finishes = 0;
         for _ in 0..200 {
             if counter.tick(1.0 / 60.0) {

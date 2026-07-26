@@ -9,7 +9,7 @@
 //! reveals it. Nothing below `roll_spin` touches the RNG.
 
 use super::holdspin::HoldSpinRound;
-use super::spin::{CascadeReveal, PayoutCounter, ReelSpinner, SpinEvent, SpinPhase};
+use super::spin::{ReelSpinner, SpinEvent, SpinPhase};
 use super::{
     bonus::BonusRound, egg_cells, scatters_per_reel, spin, GameSession, PendingSpin, SpinBlocked,
     SpinHighlights, SpinMode, SpinResolution, AUTO_SPIN_PAUSE, HOLD_SPIN_OPEN_PAUSE,
@@ -111,8 +111,10 @@ impl GameSession {
                 .as_ref()
                 .map_or(1, |pending| pending.result.cascades.len());
             if chain > 1 {
-                self.phase =
-                    SpinPhase::Cascading(CascadeReveal::new(chain, self.preferences.time_scale()));
+                self.phase = SpinPhase::Cascading(super::spin::cascade_reveal(
+                    chain,
+                    self.preferences.time_scale(),
+                ));
             } else {
                 self.settle_landed_spin(data, &mut events);
             }
@@ -153,7 +155,10 @@ impl GameSession {
         let credits = resolution.total_credits();
         events.push(SpinEvent::Settled(Box::new(resolution)));
         self.phase = if credits > 0 {
-            SpinPhase::Payout(PayoutCounter::new(credits, self.preferences.time_scale()))
+            SpinPhase::Payout(super::spin::payout_counter(
+                credits,
+                self.preferences.time_scale(),
+            ))
         } else {
             self.phase_after_spin()
         };

@@ -3028,6 +3028,47 @@ missing** — the detector describing itself, again — and the second silently 
 the publish script looking for `.cargo` + carriage-return + `egistry`. Both were
 found by printing the bytes rather than reading the text.
 
+### 5.63 The last two things that were never about slot machines (post-v1)
+
+§15 listed the promotion queue as "the blur, bounce and anticipation work in
+`state/spin.rs`". Opening the file, that was **stale** — §5.23 had already moved
+the strip motion, and what was actually left that had nothing to do with slot
+machines was two other things:
+
+- **`PayoutCounter`** — a number that arrives over a moment instead of snapping
+  on. Nothing about it is a payout. Every game has a score, a resource total or a
+  damage figure that should count rather than jump.
+- **`CascadeReveal`** — a cursor through a fixed number of stages on a beat.
+  Nothing about it is a cascade. A card deal, a match-3 collapse queue, a
+  dialogue reveal are the same object.
+
+They are `reveal::Countup` and `reveal::Stepper` now. Neither holds any content —
+`Stepper` does not know what stage three looks like and `Countup` does not know
+what the number means. They are the timing, and the caller keeps the truth, which
+is the property that makes them safe to share: the same discipline §8.2 imposes
+on this game, where the outcome is fixed at commit and nothing in the animation
+can touch it.
+
+**The move found a real bug and fixed it for free.** The count-up computed
+`target as f32 * eased`, and an `f32` carries 24 bits of mantissa — exact only to
+16,777,216. A nine-billion payout settled **512 credits short of itself**. It is
+`f64` now, with a test that would have caught it. Nobody would have found this by
+reading the old code, because in the old code the line looked fine; it became a
+question worth asking only when the type stopped being "a payout" and became "a
+number".
+
+**And the shape of the second one earns its own paragraph.** `Stepper` tracks
+"the last stage has had its beat" separately from "the cursor reached the last
+stage". Without that distinction the final stage of a sequence is over the
+instant it is arrived at, so it is never actually shown — the animation ends on
+the second-to-last thing and the last appears only because whatever comes after
+happens to draw it. That was learned the hard way here and is now one comment and
+one test in a place where the next game gets it for nothing.
+
+`state/spin.rs` is 239 lines, from 615 before the first promotion. What is left
+is this cabinet's tuning — how long a reel turns, how fast a chain collapses —
+which is a judgement about *this* game and belongs nowhere else.
+
 
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
@@ -3632,6 +3673,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
+| A general thing wearing a slot machine's name | `PayoutCounter` and `CascadeReveal` became `reveal::Countup` and `reveal::Stepper` (§5.63); renaming them found an `f32` that lost 512 credits on a large win. |
 | A web build nobody has opened | The wasm's import section is checked against the scripts the page loads (§5.62). Six GL functions were missing and stubbed silently, because the runtime came from a samples website rather than the crate. |
 | A capture that photographs the wrong thing | Scenes name their cabinet instead of indexing it (§5.61). The `cascade` capture had been shooting Wyrmspire, which has no cascades, for six iterations. |
 | Lines you can only learn by winning on them | All twenty are drawn on a screen of their own, in the colours the reels use (§5.60). Registering it put it through every audit with no harness change. |
@@ -3699,7 +3741,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus fifty-seven post-v1 systems
+## 15. Current State — v1 shipped, plus fifty-eight post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
@@ -3710,16 +3752,17 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) a motion audit (§5.52) an answer for running out (§5.53) a size limit that is actually enforced (§5.54) one bankroll across six cabinets (§5.55) a web save that belongs to this game alone (§5.56) a floor-wide Grand (§5.57) a game that reads its own save (§5.58) a payline you can actually see (§5.59) a page of all twenty (§5.60) a badge that is off the reels (§5.61) and a published build that is checked (§5.62). The game is
+navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) a motion audit (§5.52) an answer for running out (§5.53) a size limit that is actually enforced (§5.54) one bankroll across six cabinets (§5.55) a web save that belongs to this game alone (§5.56) a floor-wide Grand (§5.57) a game that reads its own save (§5.58) a payline you can actually see (§5.59) a page of all twenty (§5.60) a badge that is off the reels (§5.61) a published build that is checked (§5.62) and two more modules promoted (§5.63). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-506 tests pass here and 313 in `macroquad-toolkit`; `cargo fmt --check`,
+506 tests pass here and 322 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
 release build are clean. Every `.rs` file is under the 800-line limit and a gate now says so
 (§5.54); `game.rs` (740) and `ui/reels.rs` (689) are the largest. `data.rs` went
 from 799 to 531, `music.rs` from 793 to 680, and the toolkit's `ui/font.rs` from
-851 — over the limit, unnoticed — to 656.
+851 — over the limit, unnoticed — to 656. `state/spin.rs` is 239, from 615 before
+its mechanics were promoted (§5.23, §5.63).
 
 Measured RTP over 1,000,000 spins: Dragon's Hoard **0.9612** at **0.411** hit
 frequency, Frost Wyrm **0.9491** at **0.259**, Emberfall **0.9596** at **0.622**
@@ -3800,9 +3843,8 @@ Cleared out in §5.61 down to what is actually outstanding:
   that asked "are you sure?" on every flip would be unusable — but a misclick on
   Ember still costs the whole win, and that is the only place in the game where
   a single stray press can.
-- **The blur, bounce and anticipation work in `state/spin.rs` has not been
-  promoted.** None of it is specific to a slot machine beyond the anticipation
-  trigger, and any game with a spinning or scrolling strip would want it. The
-  three modules that have gone across — synthesis, strip motion and the
-  rasteriser — each left this project smaller and better tested than they found
-  it, which is the argument for the fourth.
+- **The promotion queue is empty.** Five modules have gone across — synthesis,
+  strip motion, the rasteriser, and now the count-up and the step cursor
+  (§5.63) — and each left this project smaller and better tested than it found
+  it. What remains in `state/spin.rs` is this cabinet's tuning: how long a reel
+  turns, how fast a chain collapses. That is a judgement about *this* game.
