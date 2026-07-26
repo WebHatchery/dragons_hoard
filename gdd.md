@@ -3368,6 +3368,37 @@ Nineteenth screen, swept by the registry without the harness being touched, and
 the capture scene that fills it with six real sessions writes nothing to the
 player's own log (§5.55).
 
+### 5.71 The session that was never closed (post-v1)
+
+§5.70 shipped a log of the last twenty sessions. `close_session` — the only thing
+that writes to it — is called from exactly one place: pressing **New session**.
+
+That is the rarest way an evening ends. The ordinary way is that the window goes
+away: a tab closed, an app quit, a machine put to sleep. Every one of those
+recorded **nothing at all**, and the session vanished.
+
+It is the same shape as §5.58, one section after being told it. The mechanism
+worked perfectly and was never invoked on the path anyone actually takes, and
+from the outside a log that records the sessions you closed deliberately is
+indistinguishable from a log that records sessions.
+
+**There is no shutdown hook to hang it on** — not natively, not in a browser. So
+the session is written *as it happens* rather than when it ends. The log holds an
+**open** session, rewritten on the autosave beat, so what is on disk is never
+more than one resolved spin behind what happened.
+
+Which makes the load path the elegant part: **a log found with an open session is
+a log whose game was closed while it was being played**. That session is over,
+and sealing it on load is simply saying so. Nothing has to detect the closing,
+because the closing leaves exactly the evidence needed.
+
+Holding is not appending — an evening updated forty times is one row. The row is
+lit and reads *"playing now"* rather than *"you stopped"*, because it has not,
+and claiming otherwise about the session someone is in the middle of would be the
+one plainly false thing on the page. The empty-log message changed too: it used
+to describe the old behaviour, and a screen that explains a rule the game no
+longer follows is worse than one that explains nothing.
+
 
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
@@ -3972,6 +4003,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
+| A log that only records what you close deliberately | The session in flight is written on the autosave beat and sealed on load (§5.71). Closing the tab — the ordinary way an evening ends — recorded nothing. |
 | A session the game forgets the moment it ends | The last twenty are kept, with what each staked, returned and how it ended (§5.70). The Ledger records the machine's story; nothing recorded the player's. |
 | A gate measuring the wrong thing | The size gate counted only non-empty lines, enforcing the 800-line limit at about 890 (§5.69). Two files sat over it for two iterations, and the original probe was too clean to reveal it. |
 | A session that ends with a toast | A cap that binds now closes with an account of the session — staked, returned, net, best moment (§5.68). The old answer was a greyed button and a notification suggesting a new game. |
@@ -4047,7 +4079,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus sixty-five post-v1 systems
+## 15. Current State — v1 shipped, plus sixty-six post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
@@ -4058,11 +4090,11 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) a motion audit (§5.52) an answer for running out (§5.53) a size limit that is actually enforced (§5.54) one bankroll across six cabinets (§5.55) a web save that belongs to this game alone (§5.56) a floor-wide Grand (§5.57) a game that reads its own save (§5.58) a payline you can actually see (§5.59) a page of all twenty (§5.60) a badge that is off the reels (§5.61) a published build that is checked (§5.62) two more modules promoted (§5.63) a free-spin run you choose the shape of (§5.64) the measured feel of each (§5.65) a rules gate that fails closed (§5.66) every feature setting declared (§5.67) a session that closes properly (§5.68) a size gate that counts (§5.69) and a log of the sessions played (§5.70). The game is
+navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) a motion audit (§5.52) an answer for running out (§5.53) a size limit that is actually enforced (§5.54) one bankroll across six cabinets (§5.55) a web save that belongs to this game alone (§5.56) a floor-wide Grand (§5.57) a game that reads its own save (§5.58) a payline you can actually see (§5.59) a page of all twenty (§5.60) a badge that is off the reels (§5.61) a published build that is checked (§5.62) two more modules promoted (§5.63) a free-spin run you choose the shape of (§5.64) the measured feel of each (§5.65) a rules gate that fails closed (§5.66) every feature setting declared (§5.67) a session that closes properly (§5.68) a size gate that counts (§5.69) a log of the sessions played (§5.70) and one that survives the window closing (§5.71). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-526 tests pass here and 322 in `macroquad-toolkit`; `cargo fmt --check`,
+528 tests pass here and 322 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
 release build are clean. Every `.rs` file is under the 800-line limit and a gate that
 counts every line now says so (§5.54, §5.69); `ui/reels.rs` (790) and `game.rs`

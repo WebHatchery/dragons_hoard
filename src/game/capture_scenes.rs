@@ -242,12 +242,19 @@ impl Game {
                         let _ = spin;
                     }
                     clock.elapsed = 300.0 + run as f32 * 240.0;
-                    self.sessions.record(
-                        &clock,
-                        self.session.stats.biggest_win,
-                        0,
-                        (run % 2 == 0).then_some(crate::state::limits::Breach::Time(20)),
-                    );
+                    // The last one is left open, because that is the ordinary
+                    // state of the log: someone is always in a session (§5.71).
+                    if run == 5 {
+                        self.sessions
+                            .hold(&clock, self.session.stats.biggest_win, 0, None);
+                    } else {
+                        self.sessions.record(
+                            &clock,
+                            self.session.stats.biggest_win,
+                            0,
+                            (run % 2 == 0).then_some(crate::state::limits::Breach::Time(20)),
+                        );
+                    }
                 }
                 self.show_sessions = true;
             }

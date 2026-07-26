@@ -38,6 +38,7 @@ impl Game {
         if self.session.in_free_spins() || !self.may_persist() {
             return;
         }
+        self.hold_session();
         self.store_wallet();
         let save = self.session.to_save(&self.data.config.version);
         if save_to_slot_with_version(
@@ -153,6 +154,23 @@ impl Game {
     /// Called before the clock is replaced, which is the only moment the
     /// figures still exist. A session too short to be an evening is not
     /// recorded, so an app opened and closed does not bury the real ones.
+    /// Keep the session in flight current on disk (§5.71).
+    ///
+    /// On the autosave beat, because that is the only beat there is: there is
+    /// no shutdown hook to hang this on, natively or in a browser, and the
+    /// ordinary way a session ends is that the window goes away. Writing it as
+    /// it happens is the only way to have it afterwards.
+    pub(crate) fn hold_session(&mut self) {
+        if self.sessions.hold(
+            &self.limits.clock,
+            self.session.stats.biggest_win,
+            self.session.stats.staked,
+            self.limits.breach(),
+        ) {
+            let _ = self.sessions.save(&self.data.config);
+        }
+    }
+
     pub(crate) fn close_session(&mut self) {
         let kept = self.sessions.record(
             &self.limits.clock,

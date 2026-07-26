@@ -87,17 +87,30 @@ impl Session {
     }
 }
 
-/// Every session kept, oldest first.
+/// Every session kept, oldest first, plus the one still being played.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SessionLog {
     #[serde(default)]
     sessions: Vec<Session>,
+    /// The session in flight, rewritten on every autosave beat (§5.71).
+    ///
+    /// The first version of this log only ever appended when the player pressed
+    /// "New session", which is the *rarest* way a session ends. Closing the tab
+    /// or the window — the ordinary way — recorded nothing at all, and the
+    /// evening vanished. Holding the open session here and keeping it current
+    /// means the log survives the app being closed, because it was written
+    /// before the closing rather than during it.
+    #[serde(default)]
+    open: Option<Session>,
 }
 
 impl SessionLog {
     pub fn load(config: &GameConfig) -> Self {
         if slot_exists(&config.game_name, SLOT) {
-            if let Ok(log) = load_from_slot::<Self>(&config.game_name, SLOT) {
+            if let Ok(mut log) = load_from_slot::<Self>(&config.game_name, SLOT) {
+                // Anything still open was open when the game was last closed,
+                // which means it ended there (§5.71).
+                log.seal();
                 return log;
             }
         }
@@ -112,16 +125,24 @@ impl SessionLog {
     }
 
     /// Newest first, which is the order anyone reads a log in.
+    ///
+    /// The open session leads, because it is the newest and because a log that
+    /// hid the evening someone is in the middle of would be a strange thing.
     pub fn recent(&self) -> impl Iterator<Item = &Session> {
-        self.sessions.iter().rev()
+        self.open.iter().chain(self.sessions.iter().rev())
+    }
+
+    /// Is the newest row the session being played right now?
+    pub fn first_is_open(&self) -> bool {
+        self.open.is_some()
     }
 
     pub fn len(&self) -> usize {
-        self.sessions.len()
+        self.sessions.len() + usize::from(self.open.is_some())
     }
 
     pub fn is_empty(&self) -> bool {
-        self.sessions.is_empty()
+        self.sessions.is_empty() && self.open.is_none()
     }
 
     /// Close a session and keep it, if there was anything to it.
@@ -135,10 +156,29 @@ impl SessionLog {
         staked_by_vault: i64,
         ended_by: Option<Breach>,
     ) -> bool {
+        if !self.hold(clock, best, staked_by_vault, ended_by) {
+            return false;
+        }
+        self.seal();
+        true
+    }
+
+    /// Keep the session in flight up to date, without closing it.
+    ///
+    /// Called on the autosave beat, so what is on disk is never more than one
+    /// resolved spin behind what happened. Returns whether there is yet enough
+    /// of a session to hold.
+    pub fn hold(
+        &mut self,
+        clock: &SessionClock,
+        best: i64,
+        staked_by_vault: i64,
+        ended_by: Option<Breach>,
+    ) -> bool {
         if clock.spins < WORTH_KEEPING {
             return false;
         }
-        self.sessions.push(Session {
+        self.open = Some(Session {
             seconds: clock.elapsed as u32,
             spins: clock.spins,
             staked: clock.staked,
@@ -147,13 +187,25 @@ impl SessionLog {
             staked_by_vault,
             ended_by: ended_by.map(EndedBy::from),
         });
+        true
+    }
+
+    /// Close the session in flight and keep it.
+    ///
+    /// Called when a new session starts, and **on load**: a log found with an
+    /// open session is a log whose game was closed while it was being played,
+    /// so that session is over and sealing it is simply saying so.
+    pub fn seal(&mut self) {
+        let Some(session) = self.open.take() else {
+            return;
+        };
+        self.sessions.push(session);
         // Oldest first out. `drain` rather than `remove(0)` so trimming a log
         // that somehow grew past the cap costs one pass rather than many.
         if self.sessions.len() > KEPT {
             let excess = self.sessions.len() - KEPT;
             self.sessions.drain(0..excess);
         }
-        true
     }
 
     /// What the kept sessions add up to.
@@ -161,11 +213,12 @@ impl SessionLog {
     /// Stated as totals rather than an average, because an average session is
     /// not a thing anyone had.
     pub fn totals(&self) -> (u32, i64, i64) {
-        self.sessions
-            .iter()
-            .fold((0, 0, 0), |(spins, staked, returned), s| {
+        self.sessions.iter().chain(self.open.iter()).fold(
+            (0, 0, 0),
+            |(spins, staked, returned), s| {
                 (spins + s.spins, staked + s.staked, returned + s.returned)
-            })
+            },
+        )
     }
 }
 
@@ -241,6 +294,50 @@ mod tests {
         assert_eq!(session.staked_by_vault, 0);
         assert_eq!(session.ended_by, None);
         assert_eq!(session.net(), -100);
+    }
+
+    /// The hole §5.71 exists for: a game closed mid-session used to record
+    /// nothing at all, because the log only appended when the player pressed
+    /// "New session" — the rarest way an evening ends.
+    #[test]
+    fn a_session_the_game_was_closed_during_survives() {
+        let mut log = SessionLog::default();
+        assert!(log.hold(&clock(60, 1_200, 900), 300, 0, None));
+
+        // Written to disk mid-session, then the window goes away.
+        let written = serde_json::to_value(&log).unwrap();
+        let mut reopened: SessionLog = serde_json::from_value(written).unwrap();
+        assert_eq!(
+            reopened.len(),
+            1,
+            "the evening was there when it was written"
+        );
+
+        // `load` seals whatever it finds open, which is what a fresh boot does.
+        reopened.seal();
+        let session = *reopened.recent().next().expect("the evening survived");
+        assert_eq!(session.spins, 60);
+        assert_eq!(session.net(), -300);
+        assert!(
+            !reopened.first_is_open(),
+            "it is over, and should read as over"
+        );
+    }
+
+    /// Holding is not appending: an evening updated forty times is one row.
+    #[test]
+    fn holding_the_same_session_does_not_fill_the_log() {
+        let mut log = SessionLog::default();
+        for spins in 10..50 {
+            log.hold(&clock(spins, 100, 50), 0, 0, None);
+        }
+        assert_eq!(log.len(), 1);
+        assert_eq!(log.recent().next().unwrap().spins, 49);
+        assert!(log.first_is_open());
+
+        log.seal();
+        assert_eq!(log.len(), 1);
+        assert!(!log.first_is_open());
     }
 
     #[test]

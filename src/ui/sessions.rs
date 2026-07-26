@@ -96,12 +96,20 @@ pub fn draw(log: &SessionLog, pointer: Pointer, actions: &mut Vec<UiAction>, nav
 
     let mut y = panel.y + 84.0;
     for (index, session) in log.recent().enumerate() {
-        for (value, offset) in row(session, log.len() - index) {
+        // The session being played is lit, because it is the only row that is
+        // still changing and a reader is owed that (§5.71).
+        let open = index == 0 && log.first_is_open();
+        let tone = if open {
+            palette::gold_bright()
+        } else {
+            palette::text()
+        };
+        for (value, offset) in row(session, log.len() - index, open) {
             draw_text_right(
                 &value,
                 panel.x + 24.0 + offset,
                 y + 17.0,
-                TextStyle::new(15.0, palette::text()),
+                TextStyle::new(15.0, tone),
             );
         }
         y += ROW;
@@ -139,7 +147,7 @@ fn title(log: &SessionLog) -> String {
 }
 
 /// One line of the log, as `(text, right edge)` pairs.
-fn row(session: &Session, ordinal: usize) -> Vec<(String, f32)> {
+fn row(session: &Session, ordinal: usize, open: bool) -> Vec<(String, f32)> {
     vec![
         (format!("#{}", ordinal), 40.0),
         (minutes(session), 150.0),
@@ -147,7 +155,7 @@ fn row(session: &Session, ordinal: usize) -> Vec<(String, f32)> {
         (naming::credits(session.staked), 380.0),
         (naming::credits(session.returned), 520.0),
         (naming::net(session.net()), 650.0),
-        (ended(session), 780.0),
+        (ended(session, open), 780.0),
     ]
 }
 
@@ -159,7 +167,12 @@ fn minutes(session: &Session) -> String {
 }
 
 /// Why it stopped, in as few words as the column has room for.
-fn ended(session: &Session) -> String {
+fn ended(session: &Session, open: bool) -> String {
+    if open {
+        // It has not ended, and saying "you stopped" about the evening someone
+        // is in the middle of would be the one plainly false thing on the page.
+        return "playing now".to_owned();
+    }
     match session.ended_by {
         Some(EndedBy::Time) => "time limit".to_owned(),
         Some(EndedBy::Loss) => "loss limit".to_owned(),
@@ -200,14 +213,14 @@ mod tests {
     fn the_newest_session_carries_the_highest_number() {
         let log = log(4);
         let first = log.recent().next().unwrap();
-        assert_eq!(row(first, 4)[0].0, "#4");
+        assert_eq!(row(first, 4, false)[0].0, "#4");
     }
 
     /// Every session says why it stopped, including the ones nothing stopped.
     #[test]
     fn every_row_says_how_the_session_ended() {
         for session in log(3).recent() {
-            assert!(!ended(session).is_empty());
+            assert!(!ended(session, false).is_empty());
         }
         let left = Session {
             seconds: 300,
@@ -218,7 +231,12 @@ mod tests {
             staked_by_vault: 0,
             ended_by: None,
         };
-        assert_eq!(ended(&left), "you stopped");
+        assert_eq!(ended(&left, false), "you stopped");
+        assert_eq!(
+            ended(&left, true),
+            "playing now",
+            "the row someone is in the middle of must not claim to be over"
+        );
     }
 
     /// The columns are laid out by right edge and must not run into each other
@@ -226,7 +244,7 @@ mod tests {
     #[test]
     fn the_columns_are_in_order_and_do_not_collide() {
         let session = *log(1).recent().next().unwrap();
-        let cells = row(&session, 1);
+        let cells = row(&session, 1, false);
         for pair in cells.windows(2) {
             assert!(
                 pair[1].1 > pair[0].1,
