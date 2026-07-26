@@ -152,6 +152,9 @@ impl AchievementBook {
     }
 
     pub fn save(&self, config: &GameConfig) -> Result<(), String> {
+        if !crate::state::persist::may_write() {
+            return Ok(());
+        }
         let snapshot = AchievementSave {
             unlocked_ids: self
                 .unlocked

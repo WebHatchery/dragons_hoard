@@ -79,6 +79,10 @@ impl Game {
     pub async fn new() -> Self {
         // Load the default machine first purely to find out where preferences
         // live, then honour the cabinet the player last chose.
+        // Before anything reads or writes a save: a capture run must not
+        // overwrite the game it is verifying (§5.55).
+        crate::state::persist::set_read_only(capture::capture_requested("DRAGONS_HOARD"));
+
         let bootstrap = GameData::load()
             .unwrap_or_else(|err| panic!("Dragon's Hoard embedded data failed to load: {}", err));
         let preferences = Preferences::load(&bootstrap.config);
@@ -209,6 +213,10 @@ impl Game {
             motion: None,
         };
         game.refresh_save_state();
+        // The balance is the player's, not the cabinet's (§5.55). Read after the
+        // session is built, because a fresh session invents a starting stack and
+        // the wallet is what actually decides.
+        game.restore_wallet();
         game
     }
 
@@ -597,7 +605,7 @@ impl Game {
 
     /// Move to another cabinet.
     ///
-    /// Each machine is a separate maths model with its own balance, hoard and
+    /// Each machine is a separate maths model with its own hoard and
     /// jackpots, so this banks the current one to its own slot and loads the
     /// target's — it is closer to walking to a different machine than to
     /// changing a theme. Refused mid-spin: the stake on the current machine is
@@ -695,6 +703,7 @@ impl Game {
             .set_arrangement(crate::music::arrangement(self.data.theme_name()));
         self.session = self.load_machine_session();
         self.session.preferences = preferences;
+        self.store_wallet();
 
         self.particles.clear();
         self.floating.clear();

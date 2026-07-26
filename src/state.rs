@@ -16,12 +16,14 @@ pub mod jackpot;
 pub mod ledger;
 pub mod lifecycle;
 pub mod limits;
+pub mod persist;
 pub mod preferences;
 pub mod profile;
 pub mod ruin;
 pub mod rules;
 pub mod save;
 pub mod spin;
+pub mod wallet;
 
 use crate::data::GameData;
 use crate::engine::{self, Grid, SpinMode, SpinOutcome, SpinResult};

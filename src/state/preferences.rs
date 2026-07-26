@@ -131,6 +131,9 @@ impl Preferences {
     }
 
     pub fn save(&self, config: &GameConfig) -> Result<(), String> {
+        if !crate::state::persist::may_write() {
+            return Ok(());
+        }
         save_json_key(&config.game_name, PREFERENCES_KEY, self)
     }
 

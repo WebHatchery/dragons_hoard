@@ -135,6 +135,40 @@ impl Game {
             // keep its own copy of the list (§5.53). `verify.ps1` had one and it
             // was already stale — the ruin screen was registered, tested and
             // reachable, and the sweep did not know it existed.
+            // Walk from one cabinet to another with money on the clock and
+            // print what survived (§5.55). Not a picture — a check that the
+            // wallet travels and the hoard does not, run against the real
+            // switch path rather than a reconstruction of it.
+            "wallet_walk" => {
+                self.session.balance = 4_321;
+                self.session.hoard.count = 7;
+                self.session.hoard.pot = 555;
+                println!(
+                    "before walk balance {} eggs {} on {}",
+                    self.session.balance,
+                    self.session.hoard.count,
+                    self.data.machine_id()
+                );
+                let target = crate::data::MACHINES
+                    .iter()
+                    .position(|m| m.id != self.data.machine_id())
+                    .unwrap_or(0);
+                self.switch_machine(target);
+                println!(
+                    "after  walk balance {} eggs {} on {}",
+                    self.session.balance,
+                    self.session.hoard.count,
+                    self.data.machine_id()
+                );
+                // The claim, checked rather than printed: money is the
+                // player's and travels; the hoard is the cabinet's and does
+                // not (§5.55).
+                assert_eq!(
+                    self.session.balance, 4_321,
+                    "the balance did not survive walking to another cabinet"
+                );
+                std::process::exit(0);
+            }
             "screens" => {
                 for screen in crate::game::screens::Screen::ALL {
                     println!("screen {}", screen.id());

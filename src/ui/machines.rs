@@ -1,6 +1,6 @@
 //! The machine picker.
 //!
-//! Each cabinet is a whole separate maths model with its own balance, hoard and
+//! Each cabinet is a whole separate maths model with its own hoard and
 //! jackpots (§5.8), so this is closer to walking to a different machine than to
 //! changing a theme — the panel says as much.
 
@@ -99,7 +99,7 @@ pub fn draw(
     // panel (§5.38). A footnote is exactly the kind of long, low-priority prose
     // that should reflow instead of insisting on its width.
     draw_text_block(
-        "Each machine keeps its own balance, hoard and jackpots. Figures are measured live over          20,000 spins, not quoted.",
+        "Your credits come with you. Each machine keeps its own hoard and jackpots, and its figures are measured live over 20,000 spins, not quoted.",
         panel.x + 20.0,
         panel.bottom() - 44.0,
         panel.w - 40.0,

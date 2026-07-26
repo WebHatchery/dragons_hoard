@@ -259,6 +259,10 @@ impl Game {
                 let preferences = self.session.preferences.clone();
                 self.session = GameSession::new(&self.data, random_u64());
                 self.session.preferences = preferences;
+                // A new game is a new stack, and the stack is the wallet now —
+                // otherwise the reset would be undone by the next cabinet
+                // switch, which reads the old balance straight back (§5.55).
+                self.store_wallet();
                 self.particles.clear();
                 self.floating.clear();
                 self.session.celebrations.clear();

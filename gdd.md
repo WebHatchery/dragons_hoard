@@ -2672,6 +2672,61 @@ Disproved the same way: stubbing `validate` to return `Ok(())` fails on the firs
 case. And a control test requires the pristine data to pass, without which a
 validator that rejected *everything* would sail through all thirteen.
 
+### 5.55 One bankroll, six cabinets — and the harness that was eating the save (post-v1)
+
+**§5.53 was sitting on a trapdoor.** Every cabinet had its own save slot with a
+balance inside it, so walking from Dragon's Hoard to Frost Wyrm handed the player
+a **fresh thousand credits**. Six cabinets, six starting stacks, and a New Game
+button under each of them.
+
+That made the previous iteration meaningless. Running out is supposed to be a
+real decision — break the hoard at half its value and lose every egg on the
+meter, or take a stake the game counts against you — and neither costs anything
+at all if a full stack is one click away in the machine picker. It also made the
+Ledger's per-cabinet returns describe six unrelated economies rather than one
+player's session.
+
+**Money belongs to the player, not the machine**, which is how a real floor
+works: you carry your money between machines and the machines keep their own
+jackpots. So the balance moved into a wallet of its own and switching carries it
+across untouched. Everything else stayed, because everything else genuinely does
+belong to the cabinet — a hoard is *that* cabinet's eggs at *that* cabinet's line
+bet, a progressive is funded by play on it, and the Ledger is per-cabinet
+precisely so they can be compared. The cabinet stops being a separate game you
+start over and becomes a different table to take your money to, which is what the
+picker always claimed it was. The panel's own words had to change with it: "each
+machine keeps its own balance" is simply no longer true.
+
+Money already saved is **absorbed and added together** — not the largest, not the
+current one, all six. Whatever economy the player was in, that money was theirs,
+and a migration that quietly deleted five sixths of it would be the worst bug
+this game could ship. A cabinet saved at zero is absorbed as a real zero rather
+than read as "no save", or a player who went broke and reloaded would be handed a
+new stack.
+
+**And then the capture scene wrote it all to disk.**
+
+The screenshot harness deals winning boards, fast-forwards into features, empties
+a balance to reach the ruin screen, and now walks between cabinets. The game loop
+autosaves whenever a spin resolves. Nobody had ever connected those two facts, so
+**every capture scene had been writing its fabricated state straight into the
+real save slots** — and `verify.ps1` runs about fifty captures.
+
+Running the verification suite destroyed the player's game. Every time. It had
+been true since the harness was written, and nothing said so, because nothing in
+a capture ever reads a save back and notices it is wrong. The tell was there all
+along: `Game::new` already asks `capture_requested` before opening an audio
+device, because a headless run has no sound card. Nobody asked the same question
+about the disk.
+
+The first fix guarded the two writers that were obvious and the ledger kept
+recording fabricated rounds — six things persist through three different toolkit
+functions. So the question is asked **once**, and every writer consults it.
+
+The gate is a fingerprint of the save directory taken either side of five capture
+scenes, and it was disproved the same way as everything else here: removing the
+guard makes it fail and name `ledger.json`.
+
 
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
@@ -3273,6 +3328,8 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
+| A cabinet switch that refills the wallet | One bankroll travels with the player; hoards and jackpots stay with the machine (§5.55). Six separate balances made running out cost nothing. |
+| A test harness that overwrites the game | Capture runs are read-only, checked by fingerprinting the save directory (§5.55). Every capture scene had been autosaving fabricated state over the player's save since the harness was written. |
 | A rule written down and never checked | The 800-line limit is a gate in `verify.ps1`, and the data validator has thirteen mutations proving it refuses things (§5.54). The toolkit was already over the limit; the validator had never once been seen to reject anything. |
 | A player who runs out of credits | Breaking the hoard, or a stake from the vault, with the cost stated (§5.53). Going broke is the most likely end of a session and the answer was a reset button. |
 | A fault that only exists mid-animation | Every cabinet's spin is watched frame by frame and tiled into a filmstrip (§5.52). Both bugs a player reported were of this kind, and the harness photographed only settled frames. |
@@ -3331,7 +3388,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus forty-nine post-v1 systems
+## 15. Current State — v1 shipped, plus fifty post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
@@ -3342,11 +3399,11 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) a motion audit (§5.52) an answer for running out (§5.53) and a size limit that is actually enforced (§5.54). The game is
+navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) a motion audit (§5.52) an answer for running out (§5.53) a size limit that is actually enforced (§5.54) and one bankroll across six cabinets (§5.55). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-485 tests pass here and 309 in `macroquad-toolkit`; `cargo fmt --check`,
+491 tests pass here and 309 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
 release build are clean. Every `.rs` file is under the 800-line limit and a gate now says so
 (§5.54); `game.rs` (740) and `ui/reels.rs` (689) are the largest. `data.rs` went

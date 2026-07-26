@@ -179,6 +179,26 @@ Step 'pseudolocale' { Audit -Scene 'layout_audit' -Vars @{ DRAGONS_HOARD_PSEUDO 
 Step 'aspects'    { foreach ($w in '1000', '1280', '1600') { Audit -Scene 'layout_audit' -Vars @{ DRAGONS_HOARD_WINDOW_WIDTH = $w; DRAGONS_HOARD_WINDOW_HEIGHT = '720' } -What "layout breaks at ${w}x720" } }
 
 Write-Host ''
+Write-Host "The player's game" -ForegroundColor Cyan
+# The harness used to overwrite the save it was verifying (§5.55). Every capture
+# scene deals a fabricated state, the loop autosaves when a spin resolves, and
+# this script runs about fifty of them — so running the verification suite
+# destroyed the player's game, every time, and nothing said so.
+Step 'saves are left alone' {
+    $dir = Join-Path $env:LOCALAPPDATA 'dragons_hoard'
+    if (-not (Test-Path $dir)) { return }
+    $before = Get-ChildItem $dir -Filter *.json | ForEach-Object { "$($_.Name):$((Get-FileHash $_.FullName).Hash)" }
+    foreach ($scene in 'win', 'hatch', 'jackpot', 'ruin', 'wallet_walk') {
+        Audit -Scene $scene -Vars @{ DRAGONS_HOARD_CAPTURE_FRAMES = '150' } -What "the $scene scene failed"
+    }
+    $after = Get-ChildItem $dir -Filter *.json | ForEach-Object { "$($_.Name):$((Get-FileHash $_.FullName).Hash)" }
+    $changed = Compare-Object $before $after
+    if ($changed) {
+        throw ("capture scenes wrote to the player's saves`n" + ($changed | Out-String))
+    }
+}
+
+Write-Host ''
 Write-Host 'One screen at a time' -ForegroundColor Cyan
 # Every screen in the registry, measured the same way (§5.50). The list is not
 # repeated here on purpose — `audit:<id>` looks the screen up in `Screen::ALL`
