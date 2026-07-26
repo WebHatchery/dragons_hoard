@@ -6,7 +6,9 @@
 //! stop rather than a decorative loop.
 
 use crate::data::GameData;
-use crate::state::{jackpot, GameSession};
+use crate::state::GameSession;
+
+mod ladder;
 use crate::ui::{naming, palette, symbols};
 use macroquad::prelude::*;
 use macroquad_toolkit::strip::blur_offsets;
@@ -24,7 +26,7 @@ const PULSE_RATE: f32 = 6.0;
 pub fn panel_rect() -> Rect {
     // Whatever is left once the wager panel has its column (§5.46). A wider
     // window gives the reels more room, which is the part that benefits.
-    crate::ui::frame::Frame::new(crate::ui::frame::width()).reels
+    crate::ui::frame::Frame::sized(crate::ui::frame::width(), crate::ui::frame::height()).reels
 }
 
 /// The jackpot ladder, sitting between the panel title and the reels — where a
@@ -39,11 +41,41 @@ pub fn grid_rect() -> Rect {
     let panel = panel_rect();
     let strip = jackpot_strip_rect();
     let top = strip.bottom() + 10.0;
-    Rect::new(
+    let box_rect = Rect::new(
         panel.x + 22.0,
         top,
         panel.w - 44.0,
         panel.bottom() - 36.0 - top,
+    );
+    square_off(box_rect)
+}
+
+/// Keep the board's cells roughly square inside whatever box it is given.
+///
+/// The grid used to fill its box exactly, which is right when the box is the
+/// shape of a reel window and wrong the moment it is not. A turned frame
+/// (§5.79) hands the reels a wide, short box, and five reels of three rows
+/// drawn to fill it came out as fifteen letterbox slits — the symbols were
+/// still there and still correct, and nobody could tell a gem from a coin.
+///
+/// The nominal board is five wide and three tall. Cabinets differ, and this
+/// deliberately does not ask which one is running: every caller derives its
+/// arithmetic from this rect, so the one thing it must be is *the same rect*
+/// for all of them, on every frame, without a `GameData` in hand.
+fn square_off(box_rect: Rect) -> Rect {
+    const NOMINAL: f32 = 5.0 / 3.0;
+    if box_rect.w <= 0.0 || box_rect.h <= 0.0 {
+        return box_rect;
+    }
+    let wanted = box_rect.h * NOMINAL;
+    if wanted >= box_rect.w {
+        return box_rect;
+    }
+    Rect::new(
+        box_rect.x + (box_rect.w - wanted) * 0.5,
+        box_rect.y,
+        wanted,
+        box_rect.h,
     )
 }
 
@@ -153,7 +185,7 @@ pub fn draw_reels(data: &GameData, session: &GameSession, shake: Vec2, ui_time: 
     // the honest fix; layering the banner over live numbers was never anything
     // but a coincidence of geometry that held on some cabinets and not others.
     if session.holdspin.is_none() {
-        draw_jackpot_ladder(data, session, shake, ui_time);
+        ladder::draw_jackpot_ladder(data, session, shake, ui_time);
     }
 
     let bounds = grid_rect().offset(shake);
@@ -210,93 +242,6 @@ fn feature_title(data: &GameData, session: &GameSession) -> String {
         base,
         naming::burned(data, &refine.order, burned)
     )
-}
-
-/// The progressive ladder: one plate per tier, richest on the right, each
-/// showing what it would pay right now. The plates brighten with tier so the
-/// eye lands on the Grand.
-fn draw_jackpot_ladder(data: &GameData, session: &GameSession, shake: Vec2, ui_time: f32) {
-    let rows = jackpot::ladder(&data.jackpots, &session.jackpots);
-    if rows.is_empty() {
-        return;
-    }
-
-    let strip = jackpot_strip_rect().offset(shake);
-    let gap = 8.0;
-    let width = (strip.w - gap * (rows.len() as f32 - 1.0)) / rows.len() as f32;
-    // A slow shimmer so the ladder reads as live rather than painted on.
-    let shimmer = 0.5 + 0.5 * (ui_time * 1.6).sin();
-
-    for (index, (name, credits)) in rows.iter().enumerate() {
-        let plate = Rect::new(
-            strip.x + index as f32 * (width + gap),
-            strip.y,
-            width,
-            strip.h,
-        );
-        // 0.0 for the smallest tier up to 1.0 for the richest.
-        let rank = index as f32 / (rows.len() as f32 - 1.0).max(1.0);
-        let fill = Color::new(
-            0.09 + 0.10 * rank,
-            0.075 + 0.075 * rank,
-            0.05 + 0.02 * rank,
-            1.0,
-        );
-        // A pot the whole floor feeds is lit differently rather than labelled:
-        // the plate is barely a hundred pixels wide and a second word on it
-        // would not survive 130% text, let alone a translation (§5.57). The
-        // rules panel carries the explanation.
-        let shared = data
-            .jackpots
-            .tiers
-            .get(index)
-            .is_some_and(|tier| tier.shared);
-        let border = if shared {
-            Color::new(
-                palette::ember().r,
-                palette::ember().g,
-                palette::ember().b,
-                0.55 + 0.45 * shimmer,
-            )
-        } else {
-            Color::new(
-                palette::gold().r,
-                palette::gold().g,
-                palette::gold().b,
-                0.35 + 0.5 * rank * shimmer,
-            )
-        };
-
-        draw_surface(
-            plate,
-            &SurfaceStyle::new(fill)
-                .with_border(if shared { 2.0 } else { 1.0 }, border)
-                .with_top_highlight(2.0, Color::new(1.0, 0.86, 0.45, 0.15 + 0.35 * rank)),
-        );
-        draw_text_centered_in_box_ex(
-            &name.to_uppercase(),
-            plate.x,
-            plate.y + 2.0,
-            plate.w,
-            18.0,
-            TextStyle::new(13.0, palette::text_dim()),
-        );
-        draw_text_centered_in_box_ex(
-            &naming::credits(*credits),
-            plate.x,
-            plate.y + 16.0,
-            plate.w,
-            26.0,
-            TextStyle::new(
-                21.0,
-                if rank > 0.6 {
-                    palette::gold_bright()
-                } else {
-                    palette::gold()
-                },
-            ),
-        );
-    }
 }
 
 /// Fractional strip position when this reel is still turning.
@@ -689,7 +634,7 @@ mod chrome {
     #[test]
     fn no_panel_furniture_is_drawn_over_the_reels() {
         for width in [960.0, 1280.0, 1680.0] {
-            crate::ui::frame::set_width(crate::ui::frame::logical_width(width, 720.0));
+            crate::ui::frame::set_width(crate::ui::frame::logical_size(width, 720.0).0);
             let grid = grid_rect();
             for (what, rect) in [
                 ("the cascade multiplier badge", cascade_badge_rect()),
@@ -713,7 +658,7 @@ mod chrome {
     #[test]
     fn the_badge_stays_inside_the_panel() {
         for width in [960.0, 1280.0, 1680.0] {
-            crate::ui::frame::set_width(crate::ui::frame::logical_width(width, 720.0));
+            crate::ui::frame::set_width(crate::ui::frame::logical_size(width, 720.0).0);
             let panel = panel_rect();
             let badge = cascade_badge_rect();
             assert!(badge.x >= panel.x, "{:?} left of {:?}", badge, panel);

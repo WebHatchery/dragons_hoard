@@ -27,7 +27,7 @@ use crate::audio::{config, voices_for, Sfx};
 use crate::music::{self, Track};
 use crate::ui::frame;
 use crate::ui::nav::Nav;
-use crate::ui::{logical_width, palette, virtual_button, UiAction, LOGICAL_HEIGHT};
+use crate::ui::{logical_width, palette, virtual_button, UiAction};
 use macroquad::prelude::*;
 use macroquad_toolkit::synth::render_waveform;
 use macroquad_toolkit::ui::Pointer;
@@ -51,7 +51,7 @@ pub fn draw(
         0.0,
         0.0,
         logical_width(),
-        LOGICAL_HEIGHT,
+        frame::height(),
         Color::new(0.0, 0.0, 0.0, 0.86),
     );
 

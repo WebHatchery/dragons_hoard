@@ -3798,6 +3798,50 @@ CSS pixels against a 960-wide layout, and **no amount of resizing controls can
 fix that** — which is why §5.77's rotate prompt is the right answer rather than
 a cop-out.
 
+### 5.79 The layout turns (post-v1)
+
+§5.78 ended by saying a tablet held upright cannot be fixed by resizing
+controls. That was true and it was the wrong conclusion. **The layout was what
+needed to turn.**
+
+§5.46 wrote it down without noticing: *"The height stays 720."* Below 4:3 the
+aspect was clamped and the letterbox came back. The frame did not refuse
+portrait so much as have no way to express one — a fixed height is a landscape
+assumption in the shape of a constant, and forty-nine files had inherited it.
+
+**Portrait is 720 wide and as tall as the window.** The same 720 the landscape
+layout uses for its own short side, so a control is the same size in logical
+pixels either way. And that is the whole payoff: 810 CSS pixels against a
+720-wide layout puts a 44-pixel control at 49. The touch audit agrees —
+**"need a 720px-wide window"**, which is the floor. A tablet held upright clears
+the standard for the first time, and it does so because the layout got
+*narrower*, not because anything got bigger.
+
+The turn itself: reels across the top, controls underneath, header in two rows
+because its four buttons and three badges want 946 pixels and a turned frame is
+720 across — the landscape anchors put them off the left edge entirely. The
+session buttons go four abreast instead of two-by-two, which hands 52 pixels
+back to the reel window. The reel grid keeps its cells square instead of filling
+its box, because five reels of three rows drawn to fill a wide short box came
+out as fifteen letterbox slits: the symbols were all still there and correct,
+and nobody could tell a gem from a coin.
+
+**Landscape is byte-for-byte what it was**, and there is a test that says so
+against every one of the four regions. That was the real risk in this change and
+it is the one thing worth asserting directly.
+
+**What is not done, plainly.** Portrait still reports eleven layout findings,
+all of them in overlay panels written against a 1280-wide screen — the rules
+panel is 1180 wide and lays out in three columns, so on a 720 frame its prose
+runs past the edge. The reel window is smaller than it should be, because the
+controls take 430 of the 700 available and a two-column portrait wager panel
+would take half that. The gates cover landscape only; portrait is measured and
+reported here rather than enforced.
+
+So the honest state is: the layout turns, every control is reachable and clears
+the touch standard, and the panels that open on top of it have not been turned
+yet.
+
 
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
@@ -4402,6 +4446,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
+| A layout that only exists one way up | The frame turns below 4:3 — reels above, controls below, header in two rows (§5.79). A tablet held upright clears the touch standard because the layout got narrower. Overlay panels are not turned yet. |
 | Controls sized for a mouse pointer | Every button in the game was 26–38 logical pixels against a 44 standard; all of them were raised and the gate now sweeps every screen (§5.78). Ten were literally the same rectangle written out ten times. |
 | A tap reaching a control behind an open panel | A control behind a panel is inert — not pressable, not focusable, not measured (§5.78). |
 | A touch audit that reports nothing and is read as clean | Buttons occluded themselves, so the neighbour list was empty and every touch report was suppressed (§5.77). The gate now reads the measured figure and compares it against a tablet. |
@@ -4487,7 +4532,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus seventy-three post-v1 systems
+## 15. Current State — v1 shipped, plus seventy-four post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
@@ -4498,7 +4543,7 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) a motion audit (§5.52) an answer for running out (§5.53) a size limit that is actually enforced (§5.54) one bankroll across six cabinets (§5.55) a web save that belongs to this game alone (§5.56) a floor-wide Grand (§5.57) a game that reads its own save (§5.58) a payline you can actually see (§5.59) a page of all twenty (§5.60) a badge that is off the reels (§5.61) a published build that is checked (§5.62) two more modules promoted (§5.63) a free-spin run you choose the shape of (§5.64) the measured feel of each (§5.65) a rules gate that fails closed (§5.66) every feature setting declared (§5.67) a session that closes properly (§5.68) a size gate that counts (§5.69) a log of the sessions played (§5.70) one that survives the window closing (§5.71) a way into every screen without a keyboard (§5.72) hints that open what they name (§5.73) a spin you can check yourself (§5.74) a side bet priced by measurement (§5.75) a player who presses everything (§5.76) a tablet that can actually play it (§5.77) and controls sized for a finger (§5.78). The game is
+navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) a motion audit (§5.52) an answer for running out (§5.53) a size limit that is actually enforced (§5.54) one bankroll across six cabinets (§5.55) a web save that belongs to this game alone (§5.56) a floor-wide Grand (§5.57) a game that reads its own save (§5.58) a payline you can actually see (§5.59) a page of all twenty (§5.60) a badge that is off the reels (§5.61) a published build that is checked (§5.62) two more modules promoted (§5.63) a free-spin run you choose the shape of (§5.64) the measured feel of each (§5.65) a rules gate that fails closed (§5.66) every feature setting declared (§5.67) a session that closes properly (§5.68) a size gate that counts (§5.69) a log of the sessions played (§5.70) one that survives the window closing (§5.71) a way into every screen without a keyboard (§5.72) hints that open what they name (§5.73) a spin you can check yourself (§5.74) a side bet priced by measurement (§5.75) a player who presses everything (§5.76) a tablet that can actually play it (§5.77) controls sized for a finger (§5.78) and a layout that turns (§5.79). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 

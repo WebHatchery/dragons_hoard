@@ -11,7 +11,7 @@
 use crate::data::GameData;
 use crate::state::holdspin::HoldSpinRound;
 use crate::ui::naming;
-use crate::ui::{logical_width, palette, reels, LOGICAL_HEIGHT};
+use crate::ui::{logical_width, palette, reels};
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::{
     draw_surface, draw_text_centered_in_box_ex, draw_ui_text_ex, RectExt, Region, SurfaceStyle,
@@ -33,7 +33,7 @@ pub fn draw(data: &GameData, round: &HoldSpinRound, ui_time: f32) {
         0.0,
         0.0,
         logical_width(),
-        LOGICAL_HEIGHT,
+        crate::ui::frame::height(),
         Color::new(0.02, 0.0, 0.0, 0.62),
     );
     let window = grid.inset(-10.0);

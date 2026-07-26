@@ -28,7 +28,7 @@
 use crate::state::rules::{self, Rule};
 use crate::ui::frame;
 use crate::ui::nav::Nav;
-use crate::ui::{logical_width, palette, virtual_button, UiAction, UiContext, LOGICAL_HEIGHT};
+use crate::ui::{logical_width, palette, virtual_button, UiAction, UiContext};
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::Pointer;
 use macroquad_toolkit::ui::{
@@ -58,7 +58,7 @@ pub fn draw(ctx: &UiContext<'_>, pointer: Pointer, actions: &mut Vec<UiAction>, 
         0.0,
         0.0,
         logical_width(),
-        LOGICAL_HEIGHT,
+        frame::height(),
         Color::new(0.0, 0.0, 0.0, 0.72),
     );
     // Everything drawn below is measured against this panel (§5.37).

@@ -17,7 +17,7 @@ pub fn draw(celebration: &Celebration) {
         0.0,
         0.0,
         logical_width(),
-        LOGICAL_HEIGHT,
+        crate::ui::frame::height(),
         Color::new(0.0, 0.0, 0.0, 0.88 * alpha),
     );
 

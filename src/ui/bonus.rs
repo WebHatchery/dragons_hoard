@@ -6,7 +6,7 @@
 
 use crate::state::bonus::{BonusCell, BonusRound};
 use crate::ui::nav::{self, Nav};
-use crate::ui::{logical_width, palette, symbols, UiAction, LOGICAL_HEIGHT};
+use crate::ui::{frame, logical_width, palette, symbols, UiAction};
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::Pointer;
 use macroquad_toolkit::ui::{
@@ -32,7 +32,7 @@ pub fn draw(
         0.0,
         0.0,
         logical_width(),
-        LOGICAL_HEIGHT,
+        crate::ui::frame::height(),
         Color::new(0.0, 0.0, 0.0, 0.86),
     );
 
@@ -41,7 +41,7 @@ pub fn draw(
     let grid_h = rows as f32 * CELL + (rows as f32 - 1.0) * GAP;
     let panel = Rect::new(
         (logical_width() - grid_w) * 0.5 - 32.0,
-        (LOGICAL_HEIGHT - grid_h) * 0.5 - 92.0,
+        (frame::height() - grid_h) * 0.5 - 92.0,
         grid_w + 64.0,
         grid_h + 152.0,
     );

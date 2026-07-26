@@ -7,9 +7,7 @@ use crate::ui::nav::Nav;
 /// a sum rather than a claim. Ten because the arithmetic is invisible and the
 /// point is the shape of it (§5.60).
 const EXAMPLE_MULTIPLE: i64 = 10;
-use crate::ui::{
-    logical_width, palette, symbols, virtual_button, UiAction, UiContext, LOGICAL_HEIGHT,
-};
+use crate::ui::{logical_width, palette, symbols, virtual_button, UiAction, UiContext};
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::Pointer;
 use macroquad_toolkit::ui::{
@@ -22,7 +20,7 @@ pub fn draw(ctx: &UiContext<'_>, pointer: Pointer, actions: &mut Vec<UiAction>, 
         0.0,
         0.0,
         logical_width(),
-        LOGICAL_HEIGHT,
+        frame::height(),
         Color::new(0.0, 0.0, 0.0, 0.72),
     );
 

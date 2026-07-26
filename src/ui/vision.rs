@@ -12,7 +12,7 @@ use crate::data::GameData;
 use crate::ui::frame;
 use crate::ui::legibility::{simulate, Vision};
 use crate::ui::nav::Nav;
-use crate::ui::{logical_width, palette, symbols, virtual_button, UiAction, LOGICAL_HEIGHT};
+use crate::ui::{logical_width, palette, symbols, virtual_button, UiAction};
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::Pointer;
 use macroquad_toolkit::ui::{
@@ -24,7 +24,7 @@ pub fn draw(data: &GameData, pointer: Pointer, actions: &mut Vec<UiAction>, nav:
         0.0,
         0.0,
         logical_width(),
-        LOGICAL_HEIGHT,
+        frame::height(),
         Color::new(0.0, 0.0, 0.0, 0.88),
     );
 

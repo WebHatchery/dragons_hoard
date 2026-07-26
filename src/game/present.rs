@@ -21,10 +21,12 @@ impl Game {
 
         // The logical width follows the window's shape (§5.46); the height is
         // fixed, because every panel's vertical layout was written against it.
-        let logical_width = ui::frame::logical_width(screen_width(), screen_height());
-        let frame = ui::frame::Frame::new(logical_width);
+        let (logical_width, logical_height) =
+            ui::frame::logical_size(screen_width(), screen_height());
+        let frame = ui::frame::Frame::sized(logical_width, logical_height);
         ui::frame::set_width(logical_width);
-        let virtual_ui = begin_virtual_ui_frame(logical_width, ui::frame::HEIGHT);
+        ui::frame::set_height(logical_height);
+        let virtual_ui = begin_virtual_ui_frame(logical_width, logical_height);
         let actions = ui::draw_game_ui(
             UiContext {
                 data: &self.data,

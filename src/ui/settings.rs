@@ -8,7 +8,7 @@ use crate::data::GameConfig;
 use crate::state::preferences::Preferences;
 use crate::ui::frame;
 use crate::ui::nav::Nav;
-use crate::ui::{logical_width, palette, virtual_button, UiAction, LOGICAL_HEIGHT};
+use crate::ui::{logical_width, palette, virtual_button, UiAction};
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::Pointer;
 use macroquad_toolkit::ui::{
@@ -29,7 +29,7 @@ pub fn draw(
         0.0,
         0.0,
         logical_width(),
-        LOGICAL_HEIGHT,
+        frame::height(),
         Color::new(0.0, 0.0, 0.0, 0.78),
     );
 

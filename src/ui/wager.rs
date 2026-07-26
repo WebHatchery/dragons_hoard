@@ -437,12 +437,27 @@ fn draw_session_buttons(
     actions: &mut Vec<UiAction>,
     nav: &mut Nav,
 ) -> f32 {
-    let half = (content.w - 10.0) / 2.0;
+    // Four across in a turned frame, two-by-two in a column (§5.79).
+    //
+    // The panel is 684 wide when the layout turns and 374 when it does not, and
+    // a row of four fits comfortably in the first. That is 52 pixels of height
+    // given back to the reel window, which is the part of a portrait layout
+    // with the least room to spare.
+    let across = crate::ui::frame::is_portrait();
+    let half = if across {
+        (content.w - 30.0) / 4.0
+    } else {
+        (content.w - 10.0) / 2.0
+    };
     // 44-tall rows, 8 apart. At 34 and 42 apart these were the control that
     // decided the whole game's touch requirement (§5.77) — the audit named
     // "182x34" as the worst thing on screen.
     let bottom_row = content.bottom() - 44.0;
-    let top_row = bottom_row - 52.0;
+    let top_row = if across {
+        bottom_row
+    } else {
+        bottom_row - 52.0
+    };
 
     // Saving mid-feature would bank a session whose free spins are not
     // persisted, and loading mid-spin would strand a committed stake.
@@ -469,7 +484,12 @@ fn draw_session_buttons(
         actions.push(UiAction::Load);
     }
     if virtual_button(
-        Rect::new(content.x, bottom_row, half, 44.0),
+        Rect::new(
+            content.x + if across { (half + 10.0) * 2.0 } else { 0.0 },
+            bottom_row,
+            half,
+            44.0,
+        ),
         "New Game",
         ctx.session.phase.is_idle(),
         ButtonTone::Secondary,
@@ -479,7 +499,17 @@ fn draw_session_buttons(
         actions.push(UiAction::NewGame);
     }
     if virtual_button(
-        Rect::new(content.x + half + 10.0, bottom_row, half, 44.0),
+        Rect::new(
+            content.x
+                + if across {
+                    (half + 10.0) * 3.0
+                } else {
+                    half + 10.0
+                },
+            bottom_row,
+            half,
+            44.0,
+        ),
         "Delete Save",
         ctx.session.phase.is_idle() && ctx.save_exists,
         ButtonTone::Danger,

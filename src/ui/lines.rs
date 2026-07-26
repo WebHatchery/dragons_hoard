@@ -26,9 +26,7 @@
 
 use crate::data::GameData;
 use crate::ui::nav::Nav;
-use crate::ui::{
-    frame, logical_width, palette, paylines, virtual_button, UiAction, LOGICAL_HEIGHT,
-};
+use crate::ui::{frame, logical_width, palette, paylines, virtual_button, UiAction};
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::{
     draw_surface, draw_text_block, draw_text_centered_in_box_ex, draw_ui_text_ex, ButtonTone,
@@ -45,7 +43,7 @@ pub fn draw(data: &GameData, pointer: Pointer, actions: &mut Vec<UiAction>, nav:
         0.0,
         0.0,
         logical_width(),
-        LOGICAL_HEIGHT,
+        crate::ui::frame::height(),
         Color::new(0.0, 0.0, 0.0, 0.88),
     );
 
@@ -224,7 +222,7 @@ mod tests {
     fn the_diagrams_tile_without_overlapping() {
         let data = GameData::load().unwrap();
         for width in [960.0, 1280.0, 1680.0] {
-            frame::set_width(frame::logical_width(width, 720.0));
+            frame::set_width(frame::logical_size(width, 720.0).0);
             let panel = frame::centred_at(1180.0, frame::BELOW_HEADER, 600.0);
             let rows = data.paylines.len().div_ceil(COLUMNS);
             let cell = vec2(

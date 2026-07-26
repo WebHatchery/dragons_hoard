@@ -15,7 +15,7 @@
 
 use crate::state::ruin::Lifeline;
 use crate::ui::nav::Nav;
-use crate::ui::{frame, logical_width, naming, palette, virtual_button, UiAction, LOGICAL_HEIGHT};
+use crate::ui::{frame, logical_width, naming, palette, virtual_button, UiAction};
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::{
     draw_surface, draw_text_block, draw_text_centered_in_box_ex, draw_ui_text_ex, ButtonTone,
@@ -36,7 +36,7 @@ pub fn draw(
         0.0,
         0.0,
         logical_width(),
-        LOGICAL_HEIGHT,
+        frame::height(),
         Color::new(0.0, 0.0, 0.0, 0.86),
     );
 
