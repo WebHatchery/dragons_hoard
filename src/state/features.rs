@@ -20,6 +20,28 @@ use crate::data::{FeatureAward, GameData};
 use macroquad_toolkit::timing::Timer;
 
 impl GameSession {
+    /// Start a free-spin run of a given shape outright.
+    ///
+    /// For the profiler (§5.65), which compares what the shapes *feel* like and
+    /// has no interest in how often scatters land — waiting for a trigger would
+    /// spend a thousand paid spins per measured run. Both shapes are handed the
+    /// same award, so the comparison is like for like.
+    pub fn grant_free_spins(
+        &mut self,
+        awarded: u32,
+        shape: &crate::data::FreeSpinShape,
+        data: &GameData,
+    ) {
+        self.free_spins = Some(FreeSpinState {
+            remaining: shape.spins(awarded),
+            awarded: shape.spins(awarded),
+            line_bet: self.line_bet(data),
+            total_won: 0,
+            burned: 0,
+            multiplier: shape.multiplier,
+        });
+    }
+
     /// Shapes this cabinet offers for a free-spin run that has not started yet
     /// (§5.64).
     ///

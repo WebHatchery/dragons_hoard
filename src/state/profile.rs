@@ -197,6 +197,38 @@ impl ProfileBook {
         self.tier_running = Some(((machine_id.to_owned(), tier), TierProfiler::new(data, tier)));
     }
 
+    pub fn shape(&self, machine_id: &str, shape: usize) -> Option<&ShapeProfile> {
+        self.shapes
+            .iter()
+            .find(|((id, index), _)| id == machine_id && *index == shape)
+            .map(|(_, profile)| profile)
+    }
+
+    /// Ask for a shape to be measured. Cheap to call every frame.
+    pub fn request_shape(&mut self, machine_id: &str, shape: usize, data: &GameData) {
+        if self.shape(machine_id, shape).is_some() || self.shape_running.is_some() {
+            return;
+        }
+        self.shape_running = Some((
+            (machine_id.to_owned(), shape),
+            ShapeProfiler::new(data, shape),
+        ));
+    }
+
+    pub fn step_shape(&mut self, machine_id: &str, data: &GameData) {
+        let Some(((id, shape), profiler)) = self.shape_running.as_mut() else {
+            return;
+        };
+        if id != machine_id {
+            return;
+        }
+        if let Some(profile) = profiler.step(data) {
+            let key = (id.clone(), *shape);
+            self.shapes.push((key, profile));
+            self.shape_running = None;
+        }
+    }
+
     pub fn step_tier(&mut self, machine_id: &str, data: &GameData) {
         let Some(((id, tier), profiler)) = self.tier_running.as_mut() else {
             return;
@@ -363,6 +395,9 @@ pub struct ProfileBook {
     /// Buy tiers already measured, keyed by machine and tier index (§5.22).
     tiers: Vec<((String, usize), TierProfile)>,
     tier_running: Option<((String, usize), TierProfiler)>,
+    /// Free-spin shapes already measured, keyed by machine and shape (§5.65).
+    shapes: Vec<((String, usize), ShapeProfile)>,
+    shape_running: Option<((String, usize), ShapeProfiler)>,
 }
 
 impl ProfileBook {
@@ -621,5 +656,177 @@ mod tier_tests {
             assert_eq!(a.result.grid, b.result.grid);
         }
         assert_eq!(untouched.balance, watched.balance);
+    }
+}
+
+/// Runs measured per shape. Fewer than a tier needs: a free-spin run is
+/// several internal spins and both shapes are being compared to each other
+/// rather than to an absolute claim, so the noise cancels.
+pub const SHAPE_RUNS: u64 = 2_000;
+const SHAPE_RUNS_PER_STEP: u64 = 40;
+
+/// What running the feature one way actually feels like (§5.65).
+///
+/// §5.64 offers a choice between shapes that are worth the same, and proves it
+/// with arithmetic. Arithmetic is not reassurance: a player looking at "15 spins
+/// at ×2" beside "6 spins at ×5" has been told two numbers and asked to trust a
+/// third they cannot see. This is the third one, measured.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ShapeProfile {
+    /// Mean return of a run, in total-bet multiples.
+    pub mean: f64,
+    /// Share of runs that came back with nothing at all.
+    ///
+    /// The number the choice actually turns on. A short sharp run is worth the
+    /// same as a long shallow one *on average*, and the average is not what a
+    /// player experiences — what they experience is how often it pays nothing,
+    /// and the two shapes differ enormously there.
+    pub blanks: f64,
+    pub bands: [f64; BAND_COUNT],
+    /// Best run seen, in total-bet multiples.
+    pub best: f64,
+    pub runs: u64,
+}
+
+pub struct ShapeProfiler {
+    session: GameSession,
+    shape: usize,
+    stats: RoundStats,
+    blanks: u64,
+    best: f64,
+    target: u64,
+}
+
+impl ShapeProfiler {
+    pub fn new(data: &GameData, shape: usize) -> Self {
+        Self {
+            // Its own seed per shape, so two shapes are not two views of the
+            // same stream of luck — which would make them look more alike than
+            // they are, and this measurement exists to show a difference.
+            session: GameSession::new(data, PROFILE_SEED ^ 0xF00D ^ (shape as u64 + 1)),
+            shape,
+            stats: RoundStats::default(),
+            blanks: 0,
+            best: 0.0,
+            target: SHAPE_RUNS,
+        }
+    }
+
+    pub fn is_finished(&self) -> bool {
+        self.stats.rounds >= self.target
+    }
+
+    pub fn step(&mut self, data: &GameData) -> Option<ShapeProfile> {
+        for _ in 0..SHAPE_RUNS_PER_STEP {
+            if self.is_finished() {
+                break;
+            }
+            self.run(data);
+        }
+        self.is_finished().then(|| self.finish())
+    }
+
+    /// One feature, granted directly and played to the end.
+    ///
+    /// Granted rather than triggered: waiting for scatters would spend a
+    /// thousand paid spins per measured run, and what is being compared is the
+    /// *feature*, not how often it arrives. Both shapes are handed the same
+    /// award for the same reason.
+    fn run(&mut self, data: &GameData) {
+        self.session.balance = SCRATCH_BANKROLL;
+        self.session.celebrations.clear();
+
+        let awarded = data.freespins.award_for(data.freespins.trigger_count());
+        let Some(shape) = data.freespins.shapes.get(self.shape) else {
+            self.stats.rounds = self.target;
+            return;
+        };
+        let total_bet = self.session.total_bet(data);
+        self.session.grant_free_spins(awarded, shape, data);
+
+        let before = self.session.balance;
+        while self.session.in_free_spins() {
+            if self.session.spin(data).is_err() {
+                break;
+            }
+        }
+        self.session.auto_play_bonus(data);
+        self.session.auto_play_holdspin(data);
+
+        let won = self.session.balance - before;
+        if won <= 0 {
+            self.blanks += 1;
+        }
+        self.stats.record(won, total_bet);
+        self.best = self.best.max(won as f64 / total_bet.max(1) as f64);
+    }
+
+    fn finish(&self) -> ShapeProfile {
+        let runs = self.stats.rounds.max(1);
+        ShapeProfile {
+            mean: self.stats.mean_return(),
+            blanks: self.blanks as f64 / runs as f64,
+            bands: self.stats.band_shares(),
+            best: self.best,
+            runs: self.stats.rounds,
+        }
+    }
+}
+
+#[cfg(test)]
+mod shape_tests {
+    use super::*;
+    use crate::data::MACHINES;
+
+    fn profile(data: &GameData, shape: usize) -> ShapeProfile {
+        let mut profiler = ShapeProfiler::new(data, shape);
+        loop {
+            if let Some(done) = profiler.step(data) {
+                return done;
+            }
+        }
+    }
+
+    /// The claim §5.64 makes, checked against play rather than arithmetic.
+    ///
+    /// The shapes are constructed to be worth the same and a test holds the
+    /// construction. This is the other half: actually running two thousand
+    /// features each way and seeing the means land together. If they do not,
+    /// something about the feature is not linear in the multiplier and the
+    /// whole premise is wrong.
+    #[test]
+    #[ignore = "two thousand features per shape; run with --ignored --release"]
+    fn both_shapes_return_the_same_over_two_thousand_runs() {
+        for machine in MACHINES {
+            let data = GameData::load_machine(machine).unwrap();
+            if data.freespins.shapes.len() < 2 {
+                continue;
+            }
+            let measured: Vec<ShapeProfile> = (0..data.freespins.shapes.len())
+                .map(|shape| profile(&data, shape))
+                .collect();
+
+            let long = measured[0].mean;
+            for (index, profile) in measured.iter().enumerate() {
+                let drift = (profile.mean - long).abs() / long.max(0.0001);
+                println!(
+                    "{:>10} {:<6} mean {:7.2}x  blanks {:5.1}%  best {:8.1}x",
+                    machine.id,
+                    data.freespins.shapes[index].id,
+                    profile.mean,
+                    profile.blanks * 100.0,
+                    profile.best
+                );
+                assert!(
+                    drift < 0.12,
+                    "{}: '{}' returns {:.2}x against '{}' at {:.2}x",
+                    machine.id,
+                    data.freespins.shapes[index].id,
+                    profile.mean,
+                    data.freespins.shapes[0].id,
+                    long
+                );
+            }
+        }
     }
 }

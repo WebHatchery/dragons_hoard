@@ -245,13 +245,14 @@ fn draw_spin_button(
                 .free_spins
                 .as_ref()
                 .map_or(0, |run| shape.spins(run.awarded));
+            let slot = Rect::new(
+                content.x + index as f32 * (width + 8.0),
+                spin_y - 62.0,
+                width,
+                34.0,
+            );
             if virtual_button(
-                Rect::new(
-                    content.x + index as f32 * (width + 8.0),
-                    spin_y - 46.0,
-                    width,
-                    34.0,
-                ),
+                slot,
                 &format!("{} spins at x{}", spins, shape.multiplier),
                 true,
                 ButtonTone::Primary,
@@ -260,6 +261,29 @@ fn draw_spin_button(
             ) {
                 actions.push(UiAction::ChooseFreeSpinShape(index));
             }
+            // What the shape actually feels like, measured (§5.65). The two are
+            // worth the same and saying so is not reassurance — a player has
+            // been handed two numbers and asked to trust a third they cannot
+            // see. This is the third one.
+            let measured = ctx
+                .profiles
+                .shape(ctx.data.machine_id(), index)
+                .map(|profile| {
+                    format!(
+                        "blank {:.0}%  ·  best {:.0}x",
+                        profile.blanks * 100.0,
+                        profile.best
+                    )
+                })
+                .unwrap_or_else(|| "measuring...".to_owned());
+            draw_text_centered_in_box_ex(
+                &measured,
+                slot.x,
+                slot.bottom() + 1.0,
+                slot.w,
+                14.0,
+                TextStyle::new(12.0, palette::text_dim()),
+            );
         }
     } else if virtual_button(
         // The rules panel (§5.29) otherwise gets this gap, and gets it because

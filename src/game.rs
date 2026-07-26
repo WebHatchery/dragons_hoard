@@ -582,6 +582,21 @@ impl Game {
                 break;
             }
         }
+        // The free-spin shapes, while the choice is on screen (§5.65). Same
+        // rule as the tiers: measured only while somebody is looking at the
+        // answer, a slice per frame.
+        if !self.session.free_spin_shapes(&self.data).is_empty() {
+            for shape in 0..self.data.freespins.shapes.len() {
+                if self.profiles.shape(self.data.machine_id(), shape).is_some() {
+                    continue;
+                }
+                self.profiles
+                    .request_shape(self.data.machine_id(), shape, &self.data);
+                self.profiles.step_shape(self.data.machine_id(), &self.data);
+                break;
+            }
+        }
+
         if !self.show_machines && !self.show_ledger {
             return;
         }
