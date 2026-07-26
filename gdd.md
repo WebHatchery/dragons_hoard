@@ -2863,6 +2863,47 @@ and reads back what it found. Reverting the two lines makes it report zero. It
 restores the file afterwards, because a gate that eats the save it is verifying
 would be a poor joke one iteration after §5.55.
 
+### 5.59 Showing the line that won (post-v1)
+
+This one came from sitting and looking at the game rather than reading it. Under
+the reels, after a win:
+
+> Ruby ×3 on line 17
+
+**Line 17 is a number.** Twenty paylines cross the grid in twenty different
+shapes, the winning *cells* were lit — which says which symbols paid — and
+nothing anywhere said what path they were on. A player could not have told you
+what line 17 is, and the game never once drew it.
+
+The data had known all along. Every payline in `paylines.json` carries a **name**
+— "Middle", "Top", "Mid Trough" — and the game was printing an index instead. A
+slot machine that cannot show you its lines is asking to be taken on trust, which
+is the one thing this cabinet has spent fifty-odd systems refusing to do.
+
+**The winning run *is* the line.** A `Win` already carries the cells that formed
+it, in reel order, because §5.14 made ways and cluster wins report their own
+cells rather than being looked up. So the bright path needs no payline lookup at
+all: it is a polyline through the cells that paid, correct by construction, and
+it works unchanged whatever the cabinet's win model is.
+
+The rest of the line is drawn dim behind it from the payline definition. A
+three-of-five win stops at reel three, and showing where the line *would* have
+continued is what turns a fragment into a shape — the capture that settled the
+design shows a bright run through three rubies and a faint trough continuing past
+them, which is exactly why the line is called Mid Trough.
+
+**One at a time.** Six simultaneous line wins drawn together are a cat's cradle,
+and drawing only the first would be worse — a player would see one line beside a
+payout that did not match it. They take turns on a beat, with a test that every
+win gets one: two full cycles, sampled inside each beat rather than on its edge,
+and all three lines must appear.
+
+**And the sentence had to change with it.** "Ruby ×3 on **Mid Trough**" now, from
+the name that was in the data the whole time. A test used to require the win text
+to quote the payline's *id*, because the index would have been off by one against
+the paytable; it now requires the text and the drawn line to name the same thing,
+which is the same guard pointed at the thing that can now actually go wrong.
+
 
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
@@ -3467,6 +3508,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
+| A win the player cannot see the shape of | The winning payline is drawn across the grid and named from the data (§5.59). The game said "line 17" for fifty-eight systems and never drew a line. |
 | An autosave nobody reads | Booting loads the cabinet through the same path as switching to it, checked by planting a save and reading it back (§5.58). The game had autosaved since it shipped and never once opened the file. |
 | A jackpot nobody could ever win | The Grand is shared by every cabinet, fed by all of them and payable on any (§5.57). Six independent pots at 625,000 spins each were decoration. |
 | Two games sharing a browser save | Web storage keys are qualified by game, with the old key adopted forward (§5.56). Five games in the catalog were writing the same `localStorage` key. |
@@ -3530,7 +3572,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus fifty-three post-v1 systems
+## 15. Current State — v1 shipped, plus fifty-four post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
@@ -3541,11 +3583,11 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) a motion audit (§5.52) an answer for running out (§5.53) a size limit that is actually enforced (§5.54) one bankroll across six cabinets (§5.55) a web save that belongs to this game alone (§5.56) a floor-wide Grand (§5.57) and a game that reads its own save (§5.58). The game is
+navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) a motion audit (§5.52) an answer for running out (§5.53) a size limit that is actually enforced (§5.54) one bankroll across six cabinets (§5.55) a web save that belongs to this game alone (§5.56) a floor-wide Grand (§5.57) a game that reads its own save (§5.58) and a payline you can actually see (§5.59). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-497 tests pass here and 313 in `macroquad-toolkit`; `cargo fmt --check`,
+502 tests pass here and 313 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
 release build are clean. Every `.rs` file is under the 800-line limit and a gate now says so
 (§5.54); `game.rs` (740) and `ui/reels.rs` (689) are the largest. `data.rs` went

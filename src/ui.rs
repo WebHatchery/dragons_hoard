@@ -15,6 +15,7 @@ pub mod limits;
 pub mod machines;
 pub mod naming;
 pub mod nav;
+pub mod paylines;
 pub mod paytable;
 pub mod reality;
 pub mod reels;

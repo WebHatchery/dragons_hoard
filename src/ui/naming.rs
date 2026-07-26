@@ -82,11 +82,15 @@ pub fn symbol(data: &GameData, index: usize) -> &str {
 pub fn win(data: &GameData, win: &Win) -> String {
     let name = symbol(data, win.symbol);
     match win.source {
+        // The line's own name, which has been in `paylines.json` since the game
+        // shipped and was never once shown (§5.59). "Bottom" is a thing a
+        // player can picture; "line 17" is a thing they have to take on faith,
+        // and now that the line is drawn the two have to agree.
         WinSource::Line(index) => format!(
-            "{} ×{} on line {}",
+            "{} ×{} on {}",
             name,
             win.count,
-            data.paylines.get(index).map_or(0, |line| line.id)
+            crate::ui::paylines::name(data, index)
         ),
         WinSource::Ways(1) => format!("{} ×{}", name, win.count),
         WinSource::Ways(ways) => format!("{} ×{} across {} ways", name, win.count, ways),
@@ -231,9 +235,12 @@ mod tests {
     }
 
     #[test]
-    fn a_line_win_quotes_the_paylines_own_id() {
-        // The overlay and the paytable both use the id; the index would be off
-        // by one against everything else the player can see.
+    fn a_line_win_names_the_line_the_overlay_draws() {
+        // This used to require the payline's own id, because the index would
+        // have been off by one against the paytable. The line is drawn on the
+        // grid now (§5.59), so the readout names it instead — and the two have
+        // to agree, or the sentence would describe a different line from the
+        // one lit up beside it.
         let data = &every_machine()[0];
         for (index, line) in data.paylines.iter().enumerate() {
             let text = win(
@@ -246,7 +253,20 @@ mod tests {
                     cells: Vec::new(),
                 },
             );
-            assert!(text.ends_with(&format!("line {}", line.id)), "{}", text);
+            assert!(
+                text.ends_with(&line.name),
+                "{} does not name {}",
+                text,
+                line.name
+            );
+            assert_eq!(
+                text,
+                format!(
+                    "{} on {}",
+                    text.trim_end_matches(&format!(" on {}", line.name)),
+                    crate::ui::paylines::name(data, index)
+                )
+            );
         }
     }
 

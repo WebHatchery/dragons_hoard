@@ -65,6 +65,13 @@ fn cell_size_on(data: &GameData, rows: usize) -> Vec2 {
     )
 }
 
+/// A cell's slot, for anything outside this module that needs to draw on the
+/// grid — the payline overlay (§5.59) needs cell centres and must get them from
+/// the same arithmetic the symbols are drawn with, or the line would miss.
+pub fn cell_slot_for(data: &GameData, reel: usize, row: usize) -> Rect {
+    cell_slot(data, reel, row as f32)
+}
+
 /// Full cell slot, before the padding that separates the drawn tiles.
 fn cell_slot(data: &GameData, reel: usize, row: f32) -> Rect {
     cell_slot_on(data, reel, row, data.config.row_count)
@@ -158,6 +165,9 @@ pub fn draw_reels(data: &GameData, session: &GameSession, shake: Vec2, ui_time: 
     // After the cells, not before — drawn first it sat *underneath* the top-right
     // symbol and was invisible.
     draw_cascade_badge(session, shake);
+    // Over the symbols so the path reads, under the summary that names it
+    // (§5.59).
+    crate::ui::paylines::draw(data, session, shake, ui_time);
     draw_win_summary(data, session, bounds);
 }
 
