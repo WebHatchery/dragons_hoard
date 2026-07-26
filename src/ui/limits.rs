@@ -50,7 +50,7 @@ pub fn draw(
         TextStyle::new(21.0, palette::gold_bright()).params(),
     );
     if virtual_button(
-        Rect::new(panel.right() - 120.0, panel.y + 9.0, 100.0, 30.0),
+        crate::ui::close_button(panel),
         "Close",
         true,
         ButtonTone::Danger,
@@ -167,7 +167,7 @@ fn row(
     }
 
     if virtual_button(
-        Rect::new(panel.right() - 232.0, y + 8.0, 212.0, 38.0),
+        Rect::new(panel.right() - 232.0, y + 4.0, 212.0, 44.0),
         value,
         true,
         if value == "Off" {

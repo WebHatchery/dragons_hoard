@@ -72,6 +72,7 @@ impl Game {
                 ui_time: self.ui_time,
                 ui: &virtual_ui,
                 frame,
+                overlay_open: self.any_overlay_open(),
             },
             &mut self.nav,
         );

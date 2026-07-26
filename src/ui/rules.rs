@@ -110,7 +110,7 @@ pub fn draw(ctx: &UiContext<'_>, pointer: Pointer, actions: &mut Vec<UiAction>, 
     }
 
     if virtual_button(
-        Rect::new(panel().right() - 130.0, panel().y + 10.0, 110.0, 30.0),
+        crate::ui::close_button(panel()),
         "Close",
         true,
         ButtonTone::Danger,

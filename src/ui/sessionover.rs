@@ -116,7 +116,7 @@ pub fn draw(
     // session is one row of a longer story, and a player is more likely to want
     // the story here than anywhere else in the game.
     if virtual_button(
-        Rect::new(panel.center().x - 100.0, panel.bottom() - 58.0, 200.0, 34.0),
+        Rect::new(panel.center().x - 100.0, panel.bottom() - 64.0, 200.0, 44.0),
         "Sessions before this",
         true,
         ButtonTone::Secondary,
@@ -127,7 +127,7 @@ pub fn draw(
     }
 
     if virtual_button(
-        Rect::new(panel.x + 20.0, panel.bottom() - 58.0, 200.0, 34.0),
+        Rect::new(panel.x + 20.0, panel.bottom() - 64.0, 200.0, 44.0),
         "Close",
         true,
         ButtonTone::Secondary,
@@ -140,7 +140,7 @@ pub fn draw(
     // starting again is theirs to choose — but a screen that led with it would
     // be selling the next session rather than closing this one.
     if virtual_button(
-        Rect::new(panel.right() - 220.0, panel.bottom() - 58.0, 200.0, 34.0),
+        Rect::new(panel.right() - 220.0, panel.bottom() - 64.0, 200.0, 44.0),
         "New session",
         true,
         ButtonTone::Danger,

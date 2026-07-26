@@ -48,7 +48,7 @@ pub fn draw(log: &SessionLog, pointer: Pointer, actions: &mut Vec<UiAction>, nav
         TextStyle::new(21.0, palette::gold_bright()).params(),
     );
     if virtual_button(
-        Rect::new(panel.right() - 120.0, panel.y + 9.0, 100.0, 30.0),
+        crate::ui::close_button(panel),
         "Close",
         true,
         ButtonTone::Danger,

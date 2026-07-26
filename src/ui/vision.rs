@@ -92,7 +92,7 @@ pub fn draw(data: &GameData, pointer: Pointer, actions: &mut Vec<UiAction>, nav:
     );
 
     if virtual_button(
-        Rect::new(panel.right() - 120.0, panel.y + 8.0, 100.0, 28.0),
+        crate::ui::close_button(panel),
         "Close",
         true,
         ButtonTone::Danger,

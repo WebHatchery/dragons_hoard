@@ -123,7 +123,7 @@ pub fn draw(ctx: &UiContext<'_>, pointer: Pointer, actions: &mut Vec<UiAction>, 
     // it — and the panel had a hundred spare pixels there doing nothing.
     if !ctx.data.paylines.is_empty()
         && virtual_button(
-            Rect::new(rect.x + 20.0, rect.bottom() - 52.0, 220.0, 32.0),
+            Rect::new(rect.x + 20.0, rect.bottom() - 58.0, 220.0, 44.0),
             &format!("See the {} lines", ctx.data.paylines.len()),
             true,
             ButtonTone::Secondary,
@@ -135,7 +135,7 @@ pub fn draw(ctx: &UiContext<'_>, pointer: Pointer, actions: &mut Vec<UiAction>, 
     }
 
     if virtual_button(
-        Rect::new(rect.right() - 130.0, rect.y + 10.0, 110.0, 30.0),
+        crate::ui::close_button(rect),
         "Close",
         true,
         ButtonTone::Danger,

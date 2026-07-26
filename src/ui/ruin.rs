@@ -98,7 +98,7 @@ pub fn draw(
     );
 
     if virtual_button(
-        Rect::new(panel.x + 20.0, panel.bottom() - 104.0, panel.w - 40.0, 46.0),
+        Rect::new(panel.x + 20.0, panel.bottom() - 132.0, panel.w - 40.0, 46.0),
         &button,
         true,
         ButtonTone::Positive,
@@ -114,14 +114,14 @@ pub fn draw(
     draw_text_centered_in_box_ex(
         "Lowering the bet may buy more spins than either.",
         panel.x,
-        panel.bottom() - 54.0,
+        panel.bottom() - 82.0,
         panel.w,
         20.0,
         TextStyle::new(15.0, palette::text_dim()),
     );
 
     if virtual_button(
-        Rect::new(panel.center().x - 90.0, panel.bottom() - 32.0, 180.0, 26.0),
+        Rect::new(panel.center().x - 100.0, panel.bottom() - 60.0, 200.0, 44.0),
         "New game",
         true,
         ButtonTone::Danger,

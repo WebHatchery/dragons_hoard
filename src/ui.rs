@@ -299,6 +299,9 @@ pub struct UiContext<'a> {
     pub ui: &'a VirtualUi,
     /// Where the big pieces go at this window's shape (§5.46).
     pub frame: frame::Frame,
+    /// Is a panel covering the game (§5.78)? The controls underneath one still
+    /// draw, and must not still answer a tap.
+    pub overlay_open: bool,
 }
 
 pub fn draw_game_ui(ctx: UiContext<'_>, nav: &mut Nav) -> Vec<UiAction> {
@@ -307,10 +310,20 @@ pub fn draw_game_ui(ctx: UiContext<'_>, nav: &mut Nav) -> Vec<UiAction> {
     // One read per frame, mouse or finger (§5.45).
     let pointer = Pointer::read(|at| ctx.ui.screen_to_ui(at));
 
+    // A panel on top takes every control under it out of play (§5.78).
+    //
+    // They keep drawing, because the game behind a modal is still worth
+    // looking at. They stop answering, because a tap landing on both a panel
+    // row and the button behind it fired both. Nothing had ever said so: the
+    // report that would have said it was suppressed for eight sections
+    // (§5.77), and the moment it could speak it named 3,780 square pixels of
+    // overlap between the session-limit rows and the rules button underneath.
+    nav.set_inert(ctx.overlay_open);
     draw_header(&ctx, pointer, &mut actions, nav);
     reels::draw_reels(ctx.data, ctx.session, ctx.shake, ctx.ui_time);
     wager::draw_control_panel(&ctx, pointer, &mut actions, nav);
     draw_footer(&ctx);
+    nav.set_inert(false);
 
     if ctx.show_paytable {
         paytable::draw(&ctx, pointer, &mut actions, nav);
@@ -506,6 +519,16 @@ fn draw_header(ctx: &UiContext<'_>, pointer: Pointer, actions: &mut Vec<UiAction
         );
     }
 
+    // 44 tall, not 28 (§5.78).
+    //
+    // Every button in this game was drawn between 26 and 38 logical pixels,
+    // because it was laid out against a mouse pointer. A finger is not a
+    // pointer: WCAG 2.5.5 and Apple both ask for 44, and the header's four
+    // buttons are the game's primary navigation — the first thing a tablet
+    // player reaches for. The header is 64 tall and they now sit centred in it.
+    //
+    // The badges beside them keep their height: nothing presses a badge.
+    //
     // The header has the only spare width on screen, and these should be
     // reachable from anywhere rather than buried in the wager panel.
     // The button carries the entry price, so the cost of the cheapest feature
@@ -513,7 +536,7 @@ fn draw_header(ctx: &UiContext<'_>, pointer: Pointer, actions: &mut Vec<UiAction
     // which is the quickest way to see that the menu is priced per stake.
     let from = cheapest_feature(&ctx.data.featurebuy, ctx.session.total_bet(ctx.data));
     if virtual_button(
-        Rect::new(rect.right() - 946.0, rect.y + 18.0, 108.0, 28.0),
+        Rect::new(rect.right() - 946.0, rect.y + 10.0, 108.0, 44.0),
         &match from {
             Some(price) => format!("Buy {}", naming::credits(price)),
             None => "Buy".to_owned(),
@@ -531,7 +554,7 @@ fn draw_header(ctx: &UiContext<'_>, pointer: Pointer, actions: &mut Vec<UiAction
     // everything else, whereas four screens had no door at all. One of them was
     // the colour-vision panel, an accessibility feature that needed a keyboard.
     if virtual_button(
-        Rect::new(rect.right() - 828.0, rect.y + 18.0, 108.0, 28.0),
+        Rect::new(rect.right() - 828.0, rect.y + 10.0, 108.0, 44.0),
         "More",
         true,
         ButtonTone::Secondary,
@@ -541,7 +564,7 @@ fn draw_header(ctx: &UiContext<'_>, pointer: Pointer, actions: &mut Vec<UiAction
         actions.push(UiAction::ToggleMenu);
     }
     if virtual_button(
-        Rect::new(rect.right() - 710.0, rect.y + 18.0, 108.0, 28.0),
+        Rect::new(rect.right() - 710.0, rect.y + 10.0, 108.0, 44.0),
         "Machines",
         true,
         ButtonTone::Secondary,
@@ -551,7 +574,7 @@ fn draw_header(ctx: &UiContext<'_>, pointer: Pointer, actions: &mut Vec<UiAction
         actions.push(UiAction::ToggleMachines);
     }
     if virtual_button(
-        Rect::new(rect.right() - 592.0, rect.y + 18.0, 108.0, 28.0),
+        Rect::new(rect.right() - 592.0, rect.y + 10.0, 108.0, 44.0),
         "Settings",
         true,
         ButtonTone::Secondary,
@@ -680,6 +703,17 @@ fn draw_footer(ctx: &UiContext<'_>) {
 /// shortcut line was fitted to the space from here rightwards, and the hoard
 /// sentence to its left was not fitted to anything at all.
 const SHORTCUT_LINE_X: f32 = 470.0;
+
+/// Where a panel's Close button goes.
+///
+/// One shape, in one place. The same rectangle was written out longhand in ten
+/// separate files, which is why it was thirty pixels tall in all ten — a
+/// repeated literal is a decision nobody ever revisits. At 44 it meets the
+/// touch standard (§5.78), and a panel header is 48 tall, so it still sits
+/// inside one.
+pub fn close_button(panel: Rect) -> Rect {
+    Rect::new(panel.right() - 128.0, panel.y + 2.0, 108.0, 44.0)
+}
 
 fn virtual_button(
     rect: Rect,

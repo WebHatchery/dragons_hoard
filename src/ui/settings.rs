@@ -50,7 +50,7 @@ pub fn draw(
         TextStyle::new(21.0, palette::gold_bright()).params(),
     );
     if virtual_button(
-        Rect::new(panel.right() - 120.0, panel.y + 9.0, 100.0, 30.0),
+        crate::ui::close_button(panel),
         "Close",
         true,
         ButtonTone::Danger,
@@ -146,7 +146,7 @@ pub fn draw(
     // Limits get their own panel rather than four more rows here: they are the
     // one group where a row can be showing two values at once (§5.30).
     if virtual_button(
-        Rect::new(panel.x + 20.0, y, panel.w - 40.0, 38.0),
+        Rect::new(panel.x + 20.0, y, panel.w - 40.0, 44.0),
         "Session Limits — time, loss and spin caps",
         true,
         ButtonTone::Secondary,
@@ -184,7 +184,7 @@ fn volume_stepper(
 ) {
     let percent = (value * 100.0).round() as i32;
     if virtual_button(
-        Rect::new(panel.right() - 212.0, y + 6.0, 42.0, 36.0),
+        Rect::new(panel.right() - 218.0, y + 2.0, 48.0, 44.0),
         "-",
         percent > 0,
         ButtonTone::Secondary,
@@ -213,7 +213,7 @@ fn volume_stepper(
         ),
     );
     if virtual_button(
-        Rect::new(panel.right() - 62.0, y + 6.0, 42.0, 36.0),
+        Rect::new(panel.right() - 68.0, y + 2.0, 48.0, 44.0),
         "+",
         percent < 100,
         ButtonTone::Secondary,
@@ -241,7 +241,7 @@ fn draw_row_label(panel: Rect, y: f32, label: &str, hint: &str) {
 
 fn cycle_button(panel: Rect, y: f32, value: &str, pointer: Pointer, nav: &mut Nav) -> bool {
     virtual_button(
-        Rect::new(panel.right() - 212.0, y + 6.0, 192.0, 36.0),
+        Rect::new(panel.right() - 212.0, y + 2.0, 192.0, 44.0),
         value,
         true,
         ButtonTone::Primary,
@@ -252,7 +252,7 @@ fn cycle_button(panel: Rect, y: f32, value: &str, pointer: Pointer, nav: &mut Na
 
 fn toggle_button(panel: Rect, y: f32, on: bool, pointer: Pointer, nav: &mut Nav) -> bool {
     virtual_button(
-        Rect::new(panel.right() - 212.0, y + 6.0, 192.0, 36.0),
+        Rect::new(panel.right() - 212.0, y + 2.0, 192.0, 44.0),
         if on { "On" } else { "Off" },
         true,
         if on {

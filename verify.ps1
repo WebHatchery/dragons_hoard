@@ -313,7 +313,12 @@ Step 'motion' {
 # landscape with the canvas filling the screen, which is the narrowest device
 # this game claims to be playable on.
 Step 'a tablet can actually press it' {
-    $needed = 1080
+    # 960 is the game's own logical width at 4:3, and the floor: a control
+    # cannot clear 44 CSS pixels on a canvas narrower than the layout it is
+    # drawn in unless it exceeds 44 logical pixels. §5.78 got the requirement
+    # down from 982 to exactly this, so the gate now holds it there rather than
+    # at the tablet figure it used to allow.
+    $needed = 960
     foreach ($scene in 'touch_audit', 'touch_audit_settings', 'touch_audit_buy') {
         [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_WINDOW_WIDTH', '1080')
         [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_WINDOW_HEIGHT', '810')
@@ -337,9 +342,34 @@ Step 'a tablet can actually press it' {
             }
         }
         if ($worst -gt $needed) {
-            throw "$scene needs a ${worst}px canvas for every control to clear 44 CSS pixels; a tablet in landscape gives $needed. Worst control: $who"
+            throw "$scene needs a ${worst}px canvas for every control to clear 44 CSS pixels; the floor is $needed. Worst control: $who"
         }
     }
+
+    # And the other half: drawn size, not hit size (§5.78).
+    #
+    # A control's hit area is grown to the standard, so a 26px button is
+    # reachable. It is still a 26px button to look at and aim for, and every
+    # button in this game was between 26 and 38 until the audit was finally
+    # able to say so. This sweeps the whole registry, because the target audit
+    # used to be armed in three hand-written scenes while the layout audit swept
+    # all twenty-one.
+    [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_PATH', (Join-Path $env:TEMP 'verify_screens.png'))
+    [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_SCENE', 'screens')
+    $all = @(& $Exe 2>&1 | Where-Object { $_ -match '^screen ' } | ForEach-Object { ($_ -split ' ')[1] })
+    foreach ($screen in $all) {
+        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_SCENE', "audit:$screen")
+        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_WINDOW_WIDTH', '1080')
+        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_WINDOW_HEIGHT', '810')
+        $small = @(& $Exe 2>&1 | Where-Object { $_ -match 'drawn (\d+)px' } | Select-Object -Unique)
+        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_WINDOW_WIDTH', $null)
+        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_WINDOW_HEIGHT', $null)
+        if ($small) {
+            throw ("the $screen screen draws controls under 44 logical pixels`n  " + ($small -join "`n  "))
+        }
+    }
+    [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_SCENE', $null)
+    [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_PATH', $null)
 }
 Step 'collisions and touch targets' {
     foreach ($scene in 'touch_audit', 'touch_audit_settings', 'touch_audit_buy') {

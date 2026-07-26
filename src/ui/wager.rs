@@ -55,7 +55,10 @@ pub fn draw_control_panel(
 }
 
 fn draw_win_readout(ctx: &UiContext<'_>, content: Rect, y: f32) -> f32 {
-    let rect = Rect::new(content.x, y, content.w, 62.0);
+    // 54, not 62. The controls below all grew to the touch standard (§5.78)
+    // and the panel is a fixed 520 tall; the win readout is the one block here
+    // that is read rather than pressed, so it is the one that gives up room.
+    let rect = Rect::new(content.x, y, content.w, 54.0);
     draw_surface(
         rect,
         &SurfaceStyle::new(Color::new(0.07, 0.06, 0.05, 1.0)).with_border(1.0, palette::gold_dim()),
@@ -80,7 +83,7 @@ fn draw_win_readout(ctx: &UiContext<'_>, content: Rect, y: f32) -> f32 {
             },
         ),
     );
-    y + 76.0
+    y + 68.0
 }
 
 fn draw_bet_controls(
@@ -101,7 +104,9 @@ fn draw_bet_controls(
         TextStyle::new(18.0, palette::text()).params(),
     );
 
-    let button = 38.0;
+    // 44, the touch standard (§5.78). These two are the smallest controls a
+    // player uses often — the bet step — and were square at 38.
+    let button = 44.0;
     if virtual_button(
         Rect::new(content.right() - button * 2.0 - 92.0, y, button, button),
         "-",
@@ -168,43 +173,45 @@ fn draw_bet_controls(
         palette::text_dim(),
     );
 
-    draw_ante(ctx, content, y, pointer, actions, nav);
-
-    y + 54.0
+    y + 50.0
 }
 
-/// The ante switch (§5.75).
+/// The ante switch (§5.75), in the secondary row (§5.78).
 ///
-/// On the **Total Bet** line, right-aligned, because that is the number it
-/// changes. Turning the ante on is the only control besides the bet step that
-/// alters what a spin costs, and a switch anywhere else would let a player raise
-/// their stake by 40% without the figure moving in front of them. The label
-/// therefore says only on or off — the price is already on the same line, and
-/// saying "1.41x" twice would be the panel talking over itself.
-///
-/// It began as a full-width row under the total, which was invisible: the
-/// panel's buttons are anchored to its bottom and the rules button painted
-/// straight over it. Nothing failed, and the capture showed a four-pixel
-/// sliver.
+/// It began on the Total Bet line, right-aligned, which was the right idea —
+/// that is the number it changes, and 200 becomes 281 as you press it. At 26
+/// pixels tall it fitted there. At 44 it does not, and it overlapped the figure
+/// it was explaining. The row below had a slot that a less consequential
+/// control was using.
 ///
 /// Absent entirely on a cabinet that sells no ante — a greyed-out switch would
 /// read as something the player had failed to unlock, when it is really a
-/// cabinet on which the bet could not be priced honestly (Avalanche).
+/// cabinet on which the bet could not be priced honestly (Avalanche). The
+/// paytable takes the slot back on those.
 fn draw_ante(
     ctx: &UiContext<'_>,
     content: Rect,
     y: f32,
+    width: f32,
     pointer: Pointer,
     actions: &mut Vec<UiAction>,
     nav: &mut Nav,
 ) {
-    if ctx.data.ante().is_none() {
+    let slot = Rect::new(content.x + (width + 8.0) * 2.0, y, width, 44.0);
+    let Some(ante) = ctx.data.ante() else {
+        if virtual_button(slot, "Paytable", true, ButtonTone::Secondary, pointer, nav) {
+            actions.push(UiAction::TogglePaytable);
+        }
         return;
-    }
+    };
     let on = ctx.session.ante(ctx.data);
     if virtual_button(
-        Rect::new(content.right() - 104.0, y + 20.0, 104.0, 26.0),
-        if on { "Ante on" } else { "Ante off" },
+        slot,
+        &if on {
+            format!("Ante {:.2}x", ante.cost_permille as f64 / 1000.0)
+        } else {
+            "Ante off".to_owned()
+        },
         // `is_settled`, not `can_spin`. A player who has just made themselves
         // unable to afford an ante spin has to be able to switch it back off,
         // and gating on affordability would lock them into the more expensive
@@ -279,8 +286,10 @@ fn draw_spin_button(
     actions: &mut Vec<UiAction>,
     nav: &mut Nav,
 ) {
-    let secondary_y = below - 12.0 - 38.0;
-    let spin_y = secondary_y - 10.0 - 70.0;
+    // Both rows are 44 now (§5.78), so the offsets that positioned them have
+    // to grow with them or the block climbs into the bet controls above.
+    let secondary_y = below - 10.0 - 44.0;
+    let spin_y = secondary_y - 8.0 - 70.0;
 
     // The free-spin choice takes the rules button's place while it is open
     // (§5.64). It is the only thing on screen worth pressing at that moment,
@@ -340,7 +349,7 @@ fn draw_spin_button(
         // The rules panel (§5.29) otherwise gets this gap, and gets it because
         // R alone is not an affordance — a shortcut nobody is told about is the
         // problem the panel exists to fix.
-        Rect::new(content.x, spin_y - 46.0, content.w, 34.0),
+        Rect::new(content.x, spin_y - 52.0, content.w, 44.0),
         &format!("How {} plays", ctx.data.config.display_name),
         true,
         ButtonTone::Secondary,
@@ -374,7 +383,7 @@ fn draw_spin_button(
 
     let third = (content.w - 16.0) / 3.0;
     if virtual_button(
-        Rect::new(content.x, secondary_y, third, 38.0),
+        Rect::new(content.x, secondary_y, third, 44.0),
         "Max Bet",
         !ctx.session.bet_locked(),
         ButtonTone::Primary,
@@ -397,7 +406,7 @@ fn draw_spin_button(
         )
     };
     if virtual_button(
-        Rect::new(content.x + third + 8.0, secondary_y, third, 38.0),
+        Rect::new(content.x + third + 8.0, secondary_y, third, 44.0),
         &auto_label,
         // Stopping is always allowed; starting needs a settled, affordable game.
         running > 0 || (ctx.session.can_spin(ctx.data) && !ctx.session.in_free_spins()),
@@ -408,16 +417,15 @@ fn draw_spin_button(
         actions.push(UiAction::ToggleAutospin);
     }
 
-    if virtual_button(
-        Rect::new(content.x + (third + 8.0) * 2.0, secondary_y, third, 38.0),
-        "Paytable",
-        true,
-        ButtonTone::Secondary,
-        pointer,
-        nav,
-    ) {
-        actions.push(UiAction::TogglePaytable);
-    }
+    // The ante takes this slot, and the paytable gives it up (§5.78).
+    //
+    // Once every control grew to 44 there was no longer a spare line for the
+    // ante beside the Total Bet figure — it overlapped the number it changes.
+    // Of the two candidates for the slot, the ante alters what every spin costs
+    // and the paytable is read once an evening; and the paytable is already in
+    // the menu (§5.72) with a key of its own, whereas the ante had nowhere else
+    // to be. A row this full is a series of decisions, not a list.
+    draw_ante(ctx, content, secondary_y, third, pointer, actions, nav);
 }
 
 /// Save/load/new/delete, anchored to the bottom of the panel. Returns the top
@@ -430,15 +438,18 @@ fn draw_session_buttons(
     nav: &mut Nav,
 ) -> f32 {
     let half = (content.w - 10.0) / 2.0;
-    let bottom_row = content.bottom() - 34.0;
-    let top_row = bottom_row - 42.0;
+    // 44-tall rows, 8 apart. At 34 and 42 apart these were the control that
+    // decided the whole game's touch requirement (§5.77) — the audit named
+    // "182x34" as the worst thing on screen.
+    let bottom_row = content.bottom() - 44.0;
+    let top_row = bottom_row - 52.0;
 
     // Saving mid-feature would bank a session whose free spins are not
     // persisted, and loading mid-spin would strand a committed stake.
     let storage_ready = ctx.session.is_settled() && !ctx.session.in_free_spins();
 
     if virtual_button(
-        Rect::new(content.x, top_row, half, 34.0),
+        Rect::new(content.x, top_row, half, 44.0),
         "Save",
         storage_ready,
         ButtonTone::Positive,
@@ -448,7 +459,7 @@ fn draw_session_buttons(
         actions.push(UiAction::Save);
     }
     if virtual_button(
-        Rect::new(content.x + half + 10.0, top_row, half, 34.0),
+        Rect::new(content.x + half + 10.0, top_row, half, 44.0),
         "Load",
         storage_ready && ctx.save_exists,
         ButtonTone::Primary,
@@ -458,7 +469,7 @@ fn draw_session_buttons(
         actions.push(UiAction::Load);
     }
     if virtual_button(
-        Rect::new(content.x, bottom_row, half, 34.0),
+        Rect::new(content.x, bottom_row, half, 44.0),
         "New Game",
         ctx.session.phase.is_idle(),
         ButtonTone::Secondary,
@@ -468,7 +479,7 @@ fn draw_session_buttons(
         actions.push(UiAction::NewGame);
     }
     if virtual_button(
-        Rect::new(content.x + half + 10.0, bottom_row, half, 34.0),
+        Rect::new(content.x + half + 10.0, bottom_row, half, 44.0),
         "Delete Save",
         ctx.session.phase.is_idle() && ctx.save_exists,
         ButtonTone::Danger,

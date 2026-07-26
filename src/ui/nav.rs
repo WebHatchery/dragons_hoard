@@ -54,12 +54,21 @@ pub struct Nav {
     engaged: bool,
     /// Held focus, for the capture harness only.
     pinned: Option<usize>,
+    /// Everything drawn now is behind an open panel, so nothing drawn now can
+    /// be pressed (§5.78).
+    inert: bool,
 }
 
 impl Nav {
     /// Read this frame's input. Call once, before anything draws.
+    /// Mark what is drawn from here as behind a panel, or not.
+    pub fn set_inert(&mut self, inert: bool) {
+        self.inert = inert;
+    }
+
     pub fn begin(&mut self) {
         macroquad_toolkit::ui::begin_target_frame();
+        self.inert = false;
         self.seen = 0;
         self.step = 0;
         self.activate = false;
@@ -106,7 +115,15 @@ impl Nav {
     /// greyed-out button and pressing Enter to no effect reads as a broken key,
     /// not a disabled control.
     pub fn control(&mut self, rect: Rect, enabled: bool, pointer: Pointer) -> Hit {
-        if !enabled {
+        // A control behind an open panel is not a control this frame (§5.78).
+        //
+        // The header and the wager panel keep drawing for context while an
+        // overlay is up, and every one of their buttons went on answering the
+        // mouse, the finger and the Tab key. A tap landing on both a panel row
+        // and the button behind it fired both. It is one statement, so it is
+        // made in one place: not pressable, not focusable, and not measured —
+        // the audit should not be reporting an ambiguity that no longer exists.
+        if !enabled || self.inert {
             return Hit::default();
         }
         let slot = self.seen;

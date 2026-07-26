@@ -56,7 +56,7 @@ pub fn draw(pointer: Pointer, actions: &mut Vec<UiAction>, nav: &mut Nav) {
     let panel = frame::centred_at(
         720.0,
         frame::BELOW_HEADER + 20.0,
-        108.0 + rows as f32 * 46.0,
+        116.0 + rows as f32 * 52.0,
     );
     let _region = Region::on(panel, PANEL);
     draw_surface(
@@ -73,7 +73,7 @@ pub fn draw(pointer: Pointer, actions: &mut Vec<UiAction>, nav: &mut Nav) {
         TextStyle::new(21.0, palette::gold_bright()).params(),
     );
     if virtual_button(
-        Rect::new(panel.right() - 120.0, panel.y + 9.0, 100.0, 30.0),
+        crate::ui::close_button(panel),
         "Close",
         true,
         ButtonTone::Danger,
@@ -87,9 +87,9 @@ pub fn draw(pointer: Pointer, actions: &mut Vec<UiAction>, nav: &mut Nav) {
     for (index, screen) in screens.iter().enumerate() {
         let slot = Rect::new(
             panel.x + 24.0 + (index % COLUMNS) as f32 * (width + 12.0),
-            panel.y + 62.0 + (index / COLUMNS) as f32 * 46.0,
+            panel.y + 62.0 + (index / COLUMNS) as f32 * 52.0,
             width,
-            38.0,
+            44.0,
         );
         if virtual_button(
             slot,
@@ -165,7 +165,7 @@ mod tests {
     #[test]
     fn the_panel_holds_every_row_it_offers() {
         let rows = Screen::in_menu().count().div_ceil(COLUMNS);
-        let height = 108.0 + rows as f32 * 46.0;
+        let height = 116.0 + rows as f32 * 52.0;
         assert!(
             frame::BELOW_HEADER + 20.0 + height <= frame::HEIGHT,
             "{} rows need {}px and the frame is {}",

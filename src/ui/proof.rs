@@ -65,7 +65,7 @@ pub fn draw(
         TextStyle::new(21.0, palette::gold_bright()).params(),
     );
     if virtual_button(
-        Rect::new(panel.right() - 120.0, panel.y + 9.0, 100.0, 30.0),
+        crate::ui::close_button(panel),
         "Close",
         true,
         ButtonTone::Danger,
@@ -116,7 +116,7 @@ pub fn draw(
         );
     }
 
-    let button = Rect::new(panel.x + 24.0, panel.bottom() - 116.0, 180.0, 32.0);
+    let button = Rect::new(panel.x + 24.0, panel.bottom() - 124.0, 180.0, 44.0);
     if virtual_button(
         button,
         "Check them all",

@@ -537,6 +537,13 @@ impl Game {
                 //
                 // `DRAGONS_HOARD_MACHINE` names it; without one it is the first
                 // cabinet in the catalog. Either way it is the same everywhere.
+                // Sizes as well as layout (§5.78). The target audit used to be
+                // armed in three hand-written scenes while the layout audit
+                // swept all twenty-one from the registry — so most of the
+                // game's controls had never been measured at all, even after
+                // §5.77 made measuring work.
+                macroquad_toolkit::ui::begin_target_audit();
+
                 let machine = std::env::var("DRAGONS_HOARD_MACHINE")
                     .ok()
                     .filter(|id| !id.is_empty())
