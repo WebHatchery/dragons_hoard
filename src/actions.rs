@@ -40,6 +40,10 @@ pub enum ActionOutcome {
     /// A screen picked from the menu (§5.72).
     ScreenOpened(crate::game::screens::Screen),
     SessionsToggled,
+    /// The spin verifier (§5.74).
+    ProofsToggled,
+    /// Re-run every recorded spin.
+    ProofsChecked,
     SessionOverDismissed,
     /// A free-spin run reshaped, and the spins it now holds (§5.64).
     FreeSpinShapeChosen(u32),
@@ -113,6 +117,8 @@ pub fn apply(
         UiAction::ToggleMenu => ActionOutcome::MenuToggled,
         UiAction::OpenScreen(screen) => ActionOutcome::ScreenOpened(screen),
         UiAction::ToggleSessions => ActionOutcome::SessionsToggled,
+        UiAction::ToggleProofs => ActionOutcome::ProofsToggled,
+        UiAction::CheckProofs => ActionOutcome::ProofsChecked,
         UiAction::DismissSessionOver => ActionOutcome::SessionOverDismissed,
         UiAction::ChooseFreeSpinShape(index) => match session.choose_free_spin_shape(index, data) {
             Some(spins) => ActionOutcome::FreeSpinShapeChosen(spins),

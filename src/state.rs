@@ -20,6 +20,7 @@ pub mod limits;
 pub mod persist;
 pub mod preferences;
 pub mod profile;
+pub mod proof;
 pub mod ruin;
 pub mod rules;
 pub mod save;
@@ -219,6 +220,11 @@ pub struct GameSession {
     /// The round being played, for the Ledger (§5.18). One paid spin and
     /// everything it led to, so it stays open across free spins, a bonus
     /// board and a respin round.
+    /// The spin just drawn, written down before it was drawn (§5.74). Staged
+    /// here for the same reason `closed_round` is: the log spans every cabinet
+    /// and belongs to the orchestrator, but the only place the generator state
+    /// before the draw still exists is inside the roll.
+    pub committed: Option<proof::Commitment>,
     pub open_round: OpenRound,
     /// The round a new stake just ended, waiting to be written to the ledger.
     /// The session cannot write it itself — the ledger spans every cabinet
@@ -256,6 +262,7 @@ impl GameSession {
             bonus: None,
             holdspin: None,
             gamble: None,
+            committed: None,
             open_round: OpenRound::default(),
             closed_round: None,
             autospin: None,
@@ -288,6 +295,7 @@ impl GameSession {
             bonus: None,
             holdspin: None,
             gamble: None,
+            committed: None,
             open_round: OpenRound::default(),
             closed_round: None,
             autospin: None,

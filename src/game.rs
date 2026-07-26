@@ -5,6 +5,7 @@ mod feedback;
 mod motion;
 mod outcomes;
 mod persistence;
+mod present;
 pub mod screens;
 
 use crate::audio::{Sfx, SoundBank};
@@ -13,16 +14,13 @@ use crate::state::achievements::AchievementBook;
 use crate::state::preferences::Preferences;
 use crate::state::spin::SpinEvent;
 use crate::state::{GameSession, SpinResolution};
-use crate::ui::{self, palette, UiAction, UiContext};
+use crate::ui::{self, palette, UiAction};
 use macroquad::prelude::*;
 use macroquad_toolkit::assets::AssetManager;
 use macroquad_toolkit::capture;
 use macroquad_toolkit::events::EventBus;
 use macroquad_toolkit::fx::{BurstConfig, FloatingTextLayer, ParticleSystem, ScreenShake};
-use macroquad_toolkit::notifications::{
-    NotificationAnchor, NotificationManager, NotificationRenderConfig,
-};
-use macroquad_toolkit::prelude::{begin_virtual_ui_frame, end_virtual_ui_frame};
+use macroquad_toolkit::notifications::NotificationManager;
 use macroquad_toolkit::rng::random_u64;
 
 pub struct Game {
@@ -77,6 +75,13 @@ pub struct Game {
     achievements: AchievementBook,
     /// What this player has actually seen, per cabinet (§5.18).
     ledger: crate::state::ledger::Ledger,
+    /// Spins the game committed to before drawing them (§5.74). Like the
+    /// ledger, it spans every cabinet — a proof is about a spin, not a save.
+    proofs: crate::state::proof::ProofLog,
+    show_proofs: bool,
+    /// The last check the player asked for, held so the panel can show what it
+    /// found without re-running six spins every frame.
+    checked: Vec<(u64, crate::state::proof::Verdict)>,
     save_exists: bool,
     /// Watching what is on screen while it moves (§5.52). `None` in a real
     /// session — this is the capture harness's, and carrying it otherwise would
@@ -175,6 +180,7 @@ impl Game {
         }
 
         let ledger = crate::state::ledger::Ledger::load(&data.config);
+        let proofs = crate::state::proof::ProofLog::load(&data.config);
         let hints = crate::state::hints::HintBook::load(&data.config)
             .unwrap_or_else(|err| panic!("hints.json failed to load: {}", err));
 
@@ -223,6 +229,9 @@ impl Game {
             profiles: crate::state::profile::ProfileBook::default(),
             achievements,
             ledger,
+            proofs,
+            show_proofs: false,
+            checked: Vec::new(),
             save_exists: false,
             motion: None,
         };
@@ -331,124 +340,6 @@ impl Game {
         }
     }
 
-    pub fn draw(&mut self) {
-        clear_background(palette::background());
-
-        // The logical width follows the window's shape (§5.46); the height is
-        // fixed, because every panel's vertical layout was written against it.
-        let logical_width = ui::frame::logical_width(screen_width(), screen_height());
-        let frame = ui::frame::Frame::new(logical_width);
-        ui::frame::set_width(logical_width);
-        let virtual_ui = begin_virtual_ui_frame(logical_width, ui::frame::HEIGHT);
-        let actions = ui::draw_game_ui(
-            UiContext {
-                data: &self.data,
-                session: &self.session,
-                save_exists: self.save_exists,
-                show_paytable: self.show_paytable,
-                show_settings: self.show_settings,
-                show_machines: self.show_machines,
-                show_achievements: self.show_achievements,
-                show_featurebuy: self.show_featurebuy,
-                ledger: &self.ledger,
-                show_ledger: self.show_ledger,
-                show_lines: self.show_lines,
-                show_menu: self.show_menu,
-                show_sessions: self.show_sessions,
-                sessions: &self.sessions,
-                session_over_dismissed: self.session_over_dismissed,
-                show_rules: self.show_rules,
-                limits: &self.limits,
-                limit_choices: &self.limit_choices,
-                show_limits: self.show_limits,
-                history: &self.history,
-                show_history: self.show_history,
-                reality_check: self.reality_check,
-                show_waveforms: self.show_waveforms,
-                music_levels: self.music.levels(),
-                music_mood: self.music.mood(),
-                music_arrangement: self.music.arrangement(),
-                show_vision: self.show_vision,
-                // Not while a panel is up (§5.28). A hint offers something to
-                // do next, and behind a modal there is nothing to do next — it
-                // also drew across the bottom edge of the panel covering it.
-                hint: if self.any_overlay_open() {
-                    None
-                } else {
-                    self.hints
-                        .current(self.achievements.progress(), &self.ledger)
-                },
-                profiles: &self.profiles,
-                achievements: &self.achievements,
-                shake: self.shake.offset(),
-                ui_time: self.ui_time,
-                ui: &virtual_ui,
-                frame,
-            },
-            &mut self.nav,
-        );
-
-        // Particles and floating text live in logical space, so they belong
-        // inside the virtual frame alongside the UI they annotate.
-        self.particles.draw();
-        self.floating.draw();
-        end_virtual_ui_frame();
-
-        // The layout audit (§5.37) runs while the game is genuinely drawing,
-        // because measuring text needs the real font. One frame is enough: the
-        // panels redraw identically, and the recorder de-duplicates anyway.
-        // Touch targets are their own audit and their own scenes (§5.45):
-        // sizes want every panel, overlaps want one screen at a time.
-        let warm = macroquad_toolkit::ui::neighbours_warm();
-        if let Some((width, worst)) =
-            macroquad_toolkit::ui::smallest_touchable_width(ui::logical_width()).filter(|_| warm)
-        {
-            println!(
-                "touch targets: need a {:.0}px-wide window; worst is {}",
-                width, worst
-            );
-            for (side, label) in macroquad_toolkit::ui::undersized_targets() {
-                println!("touch targets: drawn {}px — {}", side, label);
-            }
-            for (a, b, area) in macroquad_toolkit::ui::overlapping_targets() {
-                println!(
-                    "touch targets: {} and {} overlap by {:.0}px² once grown",
-                    a, b, area
-                );
-            }
-        }
-
-        if macroquad_toolkit::ui::auditing() {
-            let findings = macroquad_toolkit::ui::take_audit();
-            if findings.is_empty() {
-                println!("layout audit: clean");
-            } else {
-                for finding in &findings {
-                    println!(
-                        "layout audit: {} — {:?}",
-                        finding.describe(),
-                        finding.text()
-                    );
-                }
-                println!("layout audit: {} findings", findings.len());
-                // A gate, not a report. A printout nobody reads is the state
-                // this replaced — four overflow defects shipped and were found
-                // by looking at screenshots (§5.37).
-                std::process::exit(1);
-            }
-        }
-
-        for action in actions {
-            self.events.push(action);
-        }
-
-        self.notifications
-            .draw_with_config(&NotificationRenderConfig {
-                anchor: NotificationAnchor::BottomRight,
-                ..Default::default()
-            });
-    }
-
     fn handle_spin_event(&mut self, event: SpinEvent) {
         match event {
             SpinEvent::ReelStopped(reel) => {
@@ -550,12 +441,29 @@ impl Game {
         let _ = self.hints.save(&self.data.config);
     }
 
+    /// Re-run every recorded spin through the engine (§5.74).
+    pub(super) fn check_proofs(&mut self) {
+        self.checked = self
+            .proofs
+            .verify_all()
+            .into_iter()
+            .map(|(entry, verdict)| (entry.seq, verdict))
+            .collect();
+    }
+
     /// Write any round the last stake closed into the ledger (§5.18).
     ///
     /// Drained here rather than inside the session because the ledger spans
     /// every cabinet and outlives any one save slot, exactly like the
     /// achievements book.
     pub(super) fn drain_finished_rounds(&mut self) {
+        // Every spin, not every round: a free-spin run is one round and twelve
+        // spins, and it is the spins a player wants to check.
+        if let Some(commitment) = self.session.committed.take() {
+            self.proofs.push(commitment);
+            self.proofs.save(&self.data.config);
+        }
+
         let Some(round) = self.session.closed_round.take() else {
             return;
         };

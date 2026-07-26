@@ -53,6 +53,8 @@ pub enum Screen {
     Lines,
     /// The log of sessions played (§5.70).
     Sessions,
+    /// Re-running a spin the game committed to before drawing it (§5.74).
+    Proofs,
     Waveforms,
     Vision,
     /// The Vault Pick board (§5.10). Waits on the player, so it holds the reels.
@@ -71,7 +73,7 @@ pub enum Screen {
 }
 
 impl Screen {
-    pub const ALL: [Screen; 20] = [
+    pub const ALL: [Screen; 21] = [
         Screen::Paytable,
         Screen::Rules,
         Screen::Limits,
@@ -85,6 +87,7 @@ impl Screen {
         Screen::Menu,
         Screen::Lines,
         Screen::Sessions,
+        Screen::Proofs,
         Screen::Waveforms,
         Screen::Vision,
         Screen::Bonus,
@@ -110,6 +113,7 @@ impl Screen {
             Screen::Menu => "menu",
             Screen::Lines => "lines",
             Screen::Sessions => "sessions",
+            Screen::Proofs => "proofs",
             Screen::Waveforms => "waveforms",
             Screen::Vision => "vision",
             Screen::Bonus => "bonus",
@@ -151,6 +155,7 @@ impl Screen {
             Screen::Ledger => "The Ledger",
             Screen::Lines => "The paylines",
             Screen::Sessions => "Your sessions",
+            Screen::Proofs => "Check a spin",
             Screen::Waveforms => "Sound",
             Screen::Vision => "Colour vision",
             Screen::Bonus => "The Vault Pick",
@@ -204,6 +209,7 @@ impl Game {
             Screen::Menu => self.show_menu,
             Screen::Lines => self.show_lines,
             Screen::Sessions => self.show_sessions,
+            Screen::Proofs => self.show_proofs,
             Screen::Waveforms => self.show_waveforms,
             Screen::Vision => self.show_vision,
             Screen::Bonus => self.session.bonus.is_some(),
@@ -238,6 +244,7 @@ impl Game {
             Screen::Menu => &mut self.show_menu,
             Screen::Lines => &mut self.show_lines,
             Screen::Sessions => &mut self.show_sessions,
+            Screen::Proofs => &mut self.show_proofs,
             Screen::Waveforms => &mut self.show_waveforms,
             Screen::Vision => &mut self.show_vision,
             // Excluded by the gate above; the predicate is the one place that

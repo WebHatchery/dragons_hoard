@@ -228,6 +228,41 @@ impl Game {
             }
             // A log with evenings in it (§5.70). Recorded rather than
             // invented, so the columns hold figures the game really produces.
+            "proofs" => {
+                // A panel of empty rows would photograph the empty-log message
+                // rather than the thing this screen is for (§5.74). Played on
+                // two cabinets so the column proves it spans them, and checked,
+                // because an unchecked panel is a page of numbers.
+                for machine in ["dragon", "tidepool"] {
+                    self.use_machine(crate::data::machine_by_id(machine));
+                    self.session = GameSession::new(&self.data, 0xD2A6_0F1E);
+                    for _ in 0..8 {
+                        self.session.balance = 1_000_000;
+                        self.session.celebrations.clear();
+                        if self.session.spin(&self.data).is_err() {
+                            break;
+                        }
+                        self.drain_finished_rounds();
+                    }
+                }
+                self.check_proofs();
+                self.show_proofs = true;
+            }
+            "proofs_tampered" => {
+                // The same panel with three records edited, so the refusal has
+                // been looked at as well as the agreement. A verifier only ever
+                // photographed agreeing is a picture of a tick (§5.74).
+                self.begin_capture_scene("proofs");
+                for (index, entry) in self.proofs.entries_mut().iter_mut().enumerate() {
+                    match index {
+                        1 => entry.win += 250,
+                        3 => entry.grid[0] = "wild".to_owned(),
+                        5 => entry.machine = "a_cabinet_that_never_shipped".to_owned(),
+                        _ => {}
+                    }
+                }
+                self.check_proofs();
+            }
             "sessions" => {
                 for run in 0..6 {
                     let mut clock = crate::state::limits::SessionClock::default();

@@ -108,6 +108,14 @@ pub static SHORTCUTS: &[Shortcut] = &[
         action: UiAction::ToggleLimits,
     },
     Shortcut {
+        // The footer line is already full and the menu offers this one by name
+        // (§5.72), so it carries no label — the key is a convenience, not the
+        // way in.
+        keys: &[KeyCode::J],
+        label: None,
+        action: UiAction::ToggleProofs,
+    },
+    Shortcut {
         keys: &[KeyCode::S],
         label: None,
         action: UiAction::Save,

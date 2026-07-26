@@ -159,6 +159,18 @@ impl Game {
                 self.show_sessions = !self.show_sessions;
                 self.sound.play(Sfx::Click);
             }
+            ActionOutcome::ProofsToggled => {
+                self.show_proofs = !self.show_proofs;
+                // Closing throws the verdicts away. A tick left on screen from
+                // last time would be claiming something about spins that have
+                // happened since (§5.74).
+                self.checked.clear();
+                self.sound.play(Sfx::Click);
+            }
+            ActionOutcome::ProofsChecked => {
+                self.check_proofs();
+                self.sound.play(Sfx::Click);
+            }
             ActionOutcome::MenuToggled => {
                 self.show_menu = !self.show_menu;
                 self.sound.play(Sfx::Click);

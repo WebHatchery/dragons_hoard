@@ -3494,6 +3494,69 @@ the `match` on scene names that reads like a list of pictures, and
 `capture_scenes/holds.rs` takes the awkward business of making each picture
 happen.
 
+### 5.74 Proving the spin was decided before you saw it (post-v1)
+
+Every honesty claim this game makes is checkable except the one a player
+actually has. §5.18 shows what a cabinet has really paid against what it says it
+pays. §5.29 generates the rules from the numbers the engine runs on. The RTP
+harness spins a million times and the conservation soak proves no credit is
+invented or lost.
+
+All of that measures the **machine**. None of it answers the oldest question
+about a **spin**: *was that outcome fixed when I pressed the button, or decided
+once the reels were already turning?* Normally that question is met with a
+promise. Here it is arithmetic.
+
+**It is answerable because of two things that were already true.**
+`engine::spin` is a pure function of exactly four inputs — the cabinet's data,
+the generator's state, the line bet, the mode. Not the balance, not the hoard,
+not how long you have played or whether you have been winning. And `SeededRng`
+is an xorshift, so its state *is* its future.
+
+So the game writes those four things down **before** it draws. That record is a
+commitment: it fixes the answer while the reels are still spinning. Given back,
+the spin runs again — through `engine::spin` itself, not a re-implementation,
+because a verifier that reproduces the logic it checks proves only that the same
+mistake was made twice. The one thing verification is allowed to do differently
+is *when*.
+
+Twenty-four spins stay checkable, across cabinets, with the sixteen hex digits
+that decided each one on the row. **Check them all** re-runs the lot.
+
+**Eleven tests, and most of them try to break it.** A record whose payout has been
+edited, whose board has been swapped, whose deciding number has been moved by
+one, whose cabinet has been changed to another that exists, and to one that does
+not — each is caught and says how. A verifier that has only ever been seen
+agreeing is a picture of a tick, so there is a capture scene that alters three
+records and photographs the panel refusing them: *paid 0 on the re-run, not
+250*; *1 of 30 symbols differ*; *cabinet not in this build*.
+
+The subtlest is this: **checking a spin must not change the next one**.
+Verification restores a *copy* of the state, and a test asserts the live
+generator is untouched afterwards. A fairness panel that moved the stream would
+be the funniest possible bug to ship.
+
+**And the panel says what it does not prove.** This shows an outcome was not
+altered after the fact. It cannot show the first number was chosen fairly —
+that needs a server publishing a hash before play and revealing it after, and
+this is a play-money cabinet with no server. A row of ticks that let the
+stronger claim be inferred would be doing the exact thing this section exists to
+stop.
+
+Two things were measured rather than assumed. Recording every spin allocates,
+and the soak was timed before deciding whether it needed gating: 17.6s, so it
+does not. And the footnote, which looks comfortable in English, ran out through
+the bottom of the panel and onto the stats behind it under the 40% pseudolocale
+(§5.39) — by 1201px², then still by 220px² after the first fix.
+
+`game.rs` crossed 800 lines and split: `game/present.rs` takes `draw`, which is
+almost entirely the `UiContext` literal — the whole architecture stated as code,
+since that struct is the only channel between the game and its view.
+
+`SeededRng` gained `state()` and `from_state()` in the toolkit, with the replay
+property tested there: a captured state reproduces the next sixty-four draws
+exactly, and `from_state` does not mix the way `new` does.
+
 
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
@@ -4098,6 +4161,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
+| A slot machine you have to take on trust | Every spin's deciding number is written down before the draw, and the panel re-runs it through the same engine (§5.74). Eight of the nine tests try to forge a record. |
 | A hint whose only instruction is a keypress | A hint names a screen and the bar draws a button that opens it (§5.73). Every one of the five said "Press R" or "Press C" to a player who may have no keyboard. |
 | A sentence with a number written into it | `{cabinets}` is substituted from the catalog and spelled out (§5.73). "There are five" outlived the fifth cabinet by a whole section. |
 | A screen that can only be opened with a keyboard | A menu derived from the registry offers every screen a player can open (§5.72). Four had no button at all, including the colour-vision panel. |
@@ -4177,7 +4241,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus sixty-eight post-v1 systems
+## 15. Current State — v1 shipped, plus sixty-nine post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
@@ -4188,11 +4252,11 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) a motion audit (§5.52) an answer for running out (§5.53) a size limit that is actually enforced (§5.54) one bankroll across six cabinets (§5.55) a web save that belongs to this game alone (§5.56) a floor-wide Grand (§5.57) a game that reads its own save (§5.58) a payline you can actually see (§5.59) a page of all twenty (§5.60) a badge that is off the reels (§5.61) a published build that is checked (§5.62) two more modules promoted (§5.63) a free-spin run you choose the shape of (§5.64) the measured feel of each (§5.65) a rules gate that fails closed (§5.66) every feature setting declared (§5.67) a session that closes properly (§5.68) a size gate that counts (§5.69) a log of the sessions played (§5.70) one that survives the window closing (§5.71) a way into every screen without a keyboard (§5.72) and hints that open what they name (§5.73). The game is
+navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) a motion audit (§5.52) an answer for running out (§5.53) a size limit that is actually enforced (§5.54) one bankroll across six cabinets (§5.55) a web save that belongs to this game alone (§5.56) a floor-wide Grand (§5.57) a game that reads its own save (§5.58) a payline you can actually see (§5.59) a page of all twenty (§5.60) a badge that is off the reels (§5.61) a published build that is checked (§5.62) two more modules promoted (§5.63) a free-spin run you choose the shape of (§5.64) the measured feel of each (§5.65) a rules gate that fails closed (§5.66) every feature setting declared (§5.67) a session that closes properly (§5.68) a size gate that counts (§5.69) a log of the sessions played (§5.70) one that survives the window closing (§5.71) a way into every screen without a keyboard (§5.72) hints that open what they name (§5.73) and a spin you can check yourself (§5.74). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-542 tests pass here and 322 in `macroquad-toolkit`; `cargo fmt --check`,
+553 tests pass here and 325 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
 release build are clean. Every `.rs` file is under the 800-line limit and a gate that
 counts every line now says so (§5.54, §5.69); `ui/reels.rs` (790) and `game.rs`

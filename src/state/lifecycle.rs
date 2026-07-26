@@ -223,8 +223,22 @@ impl GameSession {
             SpinMode::Base
         };
 
+        // The generator's state *before* the draw — the one number that decides
+        // what is about to happen (§5.74). Read here because this is the last
+        // instant it exists: `engine::spin` advances the stream, and afterwards
+        // there is no way back to it.
+        let committed_state = self.rng.state();
+        let result = engine::spin(data, &mut self.rng, line_bet, mode);
+        self.committed = Some(crate::state::proof::Commitment::record(
+            data,
+            committed_state,
+            line_bet,
+            mode,
+            &result,
+        ));
+
         Ok(PendingSpin {
-            result: engine::spin(data, &mut self.rng, line_bet, mode),
+            result,
             was_free_spin,
             line_bet,
         })

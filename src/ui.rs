@@ -19,6 +19,7 @@ pub mod naming;
 pub mod nav;
 pub mod paylines;
 pub mod paytable;
+pub mod proof;
 pub mod reality;
 pub mod reels;
 pub mod ruin;
@@ -127,6 +128,10 @@ pub enum UiAction {
     ToggleLines,
     /// The way in to everything else (§5.72).
     ToggleMenu,
+    /// The spin verifier (§5.74).
+    ToggleProofs,
+    /// Re-run every recorded spin through the engine.
+    CheckProofs,
     /// Open a screen by name, from the menu.
     OpenScreen(crate::game::screens::Screen),
     /// The log of sessions played (§5.70).
@@ -194,6 +199,11 @@ pub struct UiContext<'a> {
     pub show_featurebuy: bool,
     pub profiles: &'a crate::state::profile::ProfileBook,
     pub sessions: &'a crate::state::sessions::SessionLog,
+    /// Spins the game committed to before drawing them (§5.74).
+    pub proofs: &'a crate::state::proof::ProofLog,
+    /// What the last check found, by spin number.
+    pub checked: &'a [(u64, crate::state::proof::Verdict)],
+    pub show_proofs: bool,
     pub ledger: &'a crate::state::ledger::Ledger,
     pub show_ledger: bool,
     pub show_lines: bool,
@@ -299,6 +309,9 @@ pub fn draw_game_ui(ctx: UiContext<'_>, nav: &mut Nav) -> Vec<UiAction> {
         lines::draw(ctx.data, pointer, &mut actions, nav);
     }
 
+    if ctx.show_proofs {
+        proof::draw(ctx.proofs, ctx.checked, pointer, &mut actions, nav);
+    }
     if ctx.show_sessions {
         sessions::draw(ctx.sessions, pointer, &mut actions, nav);
     }
