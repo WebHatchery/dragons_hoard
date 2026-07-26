@@ -10,6 +10,8 @@ use crate::state::celebration::CelebrationKind;
 use crate::state::gamble::Scale;
 use crate::state::GameSession;
 
+mod holds;
+
 impl Game {
     /// Fast-forward into a named state so the screenshot harness can photograph
     /// something other than the boot screen. Uses the headless spin path to skip
@@ -548,8 +550,8 @@ impl Game {
             "waveforms" => self.show_waveforms = true,
             "vision" => self.show_vision = true,
             "hint" => {
-                // Enough play that the first hint has come due (§5.28). It
-                // arrives because the player has won a few times and never
+                // Enough play that a hint has come due (§5.28). It arrives
+                // because the player has spun and won a few times and never
                 // gambled — not because the game just loaded.
                 self.hints = crate::state::hints::HintBook::load(&self.data.config).unwrap();
                 for _ in 0..60 {
@@ -566,6 +568,7 @@ impl Game {
                     );
                 }
                 self.session.celebrations.clear();
+                self.hold_the_longest_hint();
             }
             "keyboard" => {
                 // An open Vault Pick with the keyboard driving. Before §5.27
@@ -579,176 +582,6 @@ impl Game {
             "settings" => self.show_settings = true,
             "anticipation" => self.hold_a_near_miss(),
             _ => {}
-        }
-    }
-
-    /// Freeze a cascading spin part-way through its chain (§5.15).
-    ///
-    /// Searches for a chain of at least three grids so the capture shows a
-    /// multiplier above x1, then steps to the second collapse.
-    fn hold_a_cascade(&mut self) {
-        for _ in 0..4_000 {
-            self.session.balance = 1_000_000;
-            // A card holds `update_spin`, and so does an open Vault Pick board
-            // (§8.2.1) — clearing only the first left this searching behind a
-            // bonus that never closed, so the `cascade` capture photographed a
-            // chest board for six iterations rather than a cascade (§5.61).
-            self.session.celebrations.clear();
-            self.session.bonus = None;
-            if self.session.begin_spin(&self.data).is_err() {
-                break;
-            }
-            if self.session.pending_cascade_len() >= 3 {
-                // Wait for the chain to be *running* and to have taken a step.
-                // Asking `map_or(usize::MAX, ..)` for "not cascading yet" and
-                // then testing `>= 1` returned on the very first frame, and the
-                // capture photographed a spin that had not landed.
-                for _ in 0..2_000 {
-                    if self
-                        .session
-                        .phase
-                        .cascade()
-                        .is_some_and(|reveal| reveal.step() >= 1)
-                    {
-                        return;
-                    }
-                    // A card holds `update_spin` outright (§8.2.1), so the reels
-                    // would never advance.
-                    self.session.celebrations.clear();
-                    self.session.bonus = None;
-                    self.session.update_spin(&self.data, 1.0 / 60.0);
-                }
-                return;
-            }
-            for _ in 0..3_000 {
-                if self.session.phase.is_idle() {
-                    break;
-                }
-                self.session.celebrations.clear();
-                self.session.bonus = None;
-                self.session.update_spin(&self.data, 1.0 / 60.0);
-            }
-        }
-    }
-
-    /// Stop on an open Dragon's Wrath board, part-way through (§5.12).
-    ///
-    /// The trigger is roughly one spin in two thousand, so this searches rather
-    /// than waits, then takes a few respins so the capture shows a board in play
-    /// instead of the five eggs it opened with.
-    fn hold_a_wrath_round(&mut self) {
-        for _ in 0..200_000 {
-            self.session.balance = self.data.config.starting_balance;
-            self.session.celebrations.clear();
-            if self.session.spin_leaving_bonus(&self.data).is_err() {
-                break;
-            }
-            // The hoard can fill on the same grid; resolve it so the respin board
-            // is what the capture is actually of.
-            self.session.auto_play_bonus(&self.data);
-
-            if self.session.holdspin.is_some() {
-                self.session.celebrations.clear();
-                for _ in 0..3 {
-                    if self.session.holdspin.is_none() {
-                        break;
-                    }
-                    self.session.update_spin(&self.data, 2.0);
-                }
-                return;
-            }
-        }
-    }
-
-    /// Find a spin that raises anticipation (§5.11) and freeze it at the moment
-    /// the held-back reels are the only ones still turning — the whole point of
-    /// the effect, and impossible to photograph any other way, since it lasts
-    /// under a second and depends on where the scatters happen to fall.
-    ///
-    /// Near-misses are common enough that the search terminates quickly, but the
-    /// bound is here so a machine tuned without scatters can't hang the harness.
-    fn hold_a_near_miss(&mut self) {
-        for _ in 0..2_000 {
-            self.session.balance = self.data.config.starting_balance;
-            self.session.celebrations.clear();
-            if self.session.begin_spin(&self.data).is_err() {
-                break;
-            }
-
-            let anticipates = self.session.phase.spinner().is_some_and(|spinner| {
-                (0..self.data.config.reel_count).any(|r| spinner.is_held(r))
-            });
-
-            if anticipates {
-                // Run on until only the stretched reels remain in flight. That
-                // is the held breath: most of the board decided, the one that
-                // matters still moving.
-                for _ in 0..1_200 {
-                    let Some(spinner) = self.session.phase.spinner() else {
-                        break;
-                    };
-                    let moving: Vec<usize> = (0..self.data.config.reel_count)
-                        .filter(|reel| spinner.is_moving(*reel))
-                        .collect();
-                    if !moving.is_empty()
-                        && moving
-                            .iter()
-                            .all(|reel| self.session.phase.spinner().unwrap().is_held(*reel))
-                    {
-                        return;
-                    }
-                    let _ = self.session.update_spin(&self.data, 1.0 / 60.0);
-                }
-                return;
-            }
-
-            // Not this one — settle it and deal again.
-            for _ in 0..1_200 {
-                if self.session.phase.is_idle() {
-                    break;
-                }
-                let _ = self.session.update_spin(&self.data, 1.0 / 60.0);
-            }
-        }
-    }
-
-    /// Spin headlessly, topping the balance up, until `reached` holds. Cards
-    /// raised by earlier spins are cleared each time, so a scene keyed on a card
-    /// always lands on one the *last* spin produced. Bounded so a capture can
-    /// never hang on an unreachable state.
-    fn fast_forward_to(&mut self, reached: impl Fn(&GameSession) -> bool) {
-        for _ in 0..20_000 {
-            self.session.balance = self.data.config.starting_balance;
-            self.session.celebrations.clear();
-            // A scene may want to catch a board mid-round, so settle without the
-            // headless auto-play and let the predicate look first.
-            let Ok(resolution) = self.session.spin_leaving_bonus(&self.data) else {
-                break;
-            };
-            // The headless path skips `report_spin`, so record here too — a
-            // capture of the achievements panel should show real progress
-            // rather than a column of zeroes.
-            self.achievements
-                .observe(self.data.machine_id(), &resolution, self.session.balance);
-
-            if reached(&self.session) {
-                return;
-            }
-
-            // A Dragon's Wrath round is not waiting on anyone, so it is resolved
-            // rather than left open — without this a fast-forward stalls the
-            // moment a clutch of eggs lands.
-            if self.session.auto_play_holdspin(&self.data).is_some() && reached(&self.session) {
-                return;
-            }
-
-            // Nothing wanted the open board, so play it out — and look again,
-            // because finishing a board is what raises the Hatch card. Checking
-            // only before this is what left the `hatch` scene spinning 20,000
-            // times and photographing nothing.
-            if self.session.auto_play_bonus(&self.data).is_some() && reached(&self.session) {
-                return;
-            }
         }
     }
 }

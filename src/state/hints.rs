@@ -2,10 +2,10 @@
 //!
 //! # Twenty-two systems behind one button
 //!
-//! There are five cabinets, twelve overlays and twelve keyboard shortcuts, and a
-//! new player sees a Spin button. They will never find the gamble, the buy menu,
-//! the ledger or the machine picker, because nothing ever mentions them. The
-//! footer lists the keys in small grey text, which is where hints go to die.
+//! There are six cabinets and twenty screens (§5.50), and a new player sees a
+//! Spin button. They will never find the gamble, the buy menu, the ledger or the
+//! machine picker, because nothing ever mentions them. The footer lists the keys
+//! in small grey text, which is where hints go to die.
 //!
 //! # Not a tutorial
 //!
@@ -75,6 +75,40 @@ pub struct HintDef {
     /// is telling the player to do.
     pub earns: Counter,
     pub until: i64,
+    /// The screen this hint is pointing at, by [`Screen::id`] (§5.73).
+    ///
+    /// Every hint used to open with "Press R" or "Press C", which is no use at
+    /// all on a touch device — and §5.45 gave the game touch input. Naming the
+    /// screen ties the hint to the registry: it is validated to be a screen the
+    /// menu offers, so a hint can only point somewhere a player can actually
+    /// get to without a keyboard.
+    #[serde(default)]
+    pub screen: Option<String>,
+}
+
+/// Fill in the figures a hint quotes, from the data rather than the sentence.
+///
+/// `{cabinets}` was written as the word "five" and stayed "five" when Tidepool
+/// made it six (§5.35). A number in prose is a number that goes stale, and this
+/// game has a whole section about that (§5.29).
+///
+/// The substitution spells the count rather than setting a numeral, because
+/// these are sentences: "there are six" is prose and "there are 6" is a
+/// readout. The word the hint must not contain is exactly the word the
+/// renderer is allowed to produce, which is the point — one of them is derived.
+pub fn render(text: &str) -> String {
+    text.replace("{cabinets}", spell(crate::data::MACHINES.len()))
+}
+
+/// Number words, up to more cabinets than this game will ever have. Past that
+/// the numeral is honest: a hint quoting "thirteen" of anything has stopped
+/// being a sentence anyway.
+fn spell(count: usize) -> &'static str {
+    const WORDS: [&str; 13] = [
+        "no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
+        "eleven", "twelve",
+    ];
+    WORDS.get(count).copied().unwrap_or("many")
 }
 
 /// Counters the hints read. Fed from the places that already track them rather
@@ -129,6 +163,23 @@ impl HintBook {
                 progress: self.progress.clone(),
             },
         )
+    }
+
+    /// The hint whose rendered text is longest.
+    ///
+    /// The capture scene photographs this one rather than whichever happens to
+    /// be first due, because the bar is a fixed strip that shrinks with the
+    /// window (§5.46) and the longest sentence is the only one that can run
+    /// under the dismiss button. A probe has to resemble the thing it measures.
+    pub fn longest(&self) -> &HintDef {
+        self.defs
+            .iter()
+            .max_by_key(|def| render(&def.text).chars().count())
+            .expect("validate rejects an empty hint set")
+    }
+
+    pub fn all(&self) -> &[HintDef] {
+        &self.defs
     }
 
     pub fn progress_mut(&mut self) -> &mut HintProgress {
@@ -186,6 +237,56 @@ pub fn validate(defs: &[HintDef]) -> Result<(), String> {
 
         if def.text.trim().is_empty() {
             return Err(format!("hint '{}' says nothing", def.id));
+        }
+        // A hint that names a screen must name one a player can open. Pointing
+        // at a screen the game only ever deals — an open Vault Pick, a gamble
+        // in flight — would be advice nobody can take (§5.73).
+        if let Some(id) = def.screen.as_deref() {
+            let known = crate::game::screens::Screen::in_menu().any(|screen| screen.id() == id);
+            if !known {
+                return Err(format!(
+                    "hint '{}' points at '{}', which is not a screen the menu offers",
+                    def.id, id
+                ));
+            }
+        }
+        // A count written as a word is a count that goes stale. "There are
+        // five" survived Tidepool arriving and became wrong (§5.73).
+        // One line, and the line is 105 characters wide.
+        //
+        // Not a style rule — a measurement. The bar is a fixed 30px strip on
+        // the footer's shortcut line, and a hint that wraps to two lines has
+        // its second line clipped by the border. The first version of the buy
+        // hint ran to 131 characters and did exactly that, which the capture
+        // showed the moment the scene started photographing the *longest* hint
+        // rather than whichever was first due (§5.73).
+        //
+        // The first number here was 124, taken from a hint that fit — on a bar
+        // with no Open button on it. The button costs ninety pixels, the box is
+        // 576px rather than 668px wide with one there, and the same 122
+        // characters then wrapped. So the budget is measured *with* the door,
+        // because a hint that names a screen is the case that has least room.
+        const ONE_LINE: usize = 105;
+        let rendered = render(&def.text);
+        if rendered.chars().count() > ONE_LINE {
+            return Err(format!(
+                "hint '{}' is {} characters and the bar fits {} on one line",
+                def.id,
+                rendered.chars().count(),
+                ONE_LINE
+            ));
+        }
+
+        for number in ["two", "three", "four", "five", "six", "seven"] {
+            if def.text.split_whitespace().any(|word| {
+                word.trim_matches(|c: char| !c.is_alphabetic())
+                    .eq_ignore_ascii_case(number)
+            }) {
+                return Err(format!(
+                    "hint '{}' spells out '{}'; use a placeholder so the figure                      comes from the data",
+                    def.id, number
+                ));
+            }
         }
         if def.until <= 0 {
             // A hint earned at zero is already earned and would never show.
@@ -358,5 +459,94 @@ mod tests {
             .iter()
             .any(|id| id == "a-hint-that-does-not-exist"));
         assert_eq!(restored.progress.gambles, 3);
+    }
+}
+
+#[cfg(test)]
+mod reachability {
+    use super::*;
+
+    fn shipped() -> Vec<HintDef> {
+        serde_json::from_str(include_str!("../../assets/data/hints.json")).unwrap()
+    }
+
+    /// The hints that shipped, held to both rules at once.
+    #[test]
+    fn the_shipped_hints_point_somewhere_and_quote_nothing_stale() {
+        validate(&shipped()).expect("the shipped hints do not satisfy their own rules");
+    }
+
+    /// The fault this exists for, reproduced: "There are five" outlived
+    /// Tidepool arriving and became wrong (§5.35, §5.73).
+    #[test]
+    fn a_hint_that_spells_out_a_count_is_refused() {
+        let mut defs = shipped();
+        defs[0].text = "Press C to change cabinet. There are five of them.".to_owned();
+        let refused = validate(&defs).expect_err("a spelled-out count was accepted");
+        assert!(refused.contains("five"), "{}", refused);
+    }
+
+    /// And the other half: a hint may not point at a screen a player cannot
+    /// open, which on a touch device was every screen it pointed at.
+    #[test]
+    fn a_hint_pointing_somewhere_unreachable_is_refused() {
+        let mut defs = shipped();
+        defs[0].screen = Some("wrath".to_owned());
+        let refused = validate(&defs).expect_err("a dealt screen was accepted as a destination");
+        assert!(refused.contains("wrath"), "{}", refused);
+
+        defs[0].screen = Some("nonesuch".to_owned());
+        assert!(validate(&defs).is_err(), "an unknown screen was accepted");
+    }
+
+    /// The count comes from the catalog, so a seventh cabinet cannot leave a
+    /// sentence behind.
+    #[test]
+    fn the_cabinet_count_is_read_from_the_catalog() {
+        let rendered = render("There are {cabinets} of them.");
+        assert_eq!(
+            rendered,
+            format!("There are {} of them.", spell(crate::data::MACHINES.len()))
+        );
+        assert!(
+            !rendered.chars().any(|c| c.is_ascii_digit()),
+            "a hint quoted a numeral where it wanted a word: {}",
+            rendered
+        );
+        assert!(
+            !rendered.contains('{'),
+            "a placeholder survived: {}",
+            rendered
+        );
+    }
+
+    /// The cap is a measurement, and the sentence that overran it is the one
+    /// that produced the number.
+    #[test]
+    fn a_hint_too_long_for_the_bar_is_refused() {
+        let mut defs = shipped();
+        defs[0].text = "x".repeat(106);
+        let refused = validate(&defs).expect_err("a hint that wraps was accepted");
+        assert!(refused.contains("one line"), "{}", refused);
+
+        defs[0].text = "x".repeat(105);
+        validate(&defs).expect("a hint that fits was refused");
+    }
+
+    /// Every hint that names a panel must name one the menu offers, so the
+    /// advice can be taken without a keyboard (§5.72).
+    #[test]
+    fn every_destination_is_in_the_menu() {
+        for def in shipped() {
+            let Some(id) = def.screen.as_deref() else {
+                continue;
+            };
+            assert!(
+                crate::game::screens::Screen::in_menu().any(|screen| screen.id() == id),
+                "hint '{}' points at '{}', which the menu does not offer",
+                def.id,
+                id
+            );
+        }
     }
 }

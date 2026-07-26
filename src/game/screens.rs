@@ -120,6 +120,15 @@ impl Screen {
         }
     }
 
+    /// The screen with this [`id`](Self::id), if the registry has one.
+    ///
+    /// Derived from `ALL` rather than written as a second match, so it cannot
+    /// disagree with `id` — a lookup table that has to be kept in step with the
+    /// thing it looks up is a table that will one day be out of step with it.
+    pub fn from_id(id: &str) -> Option<Screen> {
+        Self::ALL.into_iter().find(|screen| screen.id() == id)
+    }
+
     /// What a menu calls it.
     ///
     /// Separate from [`id`](Self::id), which is what the capture harness asks

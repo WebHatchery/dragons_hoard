@@ -1,15 +1,16 @@
 [
   {
     "id": "rules",
-    "text": "Press R for how this cabinet plays — its win model, its features, and what each of them is worth.",
+    "text": "\"How this cabinet plays\", under the reels, gives its win model and what each feature is worth.",
     "when": "spins",
     "after": 5,
     "earns": "rules_opened",
-    "until": 1
+    "until": 1,
+    "screen": "rules"
   },
   {
     "id": "gamble",
-    "text": "Won something? Press G to stake it on the turn of a scale — double or nothing, at even odds.",
+    "text": "Won something? The Gamble offers double or nothing on the turn of a scale, before the win is banked.",
     "when": "wins",
     "after": 8,
     "earns": "gambles",
@@ -17,26 +18,29 @@
   },
   {
     "id": "machines",
-    "text": "Press C to change cabinet. There are five, and they are five different games rather than five themes.",
+    "text": "Machines, in the header, changes cabinet. There are {cabinets}, and they are {cabinets} games rather than {cabinets} themes.",
     "when": "spins",
     "after": 40,
     "earns": "machines_played",
-    "until": 2
+    "until": 2,
+    "screen": "machines"
   },
   {
     "id": "ledger",
-    "text": "Press L for your ledger — what this cabinet has actually paid you, next to what it pays.",
+    "text": "The Ledger, under More, shows what this cabinet has paid you next to what it pays.",
     "when": "spins",
     "after": 120,
     "earns": "ledger_opened",
-    "until": 1
+    "until": 1,
+    "screen": "ledger"
   },
   {
     "id": "buy",
-    "text": "Press B to buy a feature outright. Each price is set from what that feature actually pays.",
+    "text": "Buy a feature, in the header, sells one outright. The price is set from what that feature pays.",
     "when": "free_spins",
     "after": 10,
     "earns": "buys",
-    "until": 1
+    "until": 1,
+    "screen": "featurebuy"
   }
 ]

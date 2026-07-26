@@ -167,6 +167,16 @@ impl AchievementBook {
         save_json_key(&config.game_name, ACHIEVEMENTS_KEY, &snapshot)
     }
 
+    /// The counters, writable. Only the capture harness needs this: a scene
+    /// that wants a particular hint on screen has to put the player where that
+    /// hint applies, and sixty scripted spins will not reach every threshold
+    /// (§5.73). Deliberately not gated to native — the scene wiring compiles
+    /// on wasm even though nothing there ever calls it, and a `cfg` here just
+    /// moves the breakage to the one build nobody runs locally.
+    pub fn progress_mut(&mut self) -> &mut AchievementProgress {
+        &mut self.progress
+    }
+
     pub fn progress(&self) -> &AchievementProgress {
         &self.progress
     }

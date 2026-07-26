@@ -3438,6 +3438,62 @@ Buy, Machines, Settings, More.
 The panel carries one line under the list: *every one of these has a keyboard
 shortcut too; none of them needs one.* That is the whole point stated once.
 
+### 5.73 The hints that told you to press a key (post-v1)
+
+§5.72 gave every screen a door and then did not look one line down at the hint
+bar, where the game does its actual teaching. Every hint there began **"Press
+R"**, **"Press G"**, **"Press C"**, **"Press L"** or **"Press B"** — advice that
+on a touch device is not merely unhelpful but a dead end, since the panel it
+names had no other way in. The fix and the fault were shipped in the same
+iteration.
+
+And the machines hint read *"There are **five**, and they are five different
+games rather than five themes."* Tidepool made it six in §5.35. A sentence
+holding a number is a sentence with an expiry date on it.
+
+Both are the same failure: **a hint that repeats something instead of deriving
+it**. So a hint now carries a `screen` id, and the bar renders an **Open**
+button that goes there — looked up in the registry, validated against the list
+the menu offers, so a hint can only point somewhere a player can actually reach.
+Counts come from `{cabinets}`, substituted from `MACHINES.len()` and *spelled*,
+because "there are six" is prose and "there are 6" is a readout. The validator
+refuses a hint that names an unreachable screen and refuses one that spells out
+a number itself.
+
+Two of the five sentences failed their own new tests immediately: the gamble
+hint pointed at a screen the game deals rather than offers, and the buy hint
+named "Buy" while the panel it opened was called "Buy a feature".
+
+**The capture scene is the more interesting half.** It photographed whichever
+hint happened to be first due, which for six sections was the shortest one. It
+now holds the **longest** — the only one that can wrap into the bar's own
+border. Getting that picture took three goes, and each failure was the same
+shape as the last:
+
+1. Dismiss the others, and the longest one **was not due** — so the bar fell
+   back to the shortcut line. A capture that looks perfectly composed and shows
+   nothing at all.
+2. Force the counter, and the sixty scripted spins that run afterwards **wrote
+   it back**. Ordering, not logic.
+3. Force it last, and the hint was still absent, because the save on this
+   machine had already played two cabinets and thereby **earned** the hint about
+   cabinets. Due is not enough; it has to be due *and* unearned.
+
+Then the picture arrived and the sentence wrapped, its second line clipped by
+the border. The cap had been measured at 124 characters on a bar **with no Open
+button on it** — the button costs ninety pixels, the text box is 576px rather
+than 668px with one there, and the same sentence no longer fits. A budget
+measured on the easy case is not a budget. It is 105 now, taken with the door.
+
+Nothing here was found by reading the code. All of it came from looking at the
+strip of pixels the player actually reads, which is the same lesson as §5.59 and
+§5.61 and is apparently one that has to be learned per surface.
+
+The scene file crossed 800 lines on the way and split: `capture_scenes.rs` keeps
+the `match` on scene names that reads like a list of pictures, and
+`capture_scenes/holds.rs` takes the awkward business of making each picture
+happen.
+
 
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
@@ -4042,6 +4098,8 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
+| A hint whose only instruction is a keypress | A hint names a screen and the bar draws a button that opens it (§5.73). Every one of the five said "Press R" or "Press C" to a player who may have no keyboard. |
+| A sentence with a number written into it | `{cabinets}` is substituted from the catalog and spelled out (§5.73). "There are five" outlived the fifth cabinet by a whole section. |
 | A screen that can only be opened with a keyboard | A menu derived from the registry offers every screen a player can open (§5.72). Four had no button at all, including the colour-vision panel. |
 | A log that only records what you close deliberately | The session in flight is written on the autosave beat and sealed on load (§5.71). Closing the tab — the ordinary way an evening ends — recorded nothing. |
 | A session the game forgets the moment it ends | The last twenty are kept, with what each staked, returned and how it ended (§5.70). The Ledger records the machine's story; nothing recorded the player's. |
@@ -4119,7 +4177,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus sixty-seven post-v1 systems
+## 15. Current State — v1 shipped, plus sixty-eight post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
@@ -4130,11 +4188,11 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) a motion audit (§5.52) an answer for running out (§5.53) a size limit that is actually enforced (§5.54) one bankroll across six cabinets (§5.55) a web save that belongs to this game alone (§5.56) a floor-wide Grand (§5.57) a game that reads its own save (§5.58) a payline you can actually see (§5.59) a page of all twenty (§5.60) a badge that is off the reels (§5.61) a published build that is checked (§5.62) two more modules promoted (§5.63) a free-spin run you choose the shape of (§5.64) the measured feel of each (§5.65) a rules gate that fails closed (§5.66) every feature setting declared (§5.67) a session that closes properly (§5.68) a size gate that counts (§5.69) a log of the sessions played (§5.70) one that survives the window closing (§5.71) and a way into every screen without a keyboard (§5.72). The game is
+navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) a motion audit (§5.52) an answer for running out (§5.53) a size limit that is actually enforced (§5.54) one bankroll across six cabinets (§5.55) a web save that belongs to this game alone (§5.56) a floor-wide Grand (§5.57) a game that reads its own save (§5.58) a payline you can actually see (§5.59) a page of all twenty (§5.60) a badge that is off the reels (§5.61) a published build that is checked (§5.62) two more modules promoted (§5.63) a free-spin run you choose the shape of (§5.64) the measured feel of each (§5.65) a rules gate that fails closed (§5.66) every feature setting declared (§5.67) a session that closes properly (§5.68) a size gate that counts (§5.69) a log of the sessions played (§5.70) one that survives the window closing (§5.71) a way into every screen without a keyboard (§5.72) and hints that open what they name (§5.73). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-532 tests pass here and 322 in `macroquad-toolkit`; `cargo fmt --check`,
+542 tests pass here and 322 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
 release build are clean. Every `.rs` file is under the 800-line limit and a gate that
 counts every line now says so (§5.54, §5.69); `ui/reels.rs` (790) and `game.rs`
