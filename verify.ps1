@@ -301,6 +301,46 @@ Step 'motion' {
         } -What "the $cabinet reels do something wrong while they are turning"
     }
 }
+# The number, not the silence.
+#
+# This gate ran for eight sections and never measured anything: every button
+# declared a region over itself for the contrast check, the region occluded the
+# control it was the face of, and so the neighbour list was empty at the end of
+# every frame and every report was suppressed behind `neighbours_warm`. It
+# passed by saying nothing (§5.77).
+#
+# So it now reads the figure and compares it. 1080 CSS pixels is an iPad in
+# landscape with the canvas filling the screen, which is the narrowest device
+# this game claims to be playable on.
+Step 'a tablet can actually press it' {
+    $needed = 1080
+    foreach ($scene in 'touch_audit', 'touch_audit_settings', 'touch_audit_buy') {
+        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_WINDOW_WIDTH', '1080')
+        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_WINDOW_HEIGHT', '810')
+        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_SCENE', $scene)
+        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_PATH', (Join-Path $env:TEMP 'verify_touch.png'))
+        $out = & $Exe 2>&1
+        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_WINDOW_WIDTH', $null)
+        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_WINDOW_HEIGHT', $null)
+        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_SCENE', $null)
+        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_PATH', $null)
+
+        $lines = @($out | Where-Object { $_ -match 'need a (\d+)px-wide window' })
+        if (-not $lines) {
+            throw "$scene reported no touch-target measurement at all, which is how this gate passed for eight sections"
+        }
+        $worst = 0
+        $who = ''
+        foreach ($line in $lines) {
+            if ($line -match 'need a (\d+)px-wide window; worst is (.+)$') {
+                if ([int]$matches[1] -gt $worst) { $worst = [int]$matches[1]; $who = $matches[2] }
+            }
+        }
+        if ($worst -gt $needed) {
+            throw "$scene needs a ${worst}px canvas for every control to clear 44 CSS pixels; a tablet in landscape gives $needed. Worst control: $who"
+        }
+    }
+}
 Step 'collisions and touch targets' {
     foreach ($scene in 'touch_audit', 'touch_audit_settings', 'touch_audit_buy') {
         foreach ($w in '1000', '1280') {

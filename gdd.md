@@ -3691,6 +3691,59 @@ yet.
 That is the shape of the whole section: the harness found one bug on purpose and
 five by having its own foundations kicked.
 
+### 5.77 The touch audit that had never measured anything (post-v1)
+
+Asked to make the game playable on an iPad, the first job was to read what the
+touch audit said. It said nothing. It had said nothing since §5.45 built it.
+
+**Every button erased itself.** §5.40 gave each button a `Region` over its own
+rect so its label is contrast-checked against the fill it actually sits on.
+§5.47 made a `Region` occlude what is under it, because a panel really does hide
+the controls it covers. Put together: `nav::control` notes a control, the button
+then declares a region with *exactly that control's rect*, and the occlusion
+rule removes it. Every button, every frame.
+
+So `building` was empty at the end of every frame, `last` was always empty, and
+`neighbours_warm()` was always false — and every report gated on it, the
+smallest touchable window, the undersized list, the overlapping pairs, was
+suppressed. **The gate that runs them passed by printing nothing.** Worse, hit
+areas were being grown to the full 44 with no neighbour limits at all, which is
+the one thing §5.48 was careful about.
+
+The fix is one sentence: a surface that *is* a control does not hide it.
+
+**With it reporting, the numbers are actionable.** Every control clears 44 CSS
+pixels once the canvas is **982 pixels** wide at 4:3, or 1310 at 16:9 — the
+binding control being the 182×34 Save/Load row. And the gate now reads that
+figure and compares it, instead of passing on silence. Tightening the threshold
+to 900 makes it fail and name the control.
+
+**The page was the other half, and it was worse.** `.game-container` is locked
+to `aspect-ratio: 16/9` inside a 1200px page, and the Fullscreen API is refused
+on a div by every iPhone and by iPads before iPadOS 15 — where the old button
+silently did nothing. A tablet player in portrait got a canvas about 770 CSS
+pixels across, which puts a 28px control at 21. So the shell now pins the
+container over the viewport with CSS when real fullscreen is unavailable, which
+needs no permission and works everywhere, with its own way out because a game
+you cannot leave is worse than one you cannot enlarge.
+
+Plus the things iOS does whether or not you asked: `touch-action: none` (a drag
+on a canvas is not a page scroll, and without it every tap waits 300ms while the
+browser decides), `gesturestart`/`gesturechange`/`gestureend` and `dblclick`
+prevented (pinch and double-tap zoom, which on a slot machine fire constantly),
+the callout and selection suppressed, and `viewport-fit=cover` with safe-area
+insets so the exit button is not under the home indicator.
+
+**Portrait is refused rather than fudged.** 810 CSS pixels cannot carry a
+28-logical-pixel control at 44 CSS, and no amount of layout inside a 4:3 frame
+changes that. The page says "turn your device sideways" and explains why, which
+is better than letting someone play a game that quietly does not fit their
+hands.
+
+The lesson is the one this project keeps relearning and had written down twice
+already: **a detector that has never fired has not passed.** This one had a
+number to print all along and was never once asked to print it.
+
 
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
@@ -4295,6 +4348,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
+| A touch audit that reports nothing and is read as clean | Buttons occluded themselves, so the neighbour list was empty and every touch report was suppressed (§5.77). The gate now reads the measured figure and compares it against a tablet. |
 | A state machine nobody has ever stress-tested | Ten thousand seeded random presses, checked after every one (§5.76). It found a stake the ruin screen could not see, and — by trampling the preferences — that the screen sweep had been auditing whichever cabinet the machine last had open. |
 | A side bet sold without saying what it costs you | The ante's price is measured from what the extra features are worth, so the return is unchanged (§5.75). The first version returned 685%, the second was a scam, and one cabinet turned out to have no fair price at all. |
 | A slot machine you have to take on trust | Every spin's deciding number is written down before the draw, and the panel re-runs it through the same engine (§5.74). Eight of the nine tests try to forge a record. |
@@ -4377,7 +4431,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus seventy-one post-v1 systems
+## 15. Current State — v1 shipped, plus seventy-two post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
@@ -4388,7 +4442,7 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) a motion audit (§5.52) an answer for running out (§5.53) a size limit that is actually enforced (§5.54) one bankroll across six cabinets (§5.55) a web save that belongs to this game alone (§5.56) a floor-wide Grand (§5.57) a game that reads its own save (§5.58) a payline you can actually see (§5.59) a page of all twenty (§5.60) a badge that is off the reels (§5.61) a published build that is checked (§5.62) two more modules promoted (§5.63) a free-spin run you choose the shape of (§5.64) the measured feel of each (§5.65) a rules gate that fails closed (§5.66) every feature setting declared (§5.67) a session that closes properly (§5.68) a size gate that counts (§5.69) a log of the sessions played (§5.70) one that survives the window closing (§5.71) a way into every screen without a keyboard (§5.72) hints that open what they name (§5.73) a spin you can check yourself (§5.74) a side bet priced by measurement (§5.75) and a player who presses everything (§5.76). The game is
+navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) a motion audit (§5.52) an answer for running out (§5.53) a size limit that is actually enforced (§5.54) one bankroll across six cabinets (§5.55) a web save that belongs to this game alone (§5.56) a floor-wide Grand (§5.57) a game that reads its own save (§5.58) a payline you can actually see (§5.59) a page of all twenty (§5.60) a badge that is off the reels (§5.61) a published build that is checked (§5.62) two more modules promoted (§5.63) a free-spin run you choose the shape of (§5.64) the measured feel of each (§5.65) a rules gate that fails closed (§5.66) every feature setting declared (§5.67) a session that closes properly (§5.68) a size gate that counts (§5.69) a log of the sessions played (§5.70) one that survives the window closing (§5.71) a way into every screen without a keyboard (§5.72) hints that open what they name (§5.73) a spin you can check yourself (§5.74) a side bet priced by measurement (§5.75) a player who presses everything (§5.76) and a tablet that can actually play it (§5.77). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
