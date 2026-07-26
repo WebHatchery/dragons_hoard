@@ -87,6 +87,11 @@ pub struct Preferences {
     pub limits: crate::state::limits::Limits,
     #[serde(default)]
     pub reality_check_minutes: Option<u32>,
+    /// The ante side bet (§5.75). A preference rather than save state, like
+    /// the bet step it modifies — it is how the player likes to play, not
+    /// something a bankroll owns.
+    #[serde(default)]
+    pub ante: bool,
     /// Text size, as a percentage of the design size (§5.38). An index into
     /// [`TEXT_SCALES`] rather than a raw float, so a saved value can never be a
     /// size the game was never laid out for.
@@ -105,6 +110,9 @@ impl Default for Preferences {
             shared: GameSettings::default(),
             spin_speed: SpinSpeed::Normal,
             autospin_choice: usize::MAX,
+            // Off. A side bet the player did not ask for is a side bet
+            // charged without consent (§5.75).
+            ante: false,
             machine_id: String::new(),
             particles: true,
             limits: crate::state::limits::Limits::default(),

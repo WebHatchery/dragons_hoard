@@ -237,6 +237,7 @@ mod tests {
             &data,
             crate::engine::sim::SimConfig {
                 spins: PROFILE_ROUNDS,
+                ante: false,
                 line_bet_index: 0,
                 seed: PROFILE_SEED,
             },

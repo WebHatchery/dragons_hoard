@@ -3557,6 +3557,73 @@ since that struct is the only channel between the game and its view.
 property tested there: a captured state reproduces the next sixty-four draws
 exactly, and `from_state` does not mix the way `new` does.
 
+### 5.75 The ante, and the cabinet that could not price one (post-v1)
+
+A real slot's ante bet sells you a better chance at the feature for a bigger
+stake. What it does not tell you is what that does to the return, and the answer
+is usually "nothing good". This game has a million-spin harness, so it can sell
+one honestly or find out it cannot.
+
+**The mechanism is derived, not authored.** Six cabinets would otherwise need
+six hand-balanced ante strip sets, which is six chances to get one subtly wrong
+and no way to notice. Instead the ante weaves extra scatters into the existing
+strips, so a cabinet's ante is a function of its base game and a change to the
+base strips carries into it automatically.
+
+**The first version returned 685%.** Weaving one extra scatter into *every*
+strip does not raise a three-scatter trigger rate by a quarter — it raises it by
+roughly the cube. Measured on Dragon's Hoard: 1,475 features became 45,805 and
+the return went from 0.98 to 6.85. Changing **one** reel is close to linear.
+
+**The second version was a scam.** One reel, one extra scatter, a 1.25x price:
+every cabinet returned *less* than its base game, Avalanche worst at 0.71
+against 0.94. Both versions looked perfectly reasonable in the diff.
+
+Then the knob turned out to be too coarse to price at all. Dragon's Hoard's
+first reel carries one scatter in forty, so the smallest step available is a
+2.4% change in its share. Repeating the strip eight times first — a strip is a
+cycle, so this changes nothing on its own — makes one scatter a 0.3% step, which
+is the difference between an ante that can be priced and one that cannot.
+
+**So the price is measured, not chosen.** A sweep runs each cabinet at four
+settings with the cost forced to 1.0, which makes the return read as *value
+gained*; the fair price is then the ratio to the base return. It is a fixed
+point, so it takes two rounds to converge, and the estimate oscillates by about
+2% either way because a feature-heavy return is noisy even at 600,000 spins. The
+final figures are the midpoint of two rounds rather than a third chase:
+
+| Cabinet | Ante | Base RTP | Ante RTP | Features |
+|---|---|---|---|---|
+| Dragon's Hoard | 1.41x | 0.9788 | 0.9471 | 1,475 → 3,966 |
+| Frost Wyrm | 1.24x | 0.9459 | 0.9401 | 816 → 1,626 |
+| Emberfall | 1.18x | 0.9618 | 0.9687 | 787 → 2,463 |
+| Wyrmspire | 1.34x | 0.9469 | 0.9366 | 2,263 → 4,793 |
+| Tidepool | 1.24x | 0.9619 | 0.9776 | 1,016 → 2,254 |
+| **Avalanche** | **none** | 0.9380 | — | — |
+
+**Avalanche sells no ante, and that is the finding.** Weaving scatters into a
+reel lengthens it, which dilutes every other symbol on it. On a cascading
+cabinet the first reel's paying symbols carry the chains, and the dilution costs
+more than the extra features are worth — at *every* setting tried, including
+thirty-two extra scatters. There is no price at which the bet comes out even, so
+the cabinet does not offer one. That is the rule §5.64 already stated for the
+free-spin shapes, applied a second time: **a cabinet that cannot price a choice
+fairly does not offer one.**
+
+The switch sits on the Total Bet line, right-aligned, because that is the number
+it changes — 200 becomes 281 as you press it. It began as a full-width row
+underneath, which was invisible: the panel's buttons are anchored to its bottom
+and the rules button painted straight over it. Nothing failed and the capture
+showed a four-pixel sliver.
+
+Two gates fired on their own and were right both times. §5.67 refused to build
+until the rules panel described the new setting, and the panel then refused the
+paragraph twice more — once as "an essay" at 420 characters, once because
+Tidepool no longer fitted three columns. And §5.74, one section old, made the
+point it was built for: adding an input to `engine::spin` broke exactly three
+call sites and **two of them were the commitment record**. A proof that did not
+have to change when the engine gained an input would not have been a proof.
+
 
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
@@ -4161,6 +4228,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
+| A side bet sold without saying what it costs you | The ante's price is measured from what the extra features are worth, so the return is unchanged (§5.75). The first version returned 685%, the second was a scam, and one cabinet turned out to have no fair price at all. |
 | A slot machine you have to take on trust | Every spin's deciding number is written down before the draw, and the panel re-runs it through the same engine (§5.74). Eight of the nine tests try to forge a record. |
 | A hint whose only instruction is a keypress | A hint names a screen and the bar draws a button that opens it (§5.73). Every one of the five said "Press R" or "Press C" to a player who may have no keyboard. |
 | A sentence with a number written into it | `{cabinets}` is substituted from the catalog and spelled out (§5.73). "There are five" outlived the fifth cabinet by a whole section. |
@@ -4241,7 +4309,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus sixty-nine post-v1 systems
+## 15. Current State — v1 shipped, plus seventy post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
@@ -4252,11 +4320,11 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) a motion audit (§5.52) an answer for running out (§5.53) a size limit that is actually enforced (§5.54) one bankroll across six cabinets (§5.55) a web save that belongs to this game alone (§5.56) a floor-wide Grand (§5.57) a game that reads its own save (§5.58) a payline you can actually see (§5.59) a page of all twenty (§5.60) a badge that is off the reels (§5.61) a published build that is checked (§5.62) two more modules promoted (§5.63) a free-spin run you choose the shape of (§5.64) the measured feel of each (§5.65) a rules gate that fails closed (§5.66) every feature setting declared (§5.67) a session that closes properly (§5.68) a size gate that counts (§5.69) a log of the sessions played (§5.70) one that survives the window closing (§5.71) a way into every screen without a keyboard (§5.72) hints that open what they name (§5.73) and a spin you can check yourself (§5.74). The game is
+navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) a motion audit (§5.52) an answer for running out (§5.53) a size limit that is actually enforced (§5.54) one bankroll across six cabinets (§5.55) a web save that belongs to this game alone (§5.56) a floor-wide Grand (§5.57) a game that reads its own save (§5.58) a payline you can actually see (§5.59) a page of all twenty (§5.60) a badge that is off the reels (§5.61) a published build that is checked (§5.62) two more modules promoted (§5.63) a free-spin run you choose the shape of (§5.64) the measured feel of each (§5.65) a rules gate that fails closed (§5.66) every feature setting declared (§5.67) a session that closes properly (§5.68) a size gate that counts (§5.69) a log of the sessions played (§5.70) one that survives the window closing (§5.71) a way into every screen without a keyboard (§5.72) hints that open what they name (§5.73) a spin you can check yourself (§5.74) and a side bet priced by measurement (§5.75). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-553 tests pass here and 325 in `macroquad-toolkit`; `cargo fmt --check`,
+554 tests pass here and 325 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
 release build are clean. Every `.rs` file is under the 800-line limit and a gate that
 counts every line now says so (§5.54, §5.69); `ui/reels.rs` (790) and `game.rs`

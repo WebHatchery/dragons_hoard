@@ -19,5 +19,9 @@
       "spin_permille": 500,
       "multiplier": 2
     }
-  ]
+  ],
+  "ante": {
+    "cost_permille": 1243,
+    "extra_scatters": 32
+  }
 }

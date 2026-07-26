@@ -159,6 +159,11 @@ impl Game {
                 self.show_sessions = !self.show_sessions;
                 self.sound.play(Sfx::Click);
             }
+            ActionOutcome::AnteToggled => {
+                self.session.preferences.ante = !self.session.preferences.ante;
+                let _ = self.session.preferences.save(&self.data.config);
+                self.sound.play(Sfx::Click);
+            }
             ActionOutcome::ProofsToggled => {
                 self.show_proofs = !self.show_proofs;
                 // Closing throws the verdicts away. A tick left on screen from

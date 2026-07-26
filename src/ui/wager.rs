@@ -157,7 +157,7 @@ fn draw_bet_controls(
                 ),
                 _ => format!("Lines: {}   (all active)", ctx.data.paylines.len()),
             },
-            ctx.data.total_bet(line_bet)
+            ctx.session.staked(ctx.data)
         ),
         content.x,
         y,
@@ -168,7 +168,58 @@ fn draw_bet_controls(
         palette::text_dim(),
     );
 
+    draw_ante(ctx, content, y, pointer, actions, nav);
+
     y + 54.0
+}
+
+/// The ante switch (§5.75).
+///
+/// On the **Total Bet** line, right-aligned, because that is the number it
+/// changes. Turning the ante on is the only control besides the bet step that
+/// alters what a spin costs, and a switch anywhere else would let a player raise
+/// their stake by 40% without the figure moving in front of them. The label
+/// therefore says only on or off — the price is already on the same line, and
+/// saying "1.41x" twice would be the panel talking over itself.
+///
+/// It began as a full-width row under the total, which was invisible: the
+/// panel's buttons are anchored to its bottom and the rules button painted
+/// straight over it. Nothing failed, and the capture showed a four-pixel
+/// sliver.
+///
+/// Absent entirely on a cabinet that sells no ante — a greyed-out switch would
+/// read as something the player had failed to unlock, when it is really a
+/// cabinet on which the bet could not be priced honestly (Avalanche).
+fn draw_ante(
+    ctx: &UiContext<'_>,
+    content: Rect,
+    y: f32,
+    pointer: Pointer,
+    actions: &mut Vec<UiAction>,
+    nav: &mut Nav,
+) {
+    if ctx.data.ante().is_none() {
+        return;
+    }
+    let on = ctx.session.ante(ctx.data);
+    if virtual_button(
+        Rect::new(content.right() - 104.0, y + 20.0, 104.0, 26.0),
+        if on { "Ante on" } else { "Ante off" },
+        // `is_settled`, not `can_spin`. A player who has just made themselves
+        // unable to afford an ante spin has to be able to switch it back off,
+        // and gating on affordability would lock them into the more expensive
+        // bet at exactly the moment it stopped being affordable.
+        ctx.session.is_settled(),
+        if on {
+            ButtonTone::Primary
+        } else {
+            ButtonTone::Secondary
+        },
+        pointer,
+        nav,
+    ) {
+        actions.push(UiAction::ToggleAnte);
+    }
 }
 
 /// Free spins take the banner slot; an autospin run gets it when they are not

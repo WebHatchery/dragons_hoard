@@ -12,5 +12,9 @@
       "frostcoin",
       "rimehoard"
     ]
+  },
+  "ante": {
+    "cost_permille": 1243,
+    "extra_scatters": 16
   }
 }

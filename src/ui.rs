@@ -128,6 +128,8 @@ pub enum UiAction {
     ToggleLines,
     /// The way in to everything else (§5.72).
     ToggleMenu,
+    /// The ante side bet (§5.75).
+    ToggleAnte,
     /// The spin verifier (§5.74).
     ToggleProofs,
     /// Re-run every recorded spin through the engine.

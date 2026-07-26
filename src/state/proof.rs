@@ -97,14 +97,23 @@ pub struct Commitment {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum RecordedMode {
-    Base,
-    FreeSpin { burned: usize, multiplier: i64 },
+    /// `ante` defaults to false so records written before the side bet existed
+    /// (§5.75) still load, and still verify — they were base spins, which is
+    /// exactly what the default says.
+    Base {
+        #[serde(default)]
+        ante: bool,
+    },
+    FreeSpin {
+        burned: usize,
+        multiplier: i64,
+    },
 }
 
 impl From<SpinMode> for RecordedMode {
     fn from(mode: SpinMode) -> Self {
         match mode {
-            SpinMode::Base => RecordedMode::Base,
+            SpinMode::Base { ante } => RecordedMode::Base { ante },
             SpinMode::FreeSpin { burned, multiplier } => {
                 RecordedMode::FreeSpin { burned, multiplier }
             }
@@ -115,7 +124,7 @@ impl From<SpinMode> for RecordedMode {
 impl From<RecordedMode> for SpinMode {
     fn from(mode: RecordedMode) -> Self {
         match mode {
-            RecordedMode::Base => SpinMode::Base,
+            RecordedMode::Base { ante } => SpinMode::Base { ante },
             RecordedMode::FreeSpin { burned, multiplier } => {
                 SpinMode::FreeSpin { burned, multiplier }
             }
@@ -450,16 +459,18 @@ mod tests {
     fn the_mode_is_part_of_the_record() {
         let (data, entries) = play("frost", 4_000);
         assert!(
-            entries.iter().any(|entry| entry.mode != RecordedMode::Base),
+            entries
+                .iter()
+                .any(|entry| !matches!(entry.mode, RecordedMode::Base { .. })),
             "four thousand spins on {} never reached a free spin",
             data.machine_id()
         );
         let free = entries
             .iter()
-            .find(|entry| entry.mode != RecordedMode::Base)
+            .find(|entry| !matches!(entry.mode, RecordedMode::Base { .. }))
             .unwrap();
         let mut as_base = free.clone();
-        as_base.mode = RecordedMode::Base;
+        as_base.mode = RecordedMode::Base { ante: false };
         assert_ne!(
             verify(&as_base),
             Verdict::Matches,

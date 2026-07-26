@@ -179,7 +179,11 @@ impl GameSession {
         let free_spin = self.free_spins.as_ref().map(|state| state.line_bet);
         let was_free_spin = free_spin.is_some();
         let line_bet = free_spin.unwrap_or_else(|| self.line_bet(data));
-        let total_bet = data.total_bet(line_bet);
+        // The ante is a paid-spin thing (§5.75). A free spin costs nothing, so
+        // there is nothing to add a quarter to, and its strips are the refined
+        // ones rather than the ante ones.
+        let ante = !was_free_spin && self.ante(data);
+        let total_bet = data.staked(line_bet, ante);
 
         if was_free_spin {
             if let Some(state) = self.free_spins.as_mut() {
@@ -220,7 +224,7 @@ impl GameSession {
             let multiplier = self.free_spins.as_ref().map_or(0, |state| state.multiplier);
             SpinMode::FreeSpin { burned, multiplier }
         } else {
-            SpinMode::Base
+            SpinMode::Base { ante }
         };
 
         // The generator's state *before* the draw — the one number that decides

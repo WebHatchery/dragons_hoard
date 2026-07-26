@@ -228,6 +228,12 @@ impl Game {
             }
             // A log with evenings in it (§5.70). Recorded rather than
             // invented, so the columns hold figures the game really produces.
+            "ante" => {
+                // The switch on, so the capture shows the stake it changes
+                // (§5.75). A picture of the switch off says nothing about
+                // whether turning it on does anything.
+                self.session.preferences.ante = true;
+            }
             "proofs" => {
                 // A panel of empty rows would photograph the empty-log message
                 // rather than the thing this screen is for (§5.74). Played on

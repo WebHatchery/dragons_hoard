@@ -281,6 +281,20 @@ pub fn rules(data: &GameData) -> Vec<Rule> {
         );
     }
 
+    if let Some(ante) = data.ante() {
+        add(
+            Topic::Ante,
+            "The Ante",
+            format!(
+                "The ante stakes {:.2}x the usual bet and weaves extra scatters into the \
+                 first reel, so the free spins arrive about twice as often. Its price was \
+                 measured from what those features are worth, so the return is unchanged. \
+                 It buys a shorter wait, not an edge.",
+                ante.cost_permille as f64 / 1000.0,
+            ),
+        );
+    }
+
     if !data.featurebuy.tiers.is_empty() {
         let cheapest = data
             .featurebuy

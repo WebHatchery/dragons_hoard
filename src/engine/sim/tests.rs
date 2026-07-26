@@ -403,6 +403,7 @@ mod gamble_tests {
                 spins: 120_000,
                 line_bet_index: 0,
                 seed: 0x6A_6B1E,
+                ante: false,
             },
         );
         let gambled = simulate_gambling_everything(&data, 120_000, 0x6A_6B1E);
@@ -428,6 +429,181 @@ mod gamble_tests {
             let data = GameData::load_machine(machine).unwrap();
             assert!(data.gamble.max_steps > 0, "{} has no ladder", machine.id);
             assert!(data.gamble.ceiling_multiple > 0);
+        }
+    }
+}
+
+#[cfg(test)]
+mod ante {
+    use super::super::{run, SimConfig};
+    use crate::data::GameData;
+
+    /// What each ante's price *should* be, given what it actually returns.
+    ///
+    /// The price is a fixed point: charge it, measure the return, and the ratio
+    /// to the base return is the correction. Two or three rounds converge. Run
+    /// with `--ignored --nocapture` and paste the last column into the JSON.
+    #[test]
+    #[ignore = "calibration, not a gate"]
+    fn calibrate_the_ante() {
+        const SPINS: u64 = 600_000;
+        println!(
+            "{:<11} {:>8} {:>8} {:>6} {:>9}",
+            "cabinet", "base", "ante", "now", "should be"
+        );
+        for machine in crate::data::MACHINES {
+            let data = GameData::load_machine(machine).unwrap();
+            let Some(ante) = data.ante() else { continue };
+            let base = run(
+                &data,
+                SimConfig {
+                    spins: SPINS,
+                    ..SimConfig::default()
+                },
+            );
+            let anted = run(
+                &data,
+                SimConfig {
+                    spins: SPINS,
+                    ante: true,
+                    ..SimConfig::default()
+                },
+            );
+            let corrected = (ante.cost_permille as f64 * anted.rtp() / base.rtp()).round() as i64;
+            println!(
+                "{:<11} {:>8.4} {:>8.4} {:>6} {:>9}",
+                machine.id,
+                base.rtp(),
+                anted.rtp(),
+                ante.cost_permille,
+                corrected
+            );
+        }
+    }
+
+    /// The claim, measured: an ante does not move the return.
+    ///
+    /// It only trades a bigger stake for a feature that arrives more often —
+    /// the same trade the Feature Buy makes (§5.13) and the same promise. A
+    /// cabinet whose ante fails this has no business selling one.
+    #[test]
+    #[ignore = "a few minutes; run before shipping a change to the ante"]
+    fn the_ante_does_not_move_the_return() {
+        const SPINS: u64 = 400_000;
+        // Wider than the smoke tolerance on purpose. The price is an integer
+        // permille derived from a finite sample, so it cannot land exactly, and
+        // pretending otherwise would make this gate fail on noise.
+        const TOLERANCE: f64 = 0.035;
+
+        for machine in crate::data::MACHINES {
+            let data = GameData::load_machine(machine).unwrap();
+            let Some(ante) = data.ante() else {
+                println!("{:<11} sells no ante", machine.id);
+                continue;
+            };
+            let base = run(
+                &data,
+                SimConfig {
+                    spins: SPINS,
+                    ..SimConfig::default()
+                },
+            );
+            let anted = run(
+                &data,
+                SimConfig {
+                    spins: SPINS,
+                    ante: true,
+                    ..SimConfig::default()
+                },
+            );
+            println!(
+                "{:<11} base {:.4}  ante {:.4}  cost {:.3}  features {} -> {}",
+                machine.id,
+                base.rtp(),
+                anted.rtp(),
+                ante.cost_permille as f64 / 1000.0,
+                base.features_triggered,
+                anted.features_triggered,
+            );
+            assert!(
+                (anted.rtp() - base.rtp()).abs() < TOLERANCE,
+                "{}: the ante returns {:.4} against a base of {:.4}, which is a {:.1}%                  difference — it is priced wrong",
+                machine.id,
+                anted.rtp(),
+                base.rtp(),
+                (anted.rtp() / base.rtp() - 1.0) * 100.0
+            );
+            assert!(
+                anted.features_triggered > base.features_triggered,
+                "{}: the ante costs more and triggers the feature no more often",
+                machine.id
+            );
+        }
+    }
+
+    /// What the ante actually does, swept across the one knob it has.
+    ///
+    /// Run with `--ignored --nocapture`. The cost is forced to 1.0 so the
+    /// column reads as *value gained*, which is what a price has to be derived
+    /// from (§5.75). Writing the panel from what the ante was meant to do
+    /// rather than from this table is how a cabinet ends up selling a bet that
+    /// takes 17% off the return, which is exactly what the first attempt did.
+    #[test]
+    #[ignore = "measurement, not a gate"]
+    fn measure_the_ante() {
+        const SPINS: u64 = 300_000;
+        println!(
+            "{:<11} {:>8} {:>7} {:>9} {:>8} {:>9} {:>9}",
+            "cabinet", "base rtp", "extra", "gross rtp", "uplift", "fair cost", "features"
+        );
+        for machine in crate::data::MACHINES {
+            let mut data = GameData::load_machine(machine).unwrap();
+            let base = run(
+                &data,
+                SimConfig {
+                    spins: SPINS,
+                    ..SimConfig::default()
+                },
+            );
+            println!(
+                "{:<11} {:>8.4} {:>7} {:>9} {:>8} {:>9} {:>9}",
+                machine.id,
+                base.rtp(),
+                "-",
+                "-",
+                "-",
+                "-",
+                base.features_triggered
+            );
+
+            for extra in [4usize, 8, 16, 32] {
+                data.freespins.ante = Some(crate::data::Ante {
+                    cost_permille: 1_000,
+                    extra_scatters: extra,
+                });
+                let anted = run(
+                    &data,
+                    SimConfig {
+                        spins: SPINS,
+                        ante: true,
+                        ..SimConfig::default()
+                    },
+                );
+                // At cost 1.0 the RTP *is* the gross return per base stake, so
+                // the price that leaves the return unchanged is simply the
+                // ratio of the two.
+                let fair = anted.rtp() / base.rtp();
+                println!(
+                    "{:<11} {:>8} {:>7} {:>9.4} {:>+8.4} {:>9.3} {:>9}",
+                    "",
+                    "",
+                    extra,
+                    anted.rtp(),
+                    anted.rtp() - base.rtp(),
+                    fair,
+                    anted.features_triggered
+                );
+            }
         }
     }
 }

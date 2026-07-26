@@ -26,6 +26,8 @@ const SIM_BANKROLL: i64 = 1_000_000_000;
 #[derive(Debug, Clone, Copy)]
 pub struct SimConfig {
     pub spins: u64,
+    /// Run with the ante side bet on (§5.75).
+    pub ante: bool,
     pub line_bet_index: usize,
     pub seed: u64,
 }
@@ -35,6 +37,7 @@ impl Default for SimConfig {
     fn default() -> Self {
         Self {
             spins: 100_000,
+            ante: false,
             line_bet_index: 0,
             seed: 0xD2A6_0F1E,
         }
@@ -223,6 +226,7 @@ impl SimReport {
 pub fn run(data: &GameData, config: SimConfig) -> SimReport {
     let mut session = GameSession::new(data, config.seed);
     session.line_bet_index = config.line_bet_index.min(data.config.line_bets.len() - 1);
+    session.preferences.ante = config.ante;
 
     let mut report = SimReport::default();
 
@@ -233,7 +237,10 @@ pub fn run(data: &GameData, config: SimConfig) -> SimReport {
             break;
         };
 
-        let total_bet = session.total_bet(data);
+        // What the spin actually cost, ante included — measuring the return
+        // against the base stake while charging the ante one would report a
+        // number nobody is playing (§5.75).
+        let total_bet = session.staked(data);
         let mut round_credits = resolution.total_credits();
 
         report.paid_spins += 1;

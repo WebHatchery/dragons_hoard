@@ -40,6 +40,8 @@ pub enum ActionOutcome {
     /// A screen picked from the menu (§5.72).
     ScreenOpened(crate::game::screens::Screen),
     SessionsToggled,
+    /// The ante side bet (§5.75).
+    AnteToggled,
     /// The spin verifier (§5.74).
     ProofsToggled,
     /// Re-run every recorded spin.
@@ -117,6 +119,7 @@ pub fn apply(
         UiAction::ToggleMenu => ActionOutcome::MenuToggled,
         UiAction::OpenScreen(screen) => ActionOutcome::ScreenOpened(screen),
         UiAction::ToggleSessions => ActionOutcome::SessionsToggled,
+        UiAction::ToggleAnte => ActionOutcome::AnteToggled,
         UiAction::ToggleProofs => ActionOutcome::ProofsToggled,
         UiAction::CheckProofs => ActionOutcome::ProofsChecked,
         UiAction::DismissSessionOver => ActionOutcome::SessionOverDismissed,

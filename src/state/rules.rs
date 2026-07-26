@@ -69,6 +69,8 @@ pub enum Topic {
     Wrath,
     Gamble,
     FeatureBuy,
+    /// The side bet that buys a better chance at the feature (§5.75).
+    Ante,
 }
 
 impl Topic {
@@ -104,6 +106,9 @@ impl Topic {
         }
         if !data.freespins.shapes.is_empty() {
             topics.push(Topic::FreeSpinShapes);
+        }
+        if data.ante().is_some() {
+            topics.push(Topic::Ante);
         }
         if data.freespins.refine.is_some() {
             topics.push(Topic::Refining);
@@ -359,6 +364,7 @@ mod coverage {
     /// of them.
     const MECHANICS: &[(&str, &str, Topic)] = &[
         ("freespins", "shapes", Topic::FreeSpinShapes),
+        ("freespins", "ante", Topic::Ante),
         ("freespins", "refine", Topic::Refining),
         ("freespins", "retrigger", Topic::FreeSpins),
         ("freespins", "multiplier", Topic::FreeSpins),

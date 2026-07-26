@@ -297,6 +297,10 @@ pub struct FreeSpinsConfig {
     /// cabinet whose free spins are simply N of the same spin.
     #[serde(default)]
     pub refine: Option<Refine>,
+    /// The side bet that buys a better chance at this feature (§5.75). Absent
+    /// on a cabinet that does not offer one.
+    #[serde(default)]
+    pub ante: Option<Ante>,
     /// The ways this feature can be run (§5.64), all worth the same.
     ///
     /// Empty on a refining cabinet, and that is a decision rather than an
@@ -306,6 +310,77 @@ pub struct FreeSpinsConfig {
     /// offer one.
     #[serde(default)]
     pub shapes: Vec<FreeSpinShape>,
+}
+
+/// How many times a strip is repeated before the ante's scatters are woven in.
+///
+/// A strip is a cycle, so repeating it changes nothing on its own — the same
+/// symbols in the same proportions. What it buys is **resolution**. Dragon's
+/// Hoard's first reel carries one scatter in forty; adding a whole scatter to
+/// that strip raises its share by 2.4%, and there is no smaller step available.
+/// Against the strip repeated eight times, one scatter is a step of 0.3%, which
+/// is the difference between an ante that can be priced and one that cannot.
+const ANTE_STRIP_REPEAT: usize = 8;
+
+/// Weave `extra` copies of `symbol` into a strip at even spacing.
+///
+/// The result is longer than the original, which is the point: adding a symbol
+/// without removing one raises that symbol's share. Removing something else to
+/// keep the length fixed would change the base game's other odds too, and the
+/// ante is meant to change exactly one thing.
+fn weave(strip: &[usize], symbol: usize, extra: usize) -> Vec<usize> {
+    if extra == 0 || strip.is_empty() {
+        return strip.to_vec();
+    }
+    let mut woven = Vec::with_capacity(strip.len() + extra);
+    // Insert after position `i * len / extra` for each i, walking once. Integer
+    // arithmetic throughout: a float here would put two scatters in the same
+    // slot on some strip lengths and none in the last.
+    let mut next = 0usize;
+    for (index, entry) in strip.iter().enumerate() {
+        woven.push(*entry);
+        while next < extra && (next + 1) * strip.len() <= (index + 1) * extra {
+            woven.push(symbol);
+            next += 1;
+        }
+    }
+    while next < extra {
+        woven.push(symbol);
+        next += 1;
+    }
+    woven
+}
+
+/// The ante bet (§5.75): pay more per spin for a better chance at the feature.
+///
+/// Both numbers are per cabinet and both are *stated*, which is the whole
+/// difference between this and the thing it is modelled on. A real cabinet sells
+/// an ante and does not tell you what it does to the return; this one has a
+/// harness that measures both and a panel that prints the answer even when the
+/// answer is unflattering.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Ante {
+    /// What the stake is multiplied by, in permille. 1250 is "a quarter more".
+    ///
+    /// Permille rather than a float because it is money: a stake has to come out
+    /// as an exact number of credits on every bet step, and `bet * 5 / 4` does
+    /// that while `bet * 1.25` invites a rounding argument nobody wins.
+    pub cost_permille: i64,
+    /// Extra scatters woven into the **first reel** while the ante is on.
+    ///
+    /// The first reel only, and that is the whole reason the mechanism is
+    /// usable. A feature that needs three scatters triggers on roughly the cube
+    /// of the per-reel scatter share, so weaving one extra into every strip does
+    /// not raise the trigger rate by a quarter — it raises it by twenty-seven
+    /// times. Measured, on Dragon's Hoard: 1,475 features became 45,805 and the
+    /// return went from 0.98 to 6.85. Changing one reel is close to linear.
+    ///
+    /// **Derived, not authored.** Six cabinets would otherwise need six
+    /// hand-balanced ante strip sets, which is six chances to get one subtly
+    /// wrong and no way to notice. Weaving into the existing strips means a
+    /// cabinet's ante is a function of its base game, and a change to the base
+    /// strips carries into the ante automatically.
+    pub extra_scatters: usize,
 }
 
 /// One way of running the feature: fewer spins worth more, or more worth less.
@@ -418,6 +493,24 @@ impl GameData {
         line_bet * self.bet_units() as i64
     }
 
+    /// The stake with the ante bet applied (§5.75).
+    ///
+    /// Integer throughout: `bet * 1250 / 1000` lands on an exact number of
+    /// credits at every bet step, and the whole conservation harness rests on
+    /// stakes and payouts being whole numbers that add up.
+    pub fn staked(&self, line_bet: i64, ante: bool) -> i64 {
+        let base = self.total_bet(line_bet);
+        match self.freespins.ante.as_ref() {
+            Some(def) if ante => base * def.cost_permille / 1_000,
+            _ => base,
+        }
+    }
+
+    /// Does this cabinet sell an ante?
+    pub fn ante(&self) -> Option<&Ante> {
+        self.freespins.ante.as_ref()
+    }
+
     /// Strips with the first `burned` symbols of the refine order removed
     /// (§5.21). Returns the strips untouched when nothing is burned, which is
     /// every spin on every cabinet without a refine order.
@@ -425,6 +518,47 @@ impl GameData {
     /// A strip that lost every symbol would be unspinnable, so a reel that would
     /// empty keeps what it has — validation cannot catch this, because whether
     /// it happens depends on how a designer laid out one particular reel.
+    /// The strips as the ante bet turns them (§5.75).
+    ///
+    /// Extra scatters woven in at even spacing rather than appended, because a
+    /// strip is a cycle and a clump of scatters at one end would make the
+    /// feature arrive in bursts. Even spacing keeps the ante's trigger rate as
+    /// steady as the base game's.
+    ///
+    /// The first reel carries them all, and the strip is repeated first so the
+    /// step is small enough to price — see [`ANTE_STRIP_REPEAT`].
+    ///
+    /// Returns the base strips unchanged when the cabinet has no ante, so every
+    /// caller can ask without checking first.
+    pub fn ante_reels(&self) -> Vec<Vec<usize>> {
+        let Some(ante) = self.freespins.ante.as_ref() else {
+            return self.reels.clone();
+        };
+        let Some(scatter) = self.symbols.scatter() else {
+            return self.reels.clone();
+        };
+        if ante.extra_scatters == 0 {
+            return self.reels.clone();
+        }
+
+        self.reels
+            .iter()
+            .enumerate()
+            .map(|(reel, strip)| {
+                if reel != 0 {
+                    return strip.clone();
+                }
+                let repeated: Vec<usize> = strip
+                    .iter()
+                    .copied()
+                    .cycle()
+                    .take(strip.len() * ANTE_STRIP_REPEAT)
+                    .collect();
+                weave(&repeated, scatter, ante.extra_scatters)
+            })
+            .collect()
+    }
+
     pub fn refined_reels(&self, burned: usize) -> Vec<Vec<usize>> {
         let Some(refine) = self.freespins.refine.as_ref() else {
             return self.reels.clone();
@@ -571,5 +705,20 @@ mod tests {
         assert_eq!(data.freespins.award_for(2), 0);
         assert_eq!(data.freespins.award_for(3), 10);
         assert_eq!(data.freespins.award_for(5), 20);
+    }
+}
+
+#[cfg(test)]
+mod ante_tests {
+    use super::*;
+
+    #[test]
+    fn the_catalog_agrees_with_the_json() {
+        for machine in MACHINES {
+            let data = GameData::load_machine(machine).unwrap();
+            println!("{:<11} ante {:?}", machine.id, data.ante().is_some());
+        }
+        let dragon = GameData::load_machine(machine_by_id("dragon")).unwrap();
+        assert!(dragon.ante().is_some(), "dragon lost its ante");
     }
 }

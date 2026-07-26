@@ -325,6 +325,21 @@ impl GameSession {
         data.total_bet(self.line_bet(data))
     }
 
+    /// Is the ante on, and does this cabinet even sell one (§5.75)?
+    ///
+    /// Both halves together, because a preference set on a cabinet that offers
+    /// an ante must not quietly charge extra on one that does not — the
+    /// preference persists across the machine picker and the cabinets are not
+    /// obliged to agree.
+    pub fn ante(&self, data: &GameData) -> bool {
+        self.preferences.ante && data.ante().is_some()
+    }
+
+    /// What the next paid spin will actually cost.
+    pub fn staked(&self, data: &GameData) -> i64 {
+        data.staked(self.line_bet(data), self.ante(data))
+    }
+
     /// The grid to draw right now.
     ///
     /// While a spin is in flight this is the **decided** grid, not the settled
@@ -410,7 +425,10 @@ impl GameSession {
     }
 
     fn can_afford_spin(&self, data: &GameData) -> bool {
-        self.in_free_spins() || self.balance >= self.total_bet(data)
+        // Against the ante'd stake (§5.75), not the base one. Asking the base
+        // would let the player press Spin, have `roll_spin` refuse it, and be
+        // told nothing — the two checks have to be looking at the same number.
+        self.in_free_spins() || self.balance >= self.staked(data)
     }
 
     /// Bet controls are locked while the free-spin feature is running, while a

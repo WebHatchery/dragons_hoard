@@ -25,7 +25,9 @@ use macroquad_toolkit::rng::SeededRng;
 /// wins; the base game does neither.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SpinMode {
-    Base,
+    /// A paid spin. `ante` is the side bet (§5.75): it costs a quarter more and
+    /// turns strips with extra scatters woven in.
+    Base { ante: bool },
     /// A free spin, and how many symbols the refine order has burned off the
     /// strips by the time it runs (§5.21). Zero on a cabinet without one.
     FreeSpin {
@@ -67,7 +69,10 @@ pub fn spin(data: &GameData, rng: &mut SeededRng, line_bet: i64, mode: SpinMode)
     // game turns (§5.21), and the stops have to be drawn against whichever set
     // is actually spinning.
     let reels = match mode {
-        SpinMode::Base => data.reels.clone(),
+        SpinMode::Base { ante: false } => data.reels.clone(),
+        // The ante changes the strips and nothing else — not the paytable, not
+        // the lines, not what a win is worth (§5.75).
+        SpinMode::Base { ante: true } => data.ante_reels(),
         SpinMode::FreeSpin { burned, .. } => data.refined_reels(burned),
     };
     let stops = reels::pick_stops_on(&reels, rng);
@@ -78,7 +83,7 @@ pub fn spin(data: &GameData, rng: &mut SeededRng, line_bet: i64, mode: SpinMode)
     let landed = reels::grid_on(data, &reels, &stops, &heights);
 
     let (grid, ctx) = match mode {
-        SpinMode::Base => (landed, EvalContext::base(data, line_bet)),
+        SpinMode::Base { .. } => (landed, EvalContext::base(data, line_bet)),
         SpinMode::FreeSpin { multiplier, .. } => {
             let grid = if data.freespins.expanding_wilds {
                 expand_wilds(data, &landed)
@@ -136,8 +141,8 @@ mod tests {
         let mut a = SeededRng::new(2024);
         let mut b = SeededRng::new(2024);
 
-        let first = spin(&data, &mut a, 10, SpinMode::Base);
-        let second = spin(&data, &mut b, 10, SpinMode::Base);
+        let first = spin(&data, &mut a, 10, SpinMode::Base { ante: false });
+        let second = spin(&data, &mut b, 10, SpinMode::Base { ante: false });
 
         assert_eq!(first.stops, second.stops);
         assert_eq!(first.grid, second.grid);

@@ -408,6 +408,7 @@ mod tests {
                 &data,
                 SimConfig {
                     spins: ROUNDS,
+                    ante: false,
                     seed: 0x50AC,
                     ..SimConfig::default()
                 },
