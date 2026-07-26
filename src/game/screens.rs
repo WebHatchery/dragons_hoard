@@ -56,10 +56,14 @@ pub enum Screen {
     /// The Dragon's Wrath respin round (§5.12). Advances itself on a beat, but
     /// the reels do not turn while it runs.
     Holdspin,
+    /// Out of credits (§5.53). Dealt by the balance rather than opened, and it
+    /// holds the game in the strongest sense there is — the reels cannot turn
+    /// until it is answered.
+    Ruin,
 }
 
 impl Screen {
-    pub const ALL: [Screen; 15] = [
+    pub const ALL: [Screen; 16] = [
         Screen::Paytable,
         Screen::Rules,
         Screen::Limits,
@@ -75,6 +79,7 @@ impl Screen {
         Screen::Bonus,
         Screen::Gamble,
         Screen::Holdspin,
+        Screen::Ruin,
     ];
 
     /// What the capture harness calls it.
@@ -95,6 +100,7 @@ impl Screen {
             Screen::Bonus => "bonus",
             Screen::Gamble => "gamble",
             Screen::Holdspin => "wrath",
+            Screen::Ruin => "ruin",
         }
     }
 
@@ -104,7 +110,10 @@ impl Screen {
     /// iterations, and this is exactly why: reaching them means playing until
     /// the game deals one.
     pub fn reachable_by_flag(self) -> bool {
-        !matches!(self, Screen::Bonus | Screen::Gamble | Screen::Holdspin)
+        !matches!(
+            self,
+            Screen::Bonus | Screen::Gamble | Screen::Holdspin | Screen::Ruin
+        )
     }
 }
 
@@ -127,6 +136,7 @@ impl Game {
             Screen::Bonus => self.session.bonus.is_some(),
             Screen::Gamble => self.session.gamble.is_some(),
             Screen::Holdspin => self.session.holdspin.is_some(),
+            Screen::Ruin => self.session.is_ruined(&self.data),
         }
     }
 
@@ -155,7 +165,7 @@ impl Game {
             Screen::Vision => &mut self.show_vision,
             // Excluded by the gate above; the predicate is the one place that
             // decides, and the compiler holds this arm to it.
-            Screen::Bonus | Screen::Gamble | Screen::Holdspin => unreachable!(),
+            Screen::Bonus | Screen::Gamble | Screen::Holdspin | Screen::Ruin => unreachable!(),
         })
     }
 
@@ -211,6 +221,6 @@ mod tests {
             .filter(|s| !s.reachable_by_flag())
             .map(|s| s.id())
             .collect();
-        assert_eq!(dealt, vec!["bonus", "gamble", "wrath"]);
+        assert_eq!(dealt, vec!["bonus", "gamble", "wrath", "ruin"]);
     }
 }

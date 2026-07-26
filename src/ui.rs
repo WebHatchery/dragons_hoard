@@ -18,6 +18,7 @@ pub mod nav;
 pub mod paytable;
 pub mod reality;
 pub mod reels;
+pub mod ruin;
 pub mod rules;
 pub mod settings;
 pub mod shortcuts;
@@ -157,6 +158,8 @@ pub enum UiAction {
     /// Cut the showing celebration card short.
     DismissCelebration,
     NewGame,
+    /// Break the hoard, or take the vault's stake (§5.53).
+    TakeLifeline,
     Save,
     Load,
     DeleteSave,
@@ -300,6 +303,21 @@ pub fn draw_game_ui(ctx: UiContext<'_>, nav: &mut Nav) -> Vec<UiAction> {
                 .map(|(_, def)| def),
             pointer,
             ctx.ui_time,
+            &mut actions,
+            nav,
+        );
+    }
+
+    // Last of the overlays and over all of them: a player who cannot spin needs
+    // this more than they need whatever they had open (§5.53). It is dealt
+    // rather than opened, so there is no flag and no close button — it is up
+    // exactly while the reels cannot turn.
+    if let Some(lifeline) = ctx.session.lifeline(ctx.data) {
+        ruin::draw(
+            lifeline,
+            ctx.session.balance,
+            ctx.session.cheapest_spin(ctx.data),
+            pointer,
             &mut actions,
             nav,
         );
@@ -472,13 +490,23 @@ fn draw_footer(ctx: &UiContext<'_>) {
     );
 
     let stats = &ctx.session.stats;
+    // Staked credits appear here the moment there are any, and nowhere else in
+    // the line is conditional. That is the point: a stipend that was never
+    // mentioned again would quietly make every other figure on this row a lie
+    // (§5.53).
+    let staked = if stats.staked > 0 {
+        format!("   Staked {}", naming::credits(stats.staked))
+    } else {
+        String::new()
+    };
     draw_ui_text_ex(
         &format!(
-            "Spins {}   Best win {}   Free spins played {}   Hatches {}",
+            "Spins {}   Best win {}   Free spins played {}   Hatches {}{}",
             stats.total_spins,
             naming::credits(stats.biggest_win),
             stats.free_spins_played,
-            stats.hatches
+            stats.hatches,
+            staked
         ),
         rect.x + 470.0,
         rect.y + 30.0,

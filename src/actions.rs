@@ -25,6 +25,9 @@ pub enum ActionOutcome {
     /// later, as a [`SpinEvent::Settled`](crate::state::spin::SpinEvent).
     SpinStarted,
     SpinBlocked(SpinBlocked),
+    /// A hoard broken, or a stake advanced, to a player who could not spin
+    /// (§5.53).
+    LifelineTaken(crate::state::ruin::Lifeline),
     BetChanged(i64),
     PaytableToggled,
     SettingsToggled,
@@ -177,6 +180,12 @@ pub fn apply(
                 ActionOutcome::Ignored
             }
         }
+        UiAction::TakeLifeline => match session.take_lifeline(data) {
+            Some(lifeline) => ActionOutcome::LifelineTaken(lifeline),
+            // Not stuck any more — a press from a frame whose offer has since
+            // gone must never mint credits (§5.53).
+            None => ActionOutcome::Ignored,
+        },
         UiAction::NewGame => ActionOutcome::Session(SessionRequest::NewGame),
         UiAction::Save => ActionOutcome::Session(SessionRequest::Save),
         UiAction::Load => ActionOutcome::Session(SessionRequest::Load),

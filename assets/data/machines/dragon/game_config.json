@@ -16,6 +16,8 @@
   "default_line_bet_index": 3,
   "hoard_capacity": 15,
   "hatch_pot_multiplier": 1,
+  "hoard_salvage_permille": 500,
+  "vault_stake": 200,
   "free_spin_multiplier": 2,
   "autospin_choices": [
     10,

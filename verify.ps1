@@ -166,9 +166,16 @@ Write-Host 'One screen at a time' -ForegroundColor Cyan
 # repeated here on purpose — `audit:<id>` looks the screen up in `Screen::ALL`
 # and asserts it actually opened, so a screen added to the game and forgotten
 # here fails loudly rather than going unmeasured for twelve iterations.
-$Screens = 'paytable', 'rules', 'limits', 'history', 'reality', 'settings',
-           'machines', 'achievements', 'featurebuy', 'ledger', 'waveforms',
-           'vision', 'bonus', 'gamble', 'wrath'
+# Asked for rather than repeated. This list used to live here, and by the time
+# the ruin screen (§5.53) was registered, tested and reachable, the sweep still
+# did not know it existed — which is the exact drift §5.50 built the registry to
+# stop, reintroduced one file over.
+[Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_PATH', (Join-Path $env:TEMP 'verify_screens.png'))
+[Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_SCENE', 'screens')
+$Screens = @(& $Exe 2>&1 | Where-Object { $_ -match '^screen ' } | ForEach-Object { ($_ -split ' ')[1] })
+[Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_PATH', $null)
+[Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_SCENE', $null)
+if ($Screens.Count -lt 10) { throw "the game listed $($Screens.Count) screens; the registry is not being read" }
 Step 'every screen' {
     foreach ($screen in $Screens) {
         Audit -Scene "audit:$screen" -What "the $screen screen has a layout, contrast or collision fault"

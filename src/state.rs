@@ -18,6 +18,7 @@ pub mod lifecycle;
 pub mod limits;
 pub mod preferences;
 pub mod profile;
+pub mod ruin;
 pub mod rules;
 pub mod save;
 pub mod spin;

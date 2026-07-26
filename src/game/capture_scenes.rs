@@ -128,6 +128,33 @@ impl Game {
                 self.fast_forward_to(|session| session.last_win > 0);
             }
             "wrath" => self.hold_a_wrath_round(),
+            // Out of credits with a hoard worth breaking (§5.53). Both halves
+            // matter: an empty hoard shows the vault offer instead, and the two
+            // read very differently.
+            // Not a scene: the registry, printed, so a harness never has to
+            // keep its own copy of the list (§5.53). `verify.ps1` had one and it
+            // was already stale — the ruin screen was registered, tested and
+            // reachable, and the sweep did not know it existed.
+            "screens" => {
+                for screen in crate::game::screens::Screen::ALL {
+                    println!("screen {}", screen.id());
+                }
+                std::process::exit(0);
+            }
+            "ruin" => {
+                // Set rather than played into: the pot a random session happens
+                // to reach is whatever it is, and this capture is about how the
+                // offer reads with real money in it.
+                self.session.hoard.count = 9;
+                self.session.hoard.pot = 1_240;
+                self.session.balance = 0;
+            }
+            // And the other half: nothing left to break.
+            "ruin_vault" => {
+                self.session.balance = 0;
+                self.session.hoard.count = 0;
+                self.session.hoard.pot = 0;
+            }
             "featurebuy" => {
                 // Enough credit that every tier reads as affordable — a menu of
                 // greyed-out rows would photograph the wallet, not the feature.

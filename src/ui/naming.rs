@@ -45,6 +45,18 @@ pub fn credits(value: i64) -> String {
     grouped(value)
 }
 
+/// Eggs collected toward a hatch, named and counted.
+///
+/// The one place in the game where a bare number would be wrong: "6" says
+/// nothing, and the hoard panel and the ruin screen (§5.53) both need the player
+/// to know what is being given up.
+pub fn eggs(count: u32) -> String {
+    match count {
+        1 => "1 egg".to_owned(),
+        other => format!("{} eggs", grouped(other as i64)),
+    }
+}
+
 /// A quantity of things rather than of credits — spins, rounds.
 ///
 /// Grouped for the same reason credits are: it is a magnitude the player reads.

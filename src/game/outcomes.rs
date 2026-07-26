@@ -14,6 +14,7 @@ use crate::audio::Sfx;
 use crate::state::autospin::AutospinStop;
 use crate::state::featurebuy::BuyBlocked;
 use crate::state::gamble::GambleBlocked;
+use crate::state::ruin::Lifeline;
 use crate::state::{GameSession, SpinBlocked};
 use crate::ui::{self, UiAction};
 use macroquad_toolkit::rng::random_u64;
@@ -208,8 +209,29 @@ impl Game {
                 if let Some(reason) = self.session.stop_autospin(AutospinStop::OutOfCredits) {
                     self.notifications.warning(reason.message());
                 } else {
+                    // The panel says the rest (§5.53). This used to end
+                    // "or start a new game", which was the whole of the game's
+                    // answer to the most likely way a session ends.
                     self.notifications
-                        .warning("Not enough credits — lower the bet or start a new game");
+                        .warning("Not enough credits for that bet");
+                }
+            }
+            ActionOutcome::LifelineTaken(lifeline) => {
+                self.sound.play(Sfx::WinSmall);
+                match lifeline {
+                    Lifeline::BreakHoard { credits, eggs, .. } => {
+                        self.notifications.info(format!(
+                            "Hoard broken for {} — {} lost",
+                            crate::ui::naming::credits(credits),
+                            crate::ui::naming::eggs(eggs)
+                        ));
+                    }
+                    Lifeline::VaultStake { credits } => {
+                        self.notifications.info(format!(
+                            "The vault advances {}",
+                            crate::ui::naming::credits(credits)
+                        ));
+                    }
                 }
             }
             // Pressing spin again mid-spin is normal input, not an error.

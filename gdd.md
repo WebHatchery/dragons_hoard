@@ -2550,6 +2550,75 @@ before a player does.
 Six cabinets pass, one gate in `verify.ps1`, and the game was independently
 confirmed correct in real play while this was being written.
 
+### 5.53 Running out (post-v1)
+
+Twenty paylines at the cheapest stake is twenty credits a spin against a thousand
+to start with. **Fifty spins**, at a measured 96% return with a slot machine's
+variance behind it. Going broke is not an edge case in this game — it is the
+ordinary way a session ends, and it is the single most likely thing that can
+happen to anyone who plays.
+
+The whole of the game's answer was a notification:
+
+> Not enough credits — lower the bet or start a new game
+
+Lowering the bet buys a few more spins. Starting a new game throws away the
+session, the hoard meter, the graph, and everything collected on the way to a
+hatch. Fifty-two systems of features and verification, and the most common route
+to the end of play was a dead end with a reset button at the bottom of it.
+
+**What a broke player still owns is the hoard.** Eggs collected toward a hatch,
+and a pot banked behind them — real value they earned, worth nothing while they
+cannot spin. So the first lifeline is **breaking the hoard**: take the banked pot
+now, at a cut, and lose the eggs.
+
+That is a decision rather than a rescue. The pot is what the hatch would have
+paid; taking it early costs the salvage rate and every egg on the meter, so a
+player near a full hoard should hold on and a player who has just hatched has
+nothing to break. It is offered **only when it buys a spin** — a pot of forty at
+half salvage is twenty credits against a twenty-credit spin, and taking that
+leaves the player just as stuck with their eggs gone as well.
+
+**And when there is nothing left to break, the vault stakes them.** This is play
+money and refusing to let someone keep playing is worse than the alternative. But
+a stipend that appeared from nowhere and was never mentioned again would quietly
+make every figure in the session a lie, so a stake is counted and the count is
+shown on the figures row the moment there is one.
+
+**Where the money comes from, for the books.** §5.33 asserts
+`opening + won - wagered == balance` after every round, and both lifelines move
+the balance without a spin. Breaking the hoard is *not* new money — the pot is
+funded by eggs at the line bet and would have been paid at the hatch — so it is
+counted as winnings and the identity is untouched. A vault stake genuinely is new
+money: it gets its own term, and it is the only credit in this game that nobody
+won.
+
+That distinction had never been checked, because the soak floats the balance
+before every spin and has therefore **never once gone broke**. A session played
+to actual ruin and rescued repeatedly now asserts
+`opening + won + staked - wagered == balance`, and the test guards itself — if it
+completes without going broke, it fails rather than passing vacuously.
+
+**Two things the screen refuses to do.** It has no close button, because
+dismissing it would leave the player looking at a cabinet that ignores the spin
+button. And it names lowering the bet as an option beside its own offer, because
+that is frequently the better move and a game that only showed the door it
+profits from would be a different kind of game to this one.
+
+**The offer waits for the card.** `is_ruined` requires a settled session, so a
+rescue is never dealt over the top of a Hatch or a jackpot — the game does not
+interrupt its own good news to tell someone they are broke. That fell out of a
+test that would not go broke, and turned out to be the right behaviour rather
+than an obstacle to it.
+
+**And the harness had already grown the drift §5.50 exists to stop.** The
+per-screen sweep in `verify.ps1` kept its own copy of the screen list, so by the
+time the ruin screen was registered, tested, reachable and auditable, the sweep
+still did not know it existed. The registry is now *asked for* rather than
+repeated: the game prints `Screen::ALL` and the harness reads it. A list in a
+second language is a list that goes stale, one file over from the module written
+to make that impossible.
+
 
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
@@ -3151,6 +3220,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
+| A player who runs out of credits | Breaking the hoard, or a stake from the vault, with the cost stated (§5.53). Going broke is the most likely end of a session and the answer was a reset button. |
 | A fault that only exists mid-animation | Every cabinet's spin is watched frame by frame and tiled into a filmstrip (§5.52). Both bugs a player reported were of this kind, and the harness photographed only settled frames. |
 | A sound nobody has heard | Every effect and music stem is measured for level, offset, clicks and inharmonic partials (§5.51). Timbre was written off as needing ears; the reflections that make a chime nasty are arithmetic. |
 | A screen nobody ever measured | Every screen that holds the reels is in `Screen::ALL`, and `any_overlay_open` is derived from it (§5.50). Three screens went twelve iterations unaudited because the list of them was a note rather than the definition. |
@@ -3207,7 +3277,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus forty-seven post-v1 systems
+## 15. Current State — v1 shipped, plus forty-eight post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
@@ -3218,11 +3288,11 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) and a motion audit (§5.52). The game is
+navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) a motion audit (§5.52) and an answer for running out (§5.53). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-473 tests pass here and 309 in `macroquad-toolkit`; `cargo fmt --check`,
+482 tests pass here and 309 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
 release build are clean. Every `.rs` file is under the 800-line limit, `data.rs`
 (792) and `ui/reels.rs` (734) the largest — `state/spin.rs` dropped from 615 to

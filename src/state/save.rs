@@ -26,6 +26,18 @@ pub struct SessionStats {
     /// menu existed still loads.
     #[serde(default)]
     pub features_bought: u32,
+    /// Hoards broken for credit, and stakes advanced by the vault (§5.53).
+    /// `default` so a save written before running out had an answer still
+    /// loads.
+    #[serde(default)]
+    pub hoards_broken: u32,
+    #[serde(default)]
+    pub vault_stakes: u32,
+    /// Credits advanced by the vault. The only money in this game that was
+    /// neither won nor staked, so it is kept apart from `total_won` — every
+    /// figure derived from that would otherwise be wrong.
+    #[serde(default)]
+    pub staked: i64,
     /// Gambles that ended above what they staked, and gambles that busted
     /// (§5.16). `default` so a save from before the feature still loads.
     #[serde(default)]

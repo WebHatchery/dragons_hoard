@@ -42,6 +42,13 @@ pub struct GameConfig {
     pub default_line_bet_index: usize,
     pub hoard_capacity: u32,
     pub hatch_pot_multiplier: i64,
+    /// What breaking the hoard early returns, in parts per thousand of the
+    /// banked pot (§5.53). The cut is what makes it a decision rather than a
+    /// free rescue — a player near a full meter should hold on.
+    pub hoard_salvage_permille: u32,
+    /// What the vault advances a player with nothing left to break (§5.53).
+    /// Must buy several spins at the cheapest stake, or it is not a rescue.
+    pub vault_stake: i64,
     pub free_spin_multiplier: i64,
     /// Run lengths the player can pick between in the settings panel.
     pub autospin_choices: Vec<u32>,
