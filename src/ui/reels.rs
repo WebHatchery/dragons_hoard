@@ -216,17 +216,35 @@ fn draw_jackpot_ladder(data: &GameData, session: &GameSession, shake: Vec2, ui_t
             0.05 + 0.02 * rank,
             1.0,
         );
-        let border = Color::new(
-            palette::gold().r,
-            palette::gold().g,
-            palette::gold().b,
-            0.35 + 0.5 * rank * shimmer,
-        );
+        // A pot the whole floor feeds is lit differently rather than labelled:
+        // the plate is barely a hundred pixels wide and a second word on it
+        // would not survive 130% text, let alone a translation (§5.57). The
+        // rules panel carries the explanation.
+        let shared = data
+            .jackpots
+            .tiers
+            .get(index)
+            .is_some_and(|tier| tier.shared);
+        let border = if shared {
+            Color::new(
+                palette::ember().r,
+                palette::ember().g,
+                palette::ember().b,
+                0.55 + 0.45 * shimmer,
+            )
+        } else {
+            Color::new(
+                palette::gold().r,
+                palette::gold().g,
+                palette::gold().b,
+                0.35 + 0.5 * rank * shimmer,
+            )
+        };
 
         draw_surface(
             plate,
             &SurfaceStyle::new(fill)
-                .with_border(1.0, border)
+                .with_border(if shared { 2.0 } else { 1.0 }, border)
                 .with_top_highlight(2.0, Color::new(1.0, 0.86, 0.45, 0.15 + 0.35 * rank)),
         );
         draw_text_centered_in_box_ex(

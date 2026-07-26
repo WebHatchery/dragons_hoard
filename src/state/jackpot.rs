@@ -63,6 +63,20 @@ impl JackpotState {
         self.accrued_milli.resize(jackpots.tiers.len(), 0);
     }
 
+    /// What a tier has banked, in milli-credits above its seed.
+    ///
+    /// Exposed so the floor store (§5.57) can move a shared pot between
+    /// cabinets without knowing anything else about a ladder.
+    pub fn accrued_milli(&self, tier: usize) -> i64 {
+        self.accrued_milli.get(tier).copied().unwrap_or(0)
+    }
+
+    pub fn set_accrued_milli(&mut self, tier: usize, milli: i64) {
+        if let Some(slot) = self.accrued_milli.get_mut(tier) {
+            *slot = milli;
+        }
+    }
+
     /// Current headline value of a tier: its seed plus everything banked since
     /// it last paid out.
     pub fn value(&self, jackpots: &Jackpots, tier: usize) -> i64 {

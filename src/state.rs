@@ -7,6 +7,7 @@ pub mod celebration;
 pub mod compat;
 pub mod featurebuy;
 pub mod features;
+pub mod floor;
 pub mod gamble;
 pub mod hints;
 pub mod history;

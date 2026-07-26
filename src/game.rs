@@ -217,6 +217,10 @@ impl Game {
         // session is built, because a fresh session invents a starting stack and
         // the wallet is what actually decides.
         game.restore_wallet();
+        // And the Grand belongs to the floor, so a fresh boot shows what every
+        // cabinet has been feeding rather than the seed (§5.57).
+        crate::state::floor::Floor::load(&game.data.config)
+            .lend_to(&game.data.jackpots, &mut game.session.jackpots);
         game
     }
 

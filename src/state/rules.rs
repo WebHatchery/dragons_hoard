@@ -314,15 +314,36 @@ pub fn rules(data: &GameData) -> Vec<Rule> {
     }
 
     if data.jackpots.contribution_permille > 0 {
+        // A pot fed by machines the player is not sitting at is a genuinely
+        // surprising rule, so it is said outright (§5.57) — but as a sentence
+        // rather than a heading of its own. The panel is two columns of a fixed
+        // height and a fifth topic pushed Frost Wyrm into a third, which is a
+        // gate §5.29 put there for exactly this.
+        let shared: Vec<&str> = data
+            .jackpots
+            .tiers
+            .iter()
+            .filter(|tier| tier.shared)
+            .map(|tier| tier.name.as_str())
+            .collect();
+        let floor = if shared.is_empty() {
+            String::new()
+        } else {
+            format!(
+                " The {} is shared by every cabinet.",
+                shared.join(" and the ")
+            )
+        };
         add(
             Topic::Jackpots,
             "Progressives",
             format!(
                 "{}% of every stake feeds the four pots, which can pay at random on any paid spin. \
                  A bigger stake wins them proportionally more often, so the return per credit is \
-                 the same at every bet — worth {:.1}% of all play.",
+                 the same at every bet — worth {:.1}% of all play.{}",
                 data.jackpots.contribution_permille as f32 / 10.0,
                 jackpot::expected_rtp(&data.jackpots) * 100.0,
+                floor,
             ),
         );
     }

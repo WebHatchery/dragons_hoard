@@ -37,7 +37,11 @@ use macroquad_toolkit::ui::{
 
 /// Sized per frame, now that the screen can change shape (§5.46).
 fn panel() -> Rect {
-    frame::centred_at(1040.0, frame::BELOW_HEADER, 620.0)
+    // Wider than it was: the panel is two fixed columns and §5.57 added a
+    // sentence that pushed Frost Wyrm into a third. Every other overlay in the
+    // game is already this wide, and the extra 140px is the cheapest room
+    // available — shrinking the type instead runs into the readability floor.
+    frame::centred_at(1180.0, frame::BELOW_HEADER, 620.0)
 }
 const COLUMN_GAP: f32 = 28.0;
 const PADDING: f32 = 22.0;

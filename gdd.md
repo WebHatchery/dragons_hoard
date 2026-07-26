@@ -2771,6 +2771,49 @@ the key to its old form fails two of them by name.
 This one is worth more outside this game than inside it: twenty games share that
 crate, and five of them were demonstrably colliding.
 
+### 5.57 The Grand belongs to the floor (post-v1)
+
+**Six Grands nobody was ever going to fill.** The top tier sits behind odds of one
+win per 12.5 million credits of turnover — at twenty credits a spin, **625,000
+spins** — and every cabinet had its own, fed only by play on that one machine and
+reset to seed whenever it paid. Six pots that would realistically never be seen,
+and a headline number on the reel window that was decoration.
+
+§5.55 had just made the money one bankroll across all six. The player is one
+player on a floor of machines; the biggest prize on that floor should be the
+floor's.
+
+**The change is where the pot lives, not what it costs.** The Grand is not a new
+tier and none of its maths moves: same seed, same share of the contribution, same
+odds. Only its **accrual** moves out of the per-cabinet save into a store of its
+own, so every spin on every cabinet feeds one pot and any cabinet can drop it.
+
+That distinction is what keeps §4's numbers honest. A single-cabinet simulation
+contributes to the shared pot and wins it back at exactly the rate it always did,
+so measured RTP is untouched — the million-spin gate passed on all six unchanged,
+which is the evidence that this is a plumbing change and not a payout change.
+What differs is the *real* game, where six cabinets fill one pot six times as
+fast. That is what a linked jackpot is for, and why real floors run them.
+
+**Keyed by tier id, not by index.** Cabinets are free to declare different
+ladders and one of them eventually will; a shared pot addressed by position would
+hand one cabinet's third tier the money another cabinet's third tier had banked.
+A test also requires every cabinet to agree on *which* tier is the floor's, or a
+player walking between them would watch the pot appear and vanish.
+
+**Marked rather than labelled.** The plate is barely a hundred pixels wide, so the
+shared tier gets an ember border and a heavier rule instead of a second word that
+would not survive 130% text, let alone a translation. The explanation goes where
+explanations go — the generated rules (§5.29).
+
+**And the rules panel refused it.** Adding the sentence as a topic of its own
+pushed Frost Wyrm into a third column and failed two of §5.29's gates by name;
+folding it into the Progressives paragraph still failed. The panel was simply
+full. It is 1,180px wide now rather than 1,040 — the width every other overlay in
+the game already uses — because the alternative was shrinking the type into the
+readability floor. A layout gate that says "no" to real content and cannot be
+argued with is doing precisely its job.
+
 
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
@@ -3372,6 +3415,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
+| A jackpot nobody could ever win | The Grand is shared by every cabinet, fed by all of them and payable on any (§5.57). Six independent pots at 625,000 spins each were decoration. |
 | Two games sharing a browser save | Web storage keys are qualified by game, with the old key adopted forward (§5.56). Five games in the catalog were writing the same `localStorage` key. |
 | A cabinet switch that refills the wallet | One bankroll travels with the player; hoards and jackpots stay with the machine (§5.55). Six separate balances made running out cost nothing. |
 | A test harness that overwrites the game | Capture runs are read-only, checked by fingerprinting the save directory (§5.55). Every capture scene had been autosaving fabricated state over the player's save since the harness was written. |
@@ -3433,7 +3477,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus fifty-one post-v1 systems
+## 15. Current State — v1 shipped, plus fifty-two post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
@@ -3444,11 +3488,11 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) a motion audit (§5.52) an answer for running out (§5.53) a size limit that is actually enforced (§5.54) one bankroll across six cabinets (§5.55) and a web save that belongs to this game alone (§5.56). The game is
+navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) a motion audit (§5.52) an answer for running out (§5.53) a size limit that is actually enforced (§5.54) one bankroll across six cabinets (§5.55) a web save that belongs to this game alone (§5.56) and a floor-wide Grand (§5.57). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-491 tests pass here and 313 in `macroquad-toolkit`; `cargo fmt --check`,
+495 tests pass here and 313 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
 release build are clean. Every `.rs` file is under the 800-line limit and a gate now says so
 (§5.54); `game.rs` (740) and `ui/reels.rs` (689) are the largest. `data.rs` went

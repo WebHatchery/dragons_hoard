@@ -10,6 +10,7 @@ use macroquad_toolkit::persistence::{
     delete_slot, load_from_slot_with_migration, save_to_slot_with_version, slot_exists,
 };
 
+use crate::state::floor::Floor;
 use crate::state::wallet::Wallet;
 use crate::state::{migrate_save_value, GameSession, SaveData};
 use macroquad_toolkit::rng::random_u64;
@@ -113,6 +114,11 @@ impl Game {
         if !self.may_persist() {
             return;
         }
+        // The Grand belongs to the floor, so banking a session banks it for
+        // every other cabinet too (§5.57).
+        let mut floor = Floor::load(&self.data.config);
+        floor.take_from(&self.data.jackpots, &self.session.jackpots);
+        let _ = floor.save(&self.data.config);
         let wallet = Wallet {
             balance: self.session.balance,
             staked: self.session.stats.staked,
@@ -160,10 +166,12 @@ impl Game {
             Ok(save) => GameSession::from_save(&self.data, save),
             Err(_) => GameSession::new(&self.data, random_u64()),
         };
-        // The hoard, the jackpots and the stats came from the cabinet. The money
-        // did not — it is the player's, and it followed them here (§5.55).
+        // The hoard, the local pots and the stats came from the cabinet. The
+        // money did not — it is the player's, and it followed them here
+        // (§5.55). Nor did the Grand: that one belongs to the floor (§5.57).
         session.balance = self.session.balance;
         session.stats.staked = self.session.stats.staked;
+        Floor::load(&self.data.config).lend_to(&self.data.jackpots, &mut session.jackpots);
         session
     }
 }

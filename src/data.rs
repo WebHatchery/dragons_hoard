@@ -263,6 +263,12 @@ pub struct JackpotTier {
     /// One win per this many credits of turnover — the definition that makes the
     /// trigger bet-fair and its return closed-form.
     pub odds_per_credit: i64,
+    /// Whether this pot belongs to the whole floor rather than this cabinet
+    /// (§5.57). Its maths is unchanged either way; only where the accrual is
+    /// stored moves. `default` so a ladder written before the floor existed
+    /// still loads as six independent pots.
+    #[serde(default)]
+    pub shared: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

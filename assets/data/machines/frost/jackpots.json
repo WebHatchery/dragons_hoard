@@ -27,7 +27,8 @@
       "name": "Grand",
       "seed": 40000,
       "share_permille": 100,
-      "odds_per_credit": 15000000
+      "odds_per_credit": 15000000,
+      "shared": true
     }
   ]
 }
