@@ -154,6 +154,18 @@ impl Game {
 
     /// The target machine's saved session, or a fresh one if it has never been
     /// played.
+    ///
+    /// Used by **both** arriving at a cabinet and starting the game (§5.58).
+    /// That is the fix: booting and switching are the same act — you sit down at
+    /// a machine and it is how you left it — and only the second one had ever
+    /// been implemented. `Game::new` built a fresh session and never looked at
+    /// the disk, so every launch reset the hoard meter to zero eggs and the
+    /// Mini, Minor and Major pots to their seeds. Three of the four
+    /// progressives could not grow past a single sitting, and the fourth was
+    /// only fixed one iteration ago (§5.57).
+    ///
+    /// Nothing said so, because the autosave was working perfectly. Writing a
+    /// save nobody reads looks identical to writing one that is read.
     pub(crate) fn load_machine_session(&mut self) -> GameSession {
         let loaded: Result<SaveData, String> = load_from_slot_with_migration(
             &self.data.config.game_name,
@@ -164,7 +176,17 @@ impl Game {
 
         let mut session = match loaded {
             Ok(save) => GameSession::from_save(&self.data, save),
-            Err(_) => GameSession::new(&self.data, random_u64()),
+            Err(err) => {
+                // A slot that exists and will not load is a player's hoard
+                // going quiet. Starting fresh is the only thing to do, but
+                // doing it silently would let them think the meter had simply
+                // never filled.
+                if slot_exists(&self.data.config.game_name, &self.data.save_slot()) {
+                    self.notifications
+                        .danger(format!("Could not read this cabinet's record: {}", err));
+                }
+                GameSession::new(&self.data, random_u64())
+            }
         };
         // The hoard, the local pots and the stats came from the cabinet. The
         // money did not — it is the player's, and it followed them here

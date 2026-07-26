@@ -2814,6 +2814,55 @@ the game already uses — because the alternative was shrinking the type into th
 readability floor. A layout gate that says "no" to real content and cannot be
 argued with is doing precisely its job.
 
+### 5.58 The game had never once read its own save (post-v1)
+
+§5.57 made the Grand grow across all six cabinets. Which raised the question of
+the other three pots — and the answer was that they had been resetting to their
+seeds **every time the game started**, since it shipped.
+
+`Game::new` built a fresh `GameSession` and never looked at the disk. Not once.
+The autosave had been firing after every resolved spin for fifty-odd iterations,
+writing a perfectly good file that nothing ever opened. Every launch reset:
+
+- the **hoard meter** to zero eggs, out of the fifteen a hatch needs;
+- the **Mini, Minor and Major** pots to their seeds, so three of four
+  progressives could not grow past one sitting;
+- the **session stats** — spins, biggest win, hatches.
+
+The balance survived only because §5.55 had accidentally rescued it two
+iterations earlier by moving it into a wallet of its own. Before that, closing
+the game lost everything.
+
+§9 of this document describes the opposite behaviour in detail — "autosave after
+each spin resolves… a reload lands back in the base game" — which reads as a
+promise that a reload restores your game. There was a Load button, and pressing
+it worked. Nobody pressed it, because nothing suggested they had to.
+
+**Why nothing caught it.** Writing a save nobody reads looks exactly like writing
+one that is read. The save file was correct. The autosave test passed. §5.49
+checked at length that an old save still *loads* — thirteen historical shapes,
+every persisted type, a corpus of legacy formats — and never once asked whether
+anything **called** the loader. Every test in this project was on one side of
+that seam or the other; none crossed it.
+
+**The fix is that boot and switching cabinets are the same act.** You sit down at
+a machine and it is how you left it. `load_machine_session` already did exactly
+this for the machine picker; `Game::new` now calls it too, so there is one path
+for arriving at a cabinet instead of two that disagreed. A save that exists and
+refuses to load now says so out loud rather than silently starting over — a
+player's hoard going quiet deserves a sentence.
+
+**Proving it needed a different kind of test.** The boot path wants a GL context,
+so the round-trip property went in `state::compat` — everything a player
+accumulates survives a write and a read, with guards that fail if the played
+session produced nothing to check. But those tests would have passed *before* the
+fix, because the fault was never in the round trip.
+
+So the real check plants a save with eleven eggs on the meter, starts the game,
+and reads back what it found. Reverting the two lines makes it report zero. It
+restores the file afterwards, because a gate that eats the save it is verifying
+would be a poor joke one iteration after §5.55.
+
 
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
@@ -3052,7 +3101,10 @@ persistence save slots + migration, `sound.play_sfx` (audio), `capture` harness
 state. Uses the template's `save_to_slot_with_version` /
 `load_from_slot_with_migration` verbatim; `migrate_save_value` handles older shapes
 (reuse the existing legacy-fallback pattern) and re-clamps `line_bet_index` to the
-current bet ladder. Autosave after each spin resolves — **but not mid-feature**:
+current bet ladder. **Starting the game loads the current cabinet's slot**, by
+the same call the machine picker makes — this section described that from the
+beginning and the code did not do it until §5.58. Autosave after each spin
+resolves — **but not mid-feature**:
 an in-progress free-spin run is not persisted, so a reload lands back in the base
 game. The grid is not saved either; load always shows a default (non-winning)
 display grid.
@@ -3415,6 +3467,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
+| An autosave nobody reads | Booting loads the cabinet through the same path as switching to it, checked by planting a save and reading it back (§5.58). The game had autosaved since it shipped and never once opened the file. |
 | A jackpot nobody could ever win | The Grand is shared by every cabinet, fed by all of them and payable on any (§5.57). Six independent pots at 625,000 spins each were decoration. |
 | Two games sharing a browser save | Web storage keys are qualified by game, with the old key adopted forward (§5.56). Five games in the catalog were writing the same `localStorage` key. |
 | A cabinet switch that refills the wallet | One bankroll travels with the player; hoards and jackpots stay with the machine (§5.55). Six separate balances made running out cost nothing. |
@@ -3477,7 +3530,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus fifty-two post-v1 systems
+## 15. Current State — v1 shipped, plus fifty-three post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
@@ -3488,11 +3541,11 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) a motion audit (§5.52) an answer for running out (§5.53) a size limit that is actually enforced (§5.54) one bankroll across six cabinets (§5.55) a web save that belongs to this game alone (§5.56) and a floor-wide Grand (§5.57). The game is
+navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) a motion audit (§5.52) an answer for running out (§5.53) a size limit that is actually enforced (§5.54) one bankroll across six cabinets (§5.55) a web save that belongs to this game alone (§5.56) a floor-wide Grand (§5.57) and a game that reads its own save (§5.58). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-495 tests pass here and 313 in `macroquad-toolkit`; `cargo fmt --check`,
+497 tests pass here and 313 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
 release build are clean. Every `.rs` file is under the 800-line limit and a gate now says so
 (§5.54); `game.rs` (740) and `ui/reels.rs` (689) are the largest. `data.rs` went

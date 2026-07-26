@@ -213,14 +213,17 @@ impl Game {
             motion: None,
         };
         game.refresh_save_state();
+        // Sit down at the cabinet as it was left (§5.58). The same call the
+        // machine picker makes, because booting and walking to a machine are
+        // the same act — and until now only the second one loaded anything, so
+        // every launch reset the hoard and three of the four pots.
+        let preferences = game.session.preferences.clone();
+        game.session = game.load_machine_session();
+        game.session.preferences = preferences;
         // The balance is the player's, not the cabinet's (§5.55). Read after the
         // session is built, because a fresh session invents a starting stack and
         // the wallet is what actually decides.
         game.restore_wallet();
-        // And the Grand belongs to the floor, so a fresh boot shows what every
-        // cabinet has been feeding rather than the seed (§5.57).
-        crate::state::floor::Floor::load(&game.data.config)
-            .lend_to(&game.data.jackpots, &mut game.session.jackpots);
         game
     }
 

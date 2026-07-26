@@ -29,6 +29,22 @@ impl Game {
     }
 
     pub fn begin_capture_scene(&mut self, scene: &str) {
+        // What the game found on the disk when it started (§5.58) — reported
+        // before the line below throws it away, which is the whole reason this
+        // arm is up here and not with the others. Prints rather than
+        // photographs: the fault was that boot never read the save at all, and
+        // no picture of a reel window shows that.
+        if scene == "boot_report" {
+            println!(
+                "boot eggs {} pot {} spins {} mini_milli {}",
+                self.session.hoard.count,
+                self.session.hoard.pot,
+                self.session.stats.total_spins,
+                self.session.jackpots.accrued_milli(0)
+            );
+            std::process::exit(0);
+        }
+
         // A fixed seed keeps every capture reproducible run to run.
         self.session = GameSession::new(&self.data, 0xD2A6_0F1E);
         self.notifications.clear();

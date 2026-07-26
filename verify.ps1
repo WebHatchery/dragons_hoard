@@ -184,6 +184,33 @@ Write-Host "The player's game" -ForegroundColor Cyan
 # scene deals a fabricated state, the loop autosaves when a spin resolves, and
 # this script runs about fifty of them — so running the verification suite
 # destroyed the player's game, every time, and nothing said so.
+# Boot has to read what the autosave wrote (§5.58). It never did: Game::new
+# built a fresh session and never looked at the disk, so every launch reset the
+# hoard meter and three of the four progressives, and nothing noticed — writing a
+# save nobody reads looks exactly like writing one that is read.
+Step 'the game remembers' {
+    $dir = Join-Path $env:LOCALAPPDATA 'dragons_hoard'
+    $slot = Join-Path $dir 'save_dragon_autosave.json'
+    if (-not (Test-Path $slot)) { return }
+    $before = Get-Content $slot -Raw
+    try {
+        $save = $before | ConvertFrom-Json
+        $save.data.hoard.count = 11
+        $save.data.hoard.pot = 2468
+        ($save | ConvertTo-Json -Depth 12) | Set-Content $slot -NoNewline
+        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_PATH', (Join-Path $env:TEMP 'verify_boot.png'))
+        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_SCENE', 'boot_report')
+        $report = & $Exe 2>&1 | Where-Object { $_ -match '^boot ' }
+        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_PATH', $null)
+        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_SCENE', $null)
+        if ($report -notmatch 'eggs 11' -or $report -notmatch 'pot 2468') {
+            throw "the game started without reading its own save`n$report"
+        }
+    } finally {
+        Set-Content $slot $before -NoNewline
+    }
+}
+
 Step 'saves are left alone' {
     $dir = Join-Path $env:LOCALAPPDATA 'dragons_hoard'
     if (-not (Test-Path $dir)) { return }
