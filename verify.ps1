@@ -133,7 +133,25 @@ Write-Host ''
 Write-Host "Dragon's Hoard - verification" -ForegroundColor Cyan
 Write-Host ''
 
+# The oldest rule in this workspace, and the only one nothing was checking.
+#
+# `AGENTS.md` and `CODE_STANDARDS.md` state an 800-line hard limit on every .rs
+# file, duplicated verbatim into every game here. There is even a script for it
+# in `rust_management`. Nothing ran it, and the shared toolkit — the crate twenty
+# games depend on — was sitting at 851 lines while this game's largest file was
+# one line under the limit (§5.54).
+function Sizes {
+    param([string]$Dir, [string]$What)
+    $over = Get-ChildItem -Path (Join-Path $Dir 'src') -Filter '*.rs' -Recurse |
+        ForEach-Object {
+            $lines = (Get-Content $_.FullName | Measure-Object -Line).Lines
+            if ($lines -gt 800) { "{0}: {1} lines" -f $_.FullName.Substring($Dir.Length + 1), $lines }
+        }
+    if ($over) { throw ($What + "`n" + ($over -join "`n")) }
+}
+
 Write-Host 'Source' -ForegroundColor Cyan
+Step 'file sizes'     { Sizes -Dir $ToolkitRoot -What 'toolkit files over the 800-line limit'; Sizes -Dir $ProjectRoot -What 'game files over the 800-line limit' }
 Step 'toolkit format' { Cargo -Dir $ToolkitRoot -What 'toolkit is unformatted' -Argv @('fmt','--','--check') }
 Step 'toolkit lint'   { Cargo -Dir $ToolkitRoot -What 'toolkit lints' -Argv @('clippy','--all-targets','--','-D','warnings') }
 Step 'toolkit tests'  { Cargo -Dir $ToolkitRoot -What 'toolkit tests failed' -Argv @('test','--quiet') }

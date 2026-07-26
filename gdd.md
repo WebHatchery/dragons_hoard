@@ -2619,6 +2619,59 @@ repeated: the game prints `Screen::ALL` and the harness reads it. A list in a
 second language is a list that goes stale, one file over from the module written
 to make that impossible.
 
+### 5.54 The limit nothing was checking, and the validator nobody had seen refuse anything (post-v1)
+
+Two findings from the same look at the code, and both are the same shape: a rule
+written down everywhere and enforced nowhere.
+
+**The 800-line limit.** It is the oldest constraint in this workspace, stated in
+`AGENTS.md` and `CODE_STANDARDS.md` and duplicated verbatim into every game here.
+There is even a script for it in `rust_management`. Nothing runs it — and the
+shared toolkit, the crate twenty games depend on, was sitting at **851 lines** in
+`ui/font.rs` while this game's largest file was **one line under** the limit.
+Adding §5.53's two config fields had taken `data.rs` to 799.
+
+So the check joins `verify.ps1`, and then had to be disproved like everything
+else: a 900-line probe file dropped into the toolkit made it fail and name the
+file, which is the only evidence that a passing run means anything.
+
+**Three splits, and each seam was already confessed in a comment.**
+
+`ui/font.rs` opened with "UI font loading, text measurement/layout/drawing, **and
+value formatting**" — two responsibilities joined only by both being vaguely
+about text. Nothing in the formatting half touches a font, a glyph or macroquad:
+a money string is the same string whether it is drawn, logged, or asserted on in
+a headless test, which is exactly why those are the functions a test reaches for.
+851 → 656, with `ui/format.rs` at 212.
+
+`data.rs` split along a seam that matters beyond the line count. What stayed
+describes *what a cabinet is* and is read every frame; what moved to `data/load.rs`
+is the one-off act of **building one and proving it makes sense**, and runs once
+per cabinet switch. 799 → 531.
+
+`music.rs` split the composition from the performance — the key, the timing and
+the notes are pure data rendered once, while the stems, the mood gains and the
+crossfade are stateful and touched every frame. 793 → 680.
+
+**And moving the validation into its own file made it obvious that nobody had
+ever watched it work.** `GameData::validate` is two hundred lines and thirty-odd
+rejections standing between a typo in a JSON file and a panic on the first spin.
+Every test that had ever run it handed it the **shipped** data, which is valid.
+So as far as this suite was concerned it was indistinguishable from `Ok(())`, and
+would have stayed that way if someone deleted its body.
+
+Thirteen mutations now take real cabinet data and break one thing each — no
+reels, a free line bet, a hoard that never fills, a bonus that is all blanks, a
+respin round that ends at once, a gamble nobody can take — and require a refusal
+that **says which**. The message is compared, not just the `Err`, because a
+validator that rejects everything with the same words is barely better than one
+that rejects nothing: the message is what tells whoever edited the file what they
+did.
+
+Disproved the same way: stubbing `validate` to return `Ok(())` fails on the first
+case. And a control test requires the pristine data to pass, without which a
+validator that rejected *everything* would sail through all thirteen.
+
 
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
@@ -3220,6 +3273,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
+| A rule written down and never checked | The 800-line limit is a gate in `verify.ps1`, and the data validator has thirteen mutations proving it refuses things (§5.54). The toolkit was already over the limit; the validator had never once been seen to reject anything. |
 | A player who runs out of credits | Breaking the hoard, or a stake from the vault, with the cost stated (§5.53). Going broke is the most likely end of a session and the answer was a reset button. |
 | A fault that only exists mid-animation | Every cabinet's spin is watched frame by frame and tiled into a filmstrip (§5.52). Both bugs a player reported were of this kind, and the harness photographed only settled frames. |
 | A sound nobody has heard | Every effect and music stem is measured for level, offset, clicks and inharmonic partials (§5.51). Timbre was written off as needing ears; the reflections that make a chime nasty are arithmetic. |
@@ -3277,7 +3331,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus forty-eight post-v1 systems
+## 15. Current State — v1 shipped, plus forty-nine post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
@@ -3288,15 +3342,16 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) a motion audit (§5.52) and an answer for running out (§5.53). The game is
+navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) a motion audit (§5.52) an answer for running out (§5.53) and a size limit that is actually enforced (§5.54). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-482 tests pass here and 309 in `macroquad-toolkit`; `cargo fmt --check`,
+485 tests pass here and 309 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
-release build are clean. Every `.rs` file is under the 800-line limit, `data.rs`
-(792) and `ui/reels.rs` (734) the largest — `state/spin.rs` dropped from 615 to
-298 when its motion moved to the toolkit.
+release build are clean. Every `.rs` file is under the 800-line limit and a gate now says so
+(§5.54); `game.rs` (740) and `ui/reels.rs` (689) are the largest. `data.rs` went
+from 799 to 531, `music.rs` from 793 to 680, and the toolkit's `ui/font.rs` from
+851 — over the limit, unnoticed — to 656.
 
 Measured RTP over 1,000,000 spins: Dragon's Hoard **0.9612** at **0.411** hit
 frequency, Frost Wyrm **0.9491** at **0.259**, Emberfall **0.9596** at **0.622**
