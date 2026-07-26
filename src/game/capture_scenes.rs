@@ -317,6 +317,24 @@ impl Game {
             // three that are dealt rather than opened reuse the scenes that
             // already knew how to reach them, which is why they can finally be
             // audited at all.
+            // A spin, watched frame by frame rather than photographed at the
+            // end (§5.52). `motion:<cabinet>` so every reel behaviour in the
+            // catalog gets looked at — cascades, shifting rows and clusters all
+            // land differently.
+            scene if scene.starts_with("motion:") => {
+                let wanted = &scene["motion:".len()..];
+                if let Some(machine) = crate::data::MACHINES
+                    .iter()
+                    .find(|machine| machine.id == wanted)
+                {
+                    self.use_machine(machine);
+                    self.session = GameSession::new(&self.data, 0xD2A6_0F1E);
+                } else {
+                    panic!("no cabinet called '{}'", wanted);
+                }
+                self.begin_motion_audit();
+                let _ = self.session.begin_spin(&self.data);
+            }
             scene if scene.starts_with("audit:") => {
                 let wanted = &scene["audit:".len()..];
                 let Some(screen) = crate::game::screens::Screen::ALL

@@ -91,7 +91,8 @@ function Audit {
     # measures a screen nobody asked about, and the findings look like faults on
     # whatever screen happened to be next (§5.50).
     foreach ($key in 'DRAGONS_HOARD_THEME', 'DRAGONS_HOARD_TEXT_SCALE', 'DRAGONS_HOARD_PSEUDO',
-                     'DRAGONS_HOARD_WINDOW_WIDTH', 'DRAGONS_HOARD_WINDOW_HEIGHT') {
+                     'DRAGONS_HOARD_WINDOW_WIDTH', 'DRAGONS_HOARD_WINDOW_HEIGHT',
+                     'DRAGONS_HOARD_CAPTURE_STRIP', 'DRAGONS_HOARD_CAPTURE_STRIP_EVERY') {
         if (-not ($Vars -and $Vars.ContainsKey($key))) {
             [Environment]::SetEnvironmentVariable($key, $null)
         }
@@ -106,7 +107,9 @@ function Audit {
     # `audit:<screen>` carries a colon, which Windows will not take in a path.
     $file = 'verify_' + ($Scene -replace '[^A-Za-z0-9_]', '_') + '.png'
     [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_PATH', (Join-Path $env:TEMP $file))
-    [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_FRAMES', '3')
+    if (-not ($Vars -and $Vars.ContainsKey('DRAGONS_HOARD_CAPTURE_FRAMES'))) {
+        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_FRAMES', '3')
+    }
     $previous = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
     try {
@@ -177,6 +180,20 @@ Step 'every screen' {
 Step 'every screen, translated' {
     foreach ($screen in $Screens) {
         Audit -Scene "audit:$screen" -Vars @{ DRAGONS_HOARD_PSEUDO = '1' } -What "the $screen screen breaks under a 40% translation"
+    }
+}
+# Motion (§5.52). A settled frame cannot show a fault that only exists while
+# something is moving, and both bugs a player reported were of exactly that kind.
+# 300 frames is past the longest spin in the catalog on purpose: a run that ends
+# before the reels stop never evaluates the invariant and reports clean, which is
+# what the first version of this did.
+Step 'motion' {
+    foreach ($cabinet in 'dragon', 'frost', 'ways', 'wyrmspire', 'avalanche', 'tidepool') {
+        Audit -Scene "motion:$cabinet" -Vars @{
+            DRAGONS_HOARD_CAPTURE_FRAMES = '300'
+            DRAGONS_HOARD_CAPTURE_STRIP = '1'
+            DRAGONS_HOARD_CAPTURE_STRIP_EVERY = '20'
+        } -What "the $cabinet reels do something wrong while they are turning"
     }
 }
 Step 'collisions and touch targets' {

@@ -2483,6 +2483,73 @@ What this still cannot say is whether the sound set is *good*. A tasteful
 arpeggio and a tasteless one pass identically. But "nobody has heard it" is no
 longer the same sentence as "nobody knows anything about it".
 
+### 5.52 What the game looks like while it is moving (post-v1)
+
+Two bugs in this game came from a player rather than from the tests, and §15
+wrote down why and left it there:
+
+> everything here is asserted about *state*, and both of these were about what is
+> on screen at a moment when the state is **mid-flight**. The capture harness
+> photographs settled frames, so it could not have caught them either.
+
+That was recorded as a lesson and nothing was built for it. Fifty-one systems of
+verification, and the one class of fault that had actually reached a player twice
+was the one nothing watched.
+
+**Both are frame-level properties, and both can be stated.** A reel that had
+landed kept drawing the previous spin's symbols until the last reel settled, and
+then the whole board snapped: *once a reel has landed, what it shows must not
+change again*. The reels were too fast to read the art: *a reel drawing detailed
+art must not travel more than half a symbol between frames*. Neither is
+observable from one state — a landed reel changing is a comparison against an
+earlier frame, and travel is a difference between two positions. That is why a
+hundred state tests and a capture harness both missed them.
+
+**The strip.** `capture::filmstrip` takes a shot every few frames, box-filters it
+down and tiles them into one image. A spin becomes something you can look at
+rather than infer, which turned out to matter within minutes.
+
+**Three times the harness lied, and each was worth more than the gate.**
+
+*The run was too short.* The first audit reported clean over 96 frames — of a
+spin that takes 129. It never once watched a reel come to rest, so the invariant
+that matters was never evaluated, and "clean" meant "unexercised". Nothing in the
+verdict said so; it was visible in the filmstrip, where the reels were still
+turning in the last tile. A run that has not seen a spin reach rest now **fails**,
+because a check that ran zero times is not a pass.
+
+*The last reel was unreachable.* With that fixed, five reels turned and only four
+were ever seen settling. The spin resolves on the same frame the final reel
+lands, so there is no frame with every reel stopped and a spinner still to ask —
+and the final reel is exactly where the original snap was most visible. The
+invariant now spans the resolution: what each reel showed as it landed is
+compared against the board at rest.
+
+*The picture ran backwards.* The strip showed settled reels first and blurred
+ones last. `get_screen_data` returns the framebuffer in OpenGL's order, origin
+bottom-left, and `export_png` flips it on the way out — so each tile came out
+upright while the tile *rows* came out reversed. It took single frames captured
+at known counts to establish that the game was right and the picture was wrong.
+A visualisation that lies is worse than none, and this one lied convincingly.
+
+**Then the proof.** Everything passing means nothing on its own, so the fix for
+the original bug was reverted — `display_grid` put back to returning the stale
+board — and the audit run again. It named it exactly:
+
+```
+frame 129: reel 0 had settled showing [0, 1, 2] and now shows [0, 4, 6]
+frame 129: reel 1 had settled showing [1, 0, 3] and now shows [5, 4, 1]
+frame 129: reel 2 had settled showing [2, 0, 1] and now shows [5, 2, 4]
+frame 129: reel 3 had settled showing [3, 0, 2] and now shows [1, 0, 3]
+```
+
+Frame 129 is the moment the last reel lands. Four already-settled reels changing
+at once *is* "the whole board snapped", and it is now something the harness finds
+before a player does.
+
+Six cabinets pass, one gate in `verify.ps1`, and the game was independently
+confirmed correct in real play while this was being written.
+
 
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
@@ -3084,6 +3151,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | Art changed by accident | All nine routines are fingerprinted (§5.26). A shared helper nudged for one shape moves four others, and nothing before this could have said so. |
 | A panel reachable only with a mouse | Every control registers with `Nav` (§5.27). The Vault Pick holds the game until a chest is picked, so a mouse-only board was a soft-lock rather than an inconvenience. |
 | Systems no player can find | Hints surface a feature once the player's own counters say they are ready for it, and retire when acted on (§5.28). The alternative was a tutorial nobody reads for a game that grows every iteration. |
+| A fault that only exists mid-animation | Every cabinet's spin is watched frame by frame and tiled into a filmstrip (§5.52). Both bugs a player reported were of this kind, and the harness photographed only settled frames. |
 | A sound nobody has heard | Every effect and music stem is measured for level, offset, clicks and inharmonic partials (§5.51). Timbre was written off as needing ears; the reflections that make a chime nasty are arithmetic. |
 | A screen nobody ever measured | Every screen that holds the reels is in `Screen::ALL`, and `any_overlay_open` is derived from it (§5.50). Three screens went twelve iterations unaudited because the list of them was a note rather than the definition. |
 | A save that a later build cannot read | Every persisted type must load from `{}` and ignore fields it has never heard of (§5.49). The rule was stated a dozen times and enforced by an attribute nobody checked. |
@@ -3139,7 +3207,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus forty-six post-v1 systems
+## 15. Current State — v1 shipped, plus forty-seven post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple
@@ -3150,11 +3218,11 @@ profiles (§5.17), the Ledger (§5.18), the synthesis promotion (§5.19) and
 shifting reels (§5.20), refining free spins (§5.21), buy-tier profiles (§5.22)
 the reel-motion promotion (§5.23), colour legibility (§5.24), testable art (§5.25) and
 the rasteriser promotion (§5.26) and keyboard
-navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) and an audio audit (§5.51). The game is
+navigation (§5.27), hints (§5.28), generated rules (§5.29), session limits (§5.30), music (§5.31), the session graph (§5.32) and the conservation harness (§5.33) the naming layer (§5.34) a cluster-pays cabinet (§5.35) its own symbol set (§5.36) a layout audit (§5.37) a text-size setting (§5.38) pseudolocalisation (§5.39) a contrast gate (§5.40) shared symbol sets (§5.41) a theme per cabinet (§5.42) a room to match (§5.43) a score of its own (§5.44) touch input (§5.45) a responsive frame (§5.46) a collision check (§5.47) one command to run every gate (§5.48) a save-compatibility gate (§5.49) a screen registry every audit enumerates (§5.50) an audio audit (§5.51) and a motion audit (§5.52). The game is
 published and serving at `http://127.0.0.1/games/dragons_hoard/`, with a Project
 Roost deployment recorded and a catalog entry created.
 
-469 tests pass here and 309 in `macroquad-toolkit`; `cargo fmt --check`,
+473 tests pass here and 309 in `macroquad-toolkit`; `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings` and the `wasm32-unknown-unknown`
 release build are clean. Every `.rs` file is under the 800-line limit, `data.rs`
 (792) and `ui/reels.rs` (734) the largest — `state/spin.rs` dropped from 615 to
@@ -3200,16 +3268,20 @@ doesn't stay locked on the result unless I won". `display_grid()` returns the
 decided grid while a spin is in flight, and a regression test steps a spin to a
 partial landing and asserts it.
 
-That neither had a test is the lesson: everything here is asserted about *state*,
-and both of these were about what is on screen at a moment when the state is
-mid-flight. The capture harness photographs settled frames, so it could not have
-caught them either.
+That neither had a test was the lesson: everything here is asserted about
+*state*, and both of these were about what is on screen at a moment when the
+state is mid-flight. The capture harness photographs settled frames, so it could
+not have caught them either. **§5.52 closed this**: every cabinet's spin is now
+watched frame by frame, and reverting the fix makes the audit name the bug at the
+exact frame the board used to snap.
 
-**Partly verified: how the sound actually sounds.** §5.19 built a waveform panel
-and the mix has now been *looked* at, which caught three effects quieter than a
-reel stop. What that cannot tell you is timbre — whether a triangle wave at
-1568Hz is a pleasant chime or a nasty one — and **nobody has still heard any of
-it**. Audio playback under WASM in a browser also remains untested.
+**Measured, though still unheard: how the sound actually sounds.** §5.19 built a
+waveform panel and the mix was *looked* at. §5.51 went further and measured it —
+the timbre question this section used to call unanswerable turned out to be
+arithmetic, and three effects were carrying inharmonic partials, the button blip
+only 21dB under its own note. The oscillators are band-limited now and the set is
+balanced against a stated order. **Nobody has still heard it**, and audio playback
+under WASM in a browser remains untested.
 
 ### Remaining work
 
@@ -3243,5 +3315,5 @@ accruing. That closes the gap this section previously listed.
   smaller and better tested than it found it. A real cabinet would show each feature's
   volatility or a sample of what it pays; the price alone tells a player what it
   costs but not what to expect for it.
-- **Listen to the effects.** The waveform panel closed the part of this that is
-  visible; timbre is not, and the browser build's audio is still untested.
+- **Listen to the effects.** The waveform panel closed the visible part and
+  §5.51 the measurable part; what is left is a human ear and a browser.

@@ -2,6 +2,7 @@
 
 mod capture_scenes;
 mod feedback;
+mod motion;
 mod outcomes;
 mod persistence;
 mod screens;
@@ -68,6 +69,10 @@ pub struct Game {
     /// What this player has actually seen, per cabinet (§5.18).
     ledger: crate::state::ledger::Ledger,
     save_exists: bool,
+    /// Watching what is on screen while it moves (§5.52). `None` in a real
+    /// session — this is the capture harness's, and carrying it otherwise would
+    /// mean every frame of every game recording a board it never reads.
+    motion: Option<motion::MotionAudit>,
 }
 
 impl Game {
@@ -201,9 +206,38 @@ impl Game {
             achievements,
             ledger,
             save_exists: false,
+            motion: None,
         };
         game.refresh_save_state();
         game
+    }
+
+    /// Look at the frame just drawn (§5.52). A no-op unless a capture scene
+    /// asked for the audit, so the interactive loop pays one `Option` check.
+    pub fn observe_motion(&mut self) {
+        if let Some(audit) = self.motion.as_mut() {
+            audit.observe(&self.session);
+        }
+    }
+
+    /// Print what the run saw and fail the process if anything was wrong.
+    ///
+    /// The same shape as the layout audit: findings go to stdout and the exit
+    /// code is the verdict, so `verify.ps1` needs no special case for it.
+    pub fn finish_motion_audit(&mut self) {
+        let Some(audit) = self.motion.as_mut() else {
+            return;
+        };
+        audit.finish();
+        println!("{}", audit.report());
+        if !audit.faults().is_empty() {
+            std::process::exit(1);
+        }
+    }
+
+    /// Start watching. Called by the `motion:` capture scenes.
+    pub(super) fn begin_motion_audit(&mut self) {
+        self.motion = Some(motion::MotionAudit::new(self.data.config.reel_count));
     }
 
     pub fn update(&mut self, dt: f32) {
