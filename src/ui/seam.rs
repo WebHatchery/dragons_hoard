@@ -93,11 +93,32 @@ fn draw_choice(
         plate.y + 58.0,
         TextStyle::new(16.0, palette::text_dim()).params(),
     );
+    // What the board is worth **right now**, which is the one fact the decision
+    // turns on and the one the player had to work out for themselves (§5.86).
+    //
+    // A gilding is a multiple of exactly this figure and nothing else, so a
+    // board paying nothing makes it worth nothing — and the game used to leave
+    // that sitting in a win line under the reels for the player to notice. It is
+    // not a hint or an odds display: it is a number the game already knows and
+    // already paid, stated where the decision is made.
+    let baseline = round.baseline();
     draw_ui_text_ex(
-        "Nothing moves until you choose.",
+        &if baseline > 0 {
+            format!("The board is paying {}", naming::credits(baseline))
+        } else {
+            "The board is paying nothing".to_owned()
+        },
         plate.x + 18.0,
         plate.y + 82.0,
-        TextStyle::new(14.0, palette::text()).params(),
+        TextStyle::new(
+            15.0,
+            if baseline > 0 {
+                palette::gold()
+            } else {
+                palette::ember()
+            },
+        )
+        .params(),
     );
 
     // A column, not a row: a row of three inside 410 pixels gives each of them
@@ -126,7 +147,7 @@ fn draw_choice(
         // cabinet's fiction, and the fiction does not say whether a gilding is
         // worth taking on a board that has not won anything.
         draw_ui_text_ex(
-            promise(rite),
+            &promise(data, round, rite),
             button.x + 4.0,
             button.bottom() + 20.0,
             TextStyle::new(14.0, palette::text_dim()).params(),
@@ -134,12 +155,33 @@ fn draw_choice(
     }
 }
 
-/// One line saying what a rite will actually do.
-fn promise(rite: &RiteDef) -> &'static str {
+/// One line saying what a rite will actually do, and for the one rite that is
+/// **fully decided by the board already on screen**, what it is worth (§5.86).
+///
+/// Only the gilding gets a figure, and that is not a favour to it — it is the
+/// only one that has a figure. A widening rolls for every cell it touches and an
+/// enrichment depends on what the climb happens to line up; neither has a value
+/// until it has run. A gilding multiplies a number the player is looking at, so
+/// quoting it hides nothing that was not already there. The alternative is a
+/// panel that keeps a deterministic answer to itself, which is the sort of thing
+/// this cabinet spends §5.74 proving it does not do.
+fn promise(data: &GameData, round: &SeamRound, rite: &RiteDef) -> String {
     match rite.kind {
-        RiteKind::Widen { .. } => "takes the cells around it",
-        RiteKind::Enrich { .. } => "climbs the paytable",
-        RiteKind::Gild { .. } => "multiplies what the board already pays",
+        RiteKind::Widen { .. } => "takes the cells around it".to_owned(),
+        RiteKind::Enrich { .. } => "climbs the paytable".to_owned(),
+        RiteKind::Gild { multiply_permille } => {
+            // Every beat it has left, compounded — the multiplier the round will
+            // actually reach. Asked of the round rather than worked out here, so
+            // the figure carries the ceiling and the free-spin multiplier.
+            let mut multiplier = 1_000i64;
+            for _ in 0..round.steps_left() {
+                multiplier = multiplier * multiply_permille.max(1_000) / 1_000;
+            }
+            match round.worth_at(data, multiplier) {
+                0 => "pays nothing on this board".to_owned(),
+                worth => format!("pays {} on this board", naming::credits(worth)),
+            }
+        }
     }
 }
 

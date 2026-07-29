@@ -4272,6 +4272,70 @@ knob, and making the seam bigger there would cost the catalog its only Low
 machine. It is named here rather than quietly left.
 
 
+### 5.86 The return was only true of a player who did not think (post-v1)
+
+Every RTP figure in this document comes from the sim, and the sim draws its rite
+by weight. §5.81 noticed half of that and tightened the gate from "the weighted
+mean" to "**each rite on its own**, because a player who has worked out which is
+best will take it every time".
+
+Both are statements about a **fixed** policy, and a player does not have one. A
+player looks at the board.
+
+**Measured.** The rite-parity harness already runs all three rites over six
+hundred real seams per cabinet from the same stream, so taking the maximum of
+each triple gives the return of somebody who never picks wrong. It beats the
+best fixed rite by 0.4% to 41%, and against the weighted draw the sim actually
+measures it is worth **+0.0027 to +0.0129 of turnover**:
+
+| | drawn | choosing well | perfect |
+|---|---|---|---|
+| Dragon's Hoard | 0.9812 | +0.0057 | **0.9869** |
+| Frost Wyrm | 0.9578 | +0.0129 | 0.9708 |
+| Emberfall | 0.9804 | +0.0035 | **0.9839** |
+| Wyrmspire | 0.9647 | +0.0053 | 0.9701 |
+| Avalanche | 0.9596 | +0.0097 | 0.9693 |
+| Tidepool | 0.9798 | +0.0027 | **0.9826** |
+
+Three cabinets outside 0.95 ± 0.03 — and the published figure for all six was
+the left-hand column. **The stated return was only true of a player who did not
+think about the choice.**
+
+Three seam configs came down (Dragon's Hoard, Emberfall and Tidepool lost a
+point or two of ceiling and spread) and the catalog now holds **0.962 to 0.974
+under perfect play**, with the drawn figure well under it. The new gate,
+`the_return_holds_for_a_player_who_never_picks_wrong`, is the first in this game
+to be about the best play rather than the average one.
+
+**And then the panel was made worth thinking about.** Having priced a player who
+chooses well, the game may as well let them. The choice panel now says **what the
+board is currently paying** — the single fact the decision turns on, and a
+number the game already knew and already paid out. It was sitting in a win line
+under the reels for the player to notice.
+
+The gilding also quotes what it is worth, exactly. That is not a favour to one
+rite; it is the only one that *has* a figure. A widening rolls for every cell it
+touches and an enrichment depends on what the climb lines up with — neither has
+a value until it has run. A gilding multiplies a number already on screen, so
+quoting it hides nothing that was not already there, and a panel keeping a
+deterministic answer to itself is exactly what §5.74 spends a whole subsystem
+proving this cabinet does not do.
+
+The quote is asked of the round rather than computed in the draw call, so it
+carries the ceiling and the free-spin multiplier — the two things a hand-rolled
+version would forget, and would forget silently. On the capture it reads "the
+board is paying 580" and "GILD — pays 400 on this board", where 400 is the
+ceiling rather than the 1,096 the raw multiplier would give. Quoting the
+uncapped figure would have been a worse lie than quoting nothing.
+
+**What is not done, plainly.** Widen and Deepen are still described rather than
+priced, which is correct — but it means the panel gives an exact number for one
+option and adjectives for two, and a player may read that as the gilding being
+the recommended one. The honest fix would be an expected value for the other
+two, which the game can compute and which would turn a decision into a lookup.
+That is a trade this section declines rather than solves.
+
+
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
 - Winning lines: pulse highlight (`blink`/`pulse`), floating win amounts
@@ -4961,7 +5025,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus eighty-five post-v1 systems
+## 15. Current State — v1 shipped, plus eighty-six post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple

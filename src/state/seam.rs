@@ -203,6 +203,27 @@ impl SeamRound {
         self.steps_left
     }
 
+    /// What the board was worth when the reels stopped.
+    ///
+    /// The one figure the choice turns on, so the panel can state it (§5.86).
+    pub fn baseline(&self) -> i64 {
+        self.baseline
+    }
+
+    /// What this round would pay if it ended at `multiplier` permille.
+    ///
+    /// For the choice panel, which can quote a gilding exactly because a gilding
+    /// is decided entirely by the board already on screen. Routed through the
+    /// round rather than recomputed in the UI so the quote carries the ceiling
+    /// and the free-spin multiplier — the two things a hand-rolled version in a
+    /// draw call would forget, and would forget silently.
+    pub fn worth_at(&self, data: &GameData, multiplier: i64) -> i64 {
+        let board = evaluate(data, &self.grid, &self.ctx).win_credits;
+        (board * multiplier / PLAIN - self.baseline)
+            .max(0)
+            .min(self.ceiling)
+    }
+
     /// What the round would pay if it ended now, before the ceiling.
     ///
     /// `board x multiplier - baseline`: the one formula, so the running total on

@@ -8,7 +8,7 @@
       "name": "Widen",
       "weight": 4,
       "rite": "widen",
-      "spread_permille": 300
+      "spread_permille": 190
     },
     {
       "id": "enrich",

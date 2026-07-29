@@ -1,14 +1,14 @@
 {
   "trigger_count": 6,
   "steps": 2,
-  "max_multiple": 3,
+  "max_multiple": 2,
   "rites": [
     {
       "id": "widen",
       "name": "Widen",
       "weight": 4,
       "rite": "widen",
-      "spread_permille": 450
+      "spread_permille": 350
     },
     {
       "id": "enrich",
@@ -22,7 +22,7 @@
       "name": "Gild",
       "weight": 3,
       "rite": "gild",
-      "multiply_permille": 2100
+      "multiply_permille": 1700
     }
   ]
 }
