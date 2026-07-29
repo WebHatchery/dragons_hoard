@@ -12,14 +12,15 @@
 //! board is worth so far. There is nothing to click; like the respin round
 //! (§5.12) this module returns no `UiAction` at all.
 
-use crate::data::GameData;
+use crate::data::{GameData, RiteDef, RiteKind};
 use crate::state::seam::SeamRound;
 use crate::ui::naming;
-use crate::ui::{palette, reels};
+use crate::ui::nav::Nav;
+use crate::ui::{palette, reels, virtual_button, UiAction};
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::{
-    draw_surface, draw_text_centered_in_box_ex, draw_ui_text_ex, RectExt, Region, SurfaceStyle,
-    TextStyle,
+    draw_surface, draw_text_centered_in_box_ex, draw_ui_text_ex, ButtonTone, Pointer, RectExt,
+    Region, SurfaceStyle, TextStyle,
 };
 
 /// The banner over the reel window. Opaque for the same reason the Wrath's is —
@@ -28,9 +29,118 @@ const BANNER: Color = Color::new(0.06, 0.10, 0.04, 1.0);
 /// How long a cell that just turned flashes, in `ui_time` seconds.
 const FLASH: f32 = 0.5;
 
-pub fn draw(data: &GameData, round: &SeamRound, ui_time: f32) {
+#[allow(clippy::too_many_arguments)]
+pub fn draw(
+    data: &GameData,
+    round: &SeamRound,
+    choice: &[RiteDef],
+    frame: Rect,
+    pointer: Pointer,
+    ui_time: f32,
+    actions: &mut Vec<UiAction>,
+    nav: &mut Nav,
+) {
     mark_cells(data, round, ui_time);
-    draw_banner(data, round);
+    if choice.is_empty() {
+        draw_banner(data, round);
+    } else {
+        draw_choice(data, round, choice, frame, pointer, actions, nav);
+    }
+}
+
+/// The decision, drawn over the **wager column** rather than over the board.
+///
+/// The board is the evidence. A gilding pays a multiple of what the grid is
+/// already worth and nothing at all on a grid that won nothing, so a panel that
+/// covered the symbols would be asking for a decision with the evidence hidden.
+/// The wager controls are the one large area of the screen that is inert while a
+/// seam waits — the bet cannot change and the reels will not turn — so the
+/// choice takes their column and the whole grid stays in view.
+///
+/// It also buys the room the choice needs. Three buttons 62 logical pixels tall
+/// clear 44 CSS pixels on a 960-wide canvas (§5.78), and nothing shorter does;
+/// the strip above the reels that this was first drawn in is 94 pixels top to
+/// bottom and could not hold one of them, let alone three and a heading.
+fn draw_choice(
+    data: &GameData,
+    round: &SeamRound,
+    choice: &[RiteDef],
+    frame: Rect,
+    pointer: Pointer,
+    actions: &mut Vec<UiAction>,
+    nav: &mut Nav,
+) {
+    let plate = frame;
+    let _region = Region::on(plate, BANNER);
+    draw_surface(
+        plate,
+        &SurfaceStyle::new(BANNER).with_border(2.0, palette::gold_bright()),
+    );
+
+    draw_ui_text_ex(
+        "THE SEAM WAITS",
+        plate.x + 18.0,
+        plate.y + 34.0,
+        TextStyle::new(23.0, palette::gold_bright()).params(),
+    );
+    draw_ui_text_ex(
+        &format!(
+            "{} cells of {}",
+            round.cells().len(),
+            data.symbols.get(round.symbol()).name.to_lowercase()
+        ),
+        plate.x + 18.0,
+        plate.y + 58.0,
+        TextStyle::new(16.0, palette::text_dim()).params(),
+    );
+    draw_ui_text_ex(
+        "Nothing moves until you choose.",
+        plate.x + 18.0,
+        plate.y + 82.0,
+        TextStyle::new(14.0, palette::text()).params(),
+    );
+
+    // A column, not a row: a row of three inside 410 pixels gives each of them
+    // 126, and a button that cannot hold its own name is not a choice either.
+    const BUTTON: f32 = 62.0;
+    const GAP: f32 = 46.0;
+    let top = plate.y + 108.0;
+    for (index, rite) in choice.iter().enumerate() {
+        let button = Rect::new(
+            plate.x + 18.0,
+            top + index as f32 * (BUTTON + GAP),
+            plate.w - 36.0,
+            BUTTON,
+        );
+        if virtual_button(
+            button,
+            &rite.name.to_uppercase(),
+            true,
+            ButtonTone::Primary,
+            pointer,
+            nav,
+        ) {
+            actions.push(UiAction::ChooseRite(index));
+        }
+        // What it does, under the button rather than on it: the names are the
+        // cabinet's fiction, and the fiction does not say whether a gilding is
+        // worth taking on a board that has not won anything.
+        draw_ui_text_ex(
+            promise(rite),
+            button.x + 4.0,
+            button.bottom() + 20.0,
+            TextStyle::new(14.0, palette::text_dim()).params(),
+        );
+    }
+}
+
+/// One line saying what a rite will actually do.
+fn promise(rite: &RiteDef) -> &'static str {
+    match rite.kind {
+        RiteKind::Widen { .. } => "takes the cells around it",
+        RiteKind::Enrich { .. } => "climbs the paytable",
+        RiteKind::Gild { .. } => "multiplies what the board already pays",
+    }
 }
 
 /// Ring the cells the seam holds, and flare the ones this beat took.
@@ -101,7 +211,9 @@ fn draw_banner(data: &GameData, round: &SeamRound) {
     );
 
     draw_ui_text_ex(
-        &round.rite().name.to_uppercase(),
+        &round
+            .rite()
+            .map_or_else(|| "THE SEAM".to_owned(), |rite| rite.name.to_uppercase()),
         banner.x + 16.0,
         banner.y + 24.0,
         TextStyle::new(21.0, palette::gold_bright()).params(),
@@ -119,13 +231,22 @@ fn draw_banner(data: &GameData, round: &SeamRound) {
         TextStyle::new(15.0, palette::text_dim()).params(),
     );
 
+    // A gilding changes no symbols, so "moves left" is the only thing on screen
+    // that would tell the player anything is happening — the multiplier is what
+    // is actually moving, and it takes the plate.
+    let multiplier = round.multiplier_permille();
+    let label = if multiplier > 1_000 {
+        format!("x{}", multiplier as f64 / 1_000.0)
+    } else {
+        format!("{} LEFT", round.steps_left())
+    };
     let moves = Rect::new(banner.right() - 210.0, banner.y + 8.0, 96.0, 40.0);
     draw_surface(
         moves,
         &SurfaceStyle::new(Color::new(0.08, 0.07, 0.10, 1.0)).with_border(1.0, palette::gold_dim()),
     );
     draw_text_centered_in_box_ex(
-        &format!("{} LEFT", round.steps_left()),
+        &label,
         moves.x,
         moves.y,
         moves.w,

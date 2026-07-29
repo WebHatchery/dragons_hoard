@@ -3946,6 +3946,80 @@ banner shows a running total which is zero for most of a widening, because the
 cells it has taken have not finished making a line yet.
 
 
+### 5.81 The mini-game becomes a decision (post-v1)
+
+§5.80 built a mini-game and then played it for you. A seam opened, a rite was
+drawn by weight, the board worked itself out over two beats and paid. Every
+figure in that section is honest and the feature is still an animation: the
+player watches.
+
+**The seam now opens unchosen.** The board freezes, the wager column is replaced
+by the rites the cabinet offers, and nothing moves until one is pressed. That is
+the Vault Pick's shape (§5.10) bolted onto the Dragon's Wrath's tail (§5.12) —
+waits on a player to start, runs itself to the end.
+
+**A third rite, so the choice has a shape.** Widening takes the cells around the
+seam and deepening climbs the paytable; both change symbols, and on most boards
+one is simply a slower version of the other. **Gilding** changes nothing at all
+and multiplies what the board is *already* paying. That is what makes the panel
+a decision rather than a preference: a gilding on a grid that just paid five
+copper on a line is the best rite on the board, and on a grid that paid nothing
+it is worth exactly zero. The evidence is the board, which is why the choice is
+drawn over the wager column and never over the reels.
+
+**One formula, three rites.** `board x multiplier - baseline`, floored at zero
+and capped. The multiplier is 1 for the two rites that move symbols and is what
+gilding raises; the baseline is what the board was worth when the reels stopped,
+because the spin has already paid for that. Written as one expression rather
+than a branch per rite: a second payment path is a second place for the ceiling,
+the floor and the free-spin multiplier to be got wrong.
+
+**Choice breaks the old measurement, and the fix is the interesting part.** When
+the rite was drawn by weight, the weighted mean in `seam.json` *was* the return.
+A player picks — and a player who has worked out which rite is best will take it
+every time. So the figure that has to be in band is not the mean of the three,
+it is **each of them**, measured by rebuilding the cabinet with one rite in it,
+which is exactly the game that player is playing. All eighteen combinations are
+now in the 0.005–0.035 band, and the catalog holds 0.961 to 0.979 at a million
+spins per machine.
+
+The other half is that no rite may *dominate*. §5.64 could make the free-spin
+shapes exactly equal by construction — spins times multiplier is a product, and
+a validator can check it. Rites cannot: a gilding is worth a multiple of a board
+that might be worth nothing, and no arithmetic makes that identical to taking
+four more cells. So it is measured instead, on six hundred real seams per
+cabinet with **every rite run on the same boards from the same stream**, and
+what is asserted is that the best is not worth more than twice the worst.
+
+That harness earned its place immediately. Its first run said Deepen was worth
+3.5x total bet per seam on Dragon's Hoard against Widen's 0.99 — a three-and-a-
+half-to-one right answer that nobody would have found by reading the JSON. It
+also found the thing worth writing down twice: **gilding is structurally
+worthless on a cascading cabinet.** Avalanche and Tidepool clear their winners
+before the board comes to rest, so the grid a seam opens on has already paid out
+and there is nothing left to multiply — 0.14x and 0.00x respectively. Neither
+cabinet offers the rite now, and that is data rather than a special case in the
+code.
+
+**What it cost elsewhere.** A third thing the game *deals* and holds the reels
+behind meant three harnesses had to learn to answer it: the conservation soak
+now picks a rite (rotating by round, so a long run drives all three rather than
+proving one of them conserves credit), the random-play harness (§5.76) can press
+the panel, and the cascade parity test had to start resolving features **inside**
+its frame loop rather than after it — a board left open freezes the payout
+count-up, and the next spin is then refused as busy. That test had been one
+unlucky bonus board away from this failure since it was written; a third holding
+feature is what made it likely instead of rare.
+
+**What is not done, plainly.** The choice is base-game only — during free spins
+and an autospin run the rite is still drawn by weight, for the reason §5.16
+gives for the gamble: a round that waits on a decision either stalls a chain
+that is spinning itself or gets run straight over. That is defensible and it is
+still a player being shown a feature rather than handed one. There is no timeout
+either: a seam waits forever, exactly as an open Vault Pick does. And the seam
+still has no sound of its own.
+
+
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
 - Winning lines: pulse highlight (`blink`/`pulse`), floating win amounts
@@ -4635,7 +4709,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus eighty post-v1 systems
+## 15. Current State — v1 shipped, plus eighty-one post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple

@@ -271,6 +271,7 @@ pub fn rules(data: &GameData) -> Vec<Rule> {
                 RiteKind::Enrich { rungs } => {
                     format!("climbs {} up the paytable", places(rungs))
                 }
+                RiteKind::Gild { .. } => "multiplies what the board already pays".to_owned(),
             })
             .collect::<Vec<_>>()
             .join(" or ");

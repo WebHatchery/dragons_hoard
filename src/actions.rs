@@ -49,6 +49,8 @@ pub enum ActionOutcome {
     SessionOverDismissed,
     /// A free-spin run reshaped, and the spins it now holds (§5.64).
     FreeSpinShapeChosen(u32),
+    /// A rite was taken for an open seam, by name (§5.81).
+    RiteChosen(String),
     RulesToggled,
     LimitsToggled,
     HistoryToggled,
@@ -126,6 +128,12 @@ pub fn apply(
         UiAction::ChooseFreeSpinShape(index) => match session.choose_free_spin_shape(index, data) {
             Some(spins) => ActionOutcome::FreeSpinShapeChosen(spins),
             // The run has started since the frame that drew the button.
+            None => ActionOutcome::Ignored,
+        },
+        UiAction::ChooseRite(index) => match session.choose_rite(index) {
+            Some(name) => ActionOutcome::RiteChosen(name),
+            // The rite was settled between the frame that drew the button and
+            // the press — by the other button, or by a run starting.
             None => ActionOutcome::Ignored,
         },
         UiAction::ToggleRules => ActionOutcome::RulesToggled,

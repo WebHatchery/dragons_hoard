@@ -118,20 +118,25 @@ fn the_animated_and_headless_paths_agree_on_a_cascading_machine() {
         animated.begin_spin(&data).unwrap();
         for _ in 0..12_000 {
             animated.update_spin(&data, 1.0 / 60.0);
-            if animated.phase.is_idle()
-                && animated.bonus.is_none()
-                && animated.holdspin.is_none()
-                && animated.seam.is_none()
-            {
+            // Every feature the settle opened, resolved in the order `spin()`
+            // resolves them — and *inside* the loop rather than after it.
+            //
+            // Both halves matter. The order is the RNG order: a seam played
+            // before the board it landed beside would take a different draw
+            // than the headless side did, and the two would rightly disagree.
+            // Inside the loop is because each of these holds `update_spin`
+            // outright (§8.2.1), so a board left open until afterwards freezes
+            // the payout count-up and the next spin is refused as busy — which
+            // is what this test started doing the moment a third holding
+            // feature made that arrangement likely rather than rare.
+            animated.auto_play_bonus(&data);
+            animated.auto_play_holdspin(&data);
+            animated.auto_play_seam(&data);
+            if animated.phase.is_idle() {
                 break;
             }
             animated.celebrations.clear();
         }
-        // `spin()` resolves any feature the grid opened, so the animated side
-        // has to as well or the two are not comparing the same event.
-        animated.auto_play_bonus(&data);
-        animated.auto_play_holdspin(&data);
-        animated.auto_play_seam(&data);
 
         assert_eq!(
             animated.grid, headless.grid,

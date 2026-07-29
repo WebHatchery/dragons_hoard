@@ -14,7 +14,7 @@ use super::celebration::CelebrationKind;
 use super::featurebuy::{self, BuyBlocked, BuyResult};
 use super::gamble::{GambleBlocked, GambleFlip, GambleRound, Scale};
 use super::holdspin::{self, HoldSpinOutcome, HoldSpinRound};
-use super::seam::{self, SeamOutcome};
+use super::seam::{self, SeamOutcome, SeamRound};
 use super::spin::SpinEvent;
 use super::{FreeSpinState, GameSession, HOLD_SPIN_BEAT, SEAM_BEAT};
 use crate::data::{FeatureAward, GameData};
@@ -119,10 +119,52 @@ impl GameSession {
         Some(outcome)
     }
 
+    /// The rites a seam is waiting on the player to pick between (§5.81).
+    ///
+    /// Empty during free spins and an autospin run, which is what turns the
+    /// choice off there rather than a flag somewhere else deciding it. The
+    /// caller that draws instead reads the same predicate, so the two cannot
+    /// disagree about whether anyone was asked.
+    pub fn seam_choice(&self) -> &[crate::data::RiteDef] {
+        if self.in_free_spins() || self.autospin.is_some() {
+            return &[];
+        }
+        self.seam.as_ref().map_or(&[], SeamRound::offered)
+    }
+
+    /// Take one of the rites on offer. Returns its name, or `None` for a stale
+    /// press from a frame whose choice has already been made.
+    pub fn choose_rite(&mut self, index: usize) -> Option<String> {
+        if self.seam_choice().is_empty() {
+            return None;
+        }
+        let round = self.seam.as_mut()?;
+        round
+            .choose(index)
+            .then(|| round.rite().map(|rite| rite.name.clone()))
+            .flatten()
+    }
+
     /// Advance an open seam on its beat, one move per tick of the timer
-    /// (§5.80). Like the respin round it is decided as it goes: there is
-    /// nothing for the player to do, so there is nothing to hide from them.
+    /// (§5.80). Once the rite is settled it is decided as it goes: there is
+    /// nothing left for the player to do, so there is nothing to hide from them.
     pub(super) fn tick_seam(&mut self, data: &GameData, dt: f32) -> Option<SpinEvent> {
+        // Nobody to ask — a chain that spins itself or a run the player walked
+        // away from — so the rite is drawn and the round gets on with it
+        // (§5.81). Done before the beat rather than after, so the first tick
+        // after a draw is a move rather than a wasted one.
+        if self.seam_choice().is_empty() {
+            let rng = &mut self.rng;
+            if let Some(round) = self.seam.as_mut() {
+                round.draw_rite(rng);
+            }
+        } else {
+            // The board is frozen on a decision. The beat does not run and the
+            // timer does not advance, so the first move lands a full beat after
+            // the press rather than instantly.
+            return None;
+        }
+
         if !self.seam_beat.tick(dt) {
             return None;
         }

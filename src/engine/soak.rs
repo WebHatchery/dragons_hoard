@@ -221,6 +221,16 @@ fn run_round(data: &GameData, session: &mut GameSession, round: u64) -> Result<u
             continue;
         }
 
+        // An open seam waits on a rite the same way the board waits on a chest
+        // (§5.81). Rotated by round rather than fixed at zero, so a long soak
+        // drives every rite the cabinet offers instead of proving one of them
+        // conserves credit and assuming the rest do.
+        let rites = session.seam_choice().len();
+        if rites > 0 {
+            session.choose_rite(round as usize % rites);
+            continue;
+        }
+
         session.update_spin(data, STEP);
 
         // A free spin costs nothing and belongs to the round that bought it, so

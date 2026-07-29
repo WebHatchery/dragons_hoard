@@ -5,14 +5,14 @@
   "rites": [
     {
       "id": "widen",
-      "name": "The Seam Widens",
-      "weight": 5,
+      "name": "Widen",
+      "weight": 4,
       "rite": "widen",
       "spread_permille": 150
     },
     {
       "id": "enrich",
-      "name": "The Seam Deepens",
+      "name": "Deepen",
       "weight": 3,
       "rite": "enrich",
       "rungs": 1

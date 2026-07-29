@@ -224,21 +224,32 @@ pub fn enrich(data: &GameData, grid: &mut Grid, seam: &mut Seam, rungs: usize) -
     seam.cells.clone()
 }
 
-/// Draw a rite, weighted. `None` only when the cabinet declares none.
-pub fn draw_rite<'a>(config: &'a SeamConfig, rng: &mut SeededRng) -> Option<&'a RiteDef> {
-    let total: u32 = config.rites.iter().map(|rite| rite.weight).sum();
+/// Gild the seam: change nothing, and report the cells that were stamped.
+///
+/// A function with no effect on the grid looks like a mistake until you know
+/// what it is for. The round's payment is `board x multiplier - baseline`, and
+/// gilding raises the multiplier; the cells come back so the beat has something
+/// to flash and so the round can tell a rite that did something from one that
+/// has run out of board (§5.81).
+pub fn gild(seam: &Seam) -> Vec<usize> {
+    seam.cells.clone()
+}
+
+/// Draw a rite, weighted. `None` only when the list is empty.
+pub fn draw_weighted<'a>(rites: &'a [RiteDef], rng: &mut SeededRng) -> Option<&'a RiteDef> {
+    let total: u32 = rites.iter().map(|rite| rite.weight).sum();
     if total == 0 {
-        return config.rites.first();
+        return rites.first();
     }
 
     let mut roll = rng.below(total as usize) as u32;
-    for rite in &config.rites {
+    for rite in rites {
         if roll < rite.weight {
             return Some(rite);
         }
         roll -= rite.weight;
     }
-    config.rites.last()
+    rites.last()
 }
 
 #[cfg(test)]
@@ -387,7 +398,7 @@ mod tests {
         let mut rng = SeededRng::new(19);
         let mut counts = std::collections::HashMap::new();
         for _ in 0..20_000 {
-            let rite = draw_rite(&data.seam, &mut rng).unwrap();
+            let rite = draw_weighted(&data.seam.rites, &mut rng).unwrap();
             *counts.entry(rite.id.clone()).or_insert(0usize) += 1;
         }
 

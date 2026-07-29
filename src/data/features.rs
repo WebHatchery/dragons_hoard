@@ -77,8 +77,9 @@ pub struct RiteDef {
 
 /// What a rite does to the board on each of its beats.
 ///
-/// The two the feature was built around: a seam either takes more of the grid,
-/// or it becomes worth more where it already is.
+/// Three ways for a seam to be worth more than it is: take more of the board,
+/// become a richer symbol where it already is, or leave the board exactly as it
+/// stands and multiply what it is already paying.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(tag = "rite", rename_all = "snake_case")]
 pub enum RiteKind {
@@ -88,6 +89,13 @@ pub enum RiteKind {
     /// The seam deepens: every cell of it climbs this many rungs of the pay
     /// ladder at once, so what is already there is worth more.
     Enrich { rungs: usize },
+    /// The seam is gilded: nothing on the board moves, and what it is already
+    /// worth is multiplied by this much per beat, in permille. 2000 is a double.
+    ///
+    /// The only rite that pays nothing on a board that was not already paying —
+    /// which is exactly what makes choosing between the three a decision rather
+    /// than a preference (§5.81).
+    Gild { multiply_permille: i64 },
 }
 
 /// Cascading reels (§5.15). Absent on a cabinet whose reels do not cascade,

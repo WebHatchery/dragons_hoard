@@ -144,6 +144,8 @@ pub enum UiAction {
     DismissSessionOver,
     /// Run the free spins the chosen way (§5.64).
     ChooseFreeSpinShape(usize),
+    /// Pick which rite an open seam runs (§5.81).
+    ChooseRite(usize),
     /// Open or close the rules panel (§5.29).
     ToggleRules,
     MusicVolumeUp,
@@ -219,6 +221,7 @@ impl UiAction {
             UiAction::ToggleSessions => "toggle_sessions",
             UiAction::DismissSessionOver => "dismiss_session_over",
             UiAction::ChooseFreeSpinShape(..) => "choose_free_spin_shape",
+            UiAction::ChooseRite(..) => "choose_rite",
             UiAction::ToggleRules => "toggle_rules",
             UiAction::MusicVolumeUp => "music_volume_up",
             UiAction::MusicVolumeDown => "music_volume_down",
@@ -363,7 +366,16 @@ pub fn draw_game_ui(ctx: UiContext<'_>, nav: &mut Nav) -> Vec<UiAction> {
     // A seam does not take the window over — it marks up the board already
     // drawn there and puts a banner on top of it (§5.80).
     if let Some(round) = ctx.session.seam.as_ref() {
-        seam::draw(ctx.data, round, ctx.ui_time);
+        seam::draw(
+            ctx.data,
+            round,
+            ctx.session.seam_choice(),
+            ctx.frame.wager,
+            pointer,
+            ctx.ui_time,
+            &mut actions,
+            nav,
+        );
     }
 
     // The gamble owns the screen while it is up: it is a decision, and the

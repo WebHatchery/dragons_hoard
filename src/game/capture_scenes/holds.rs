@@ -165,13 +165,13 @@ impl Game {
         }
     }
 
-    /// Stop on an open Seam, part-way through the rite (§5.80).
+    /// Stop on an open Seam (§5.80).
     ///
-    /// One move is taken before returning, for the same reason the Wrath scene
-    /// takes a few respins: a board frozen the instant the seam opened is
-    /// indistinguishable from an ordinary spin with a banner over it, and the
-    /// whole feature is the fact that the symbols change.
-    pub(super) fn hold_a_seam(&mut self) {
+    /// `running` takes a rite and one beat of it; otherwise the board is left
+    /// frozen on the choice (§5.81). Two pictures because they are two screens:
+    /// the choice has buttons and is what the touch and contrast audits need to
+    /// measure, and the running banner is what the feature actually looks like.
+    pub(super) fn hold_a_seam(&mut self, running: bool) {
         for _ in 0..200_000 {
             self.session.balance = self.data.config.starting_balance;
             self.session.celebrations.clear();
@@ -183,14 +183,20 @@ impl Game {
             self.session.auto_play_bonus(&self.data);
             self.session.auto_play_holdspin(&self.data);
 
+            if self.session.seam.is_none() {
+                continue;
+            }
+            self.session.celebrations.clear();
+            if !running {
+                return;
+            }
+            // The widening, because it is the rite that visibly moves symbols.
+            // One beat and only one: a two-step rite would finish and the scene
+            // would photograph the base game again.
+            self.session.choose_rite(0);
+            self.session.update_spin(&self.data, 2.0);
             if self.session.seam.is_some() {
-                self.session.celebrations.clear();
-                // One beat, and only one: a two-step rite would finish and the
-                // scene would photograph the base game again.
-                self.session.update_spin(&self.data, 2.0);
-                if self.session.seam.is_some() {
-                    return;
-                }
+                return;
             }
         }
     }

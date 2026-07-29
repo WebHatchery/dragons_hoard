@@ -616,61 +616,8 @@ mod ante {
     }
 }
 
-/// What the Seam actually costs the cabinet (§5.80).
-///
-/// The feature adds a genuinely new prize, so it moves RTP — the same bargain
-/// the jackpot layer (§5.6) and the respin round (§5.12) made. What is asserted
-/// here is the **size** of that addition, per cabinet, measured on more than one
-/// stream: a seam that quietly doubles a machine's return would otherwise show
-/// up only as a drifting total three tests away, and the total band is wide
-/// enough to hide it.
-mod seam_tests {
-    use super::super::*;
-    use crate::data::MACHINES;
-
-    /// Share of turnover the seam may return. The floor is as important as the
-    /// ceiling: a feature returning nothing is one whose trigger has quietly
-    /// stopped firing, and that is the failure mode a strips edit produces.
-    ///
-    /// The ceiling is where it is because of what it has to fit inside. The
-    /// catalog sat between 0.955 and 0.963 before this feature existed, against
-    /// a full-run gate of 0.95 +/- 0.03 — so there was about two points of RTP
-    /// of room in the whole game, and the seam had to be built to live in it
-    /// rather than the paytables re-cut to make more.
-    const BAND: std::ops::Range<f64> = 0.005..0.035;
-
-    #[test]
-    fn every_cabinet_pays_the_seam_within_the_designed_band() {
-        for machine in MACHINES {
-            let data = GameData::load_machine(machine).unwrap();
-            for seed in [0xD2A6_0F1E_u64, 0xA11CE, 0x5EED_1234] {
-                let report = run(
-                    &data,
-                    SimConfig {
-                        spins: 20_000,
-                        seed,
-                        ..SimConfig::default()
-                    },
-                );
-
-                let share = report.contribution(report.seam_won);
-                let rate = report.seams as f64 / report.paid_spins.max(1) as f64;
-                println!(
-                    "{:>9} seed {:>10x}: seams {:>4} (1 in {:>5.0}) | {:.4} of turnover",
-                    machine.id,
-                    seed,
-                    report.seams,
-                    if rate > 0.0 { 1.0 / rate } else { 0.0 },
-                    share
-                );
-                assert!(
-                    BAND.contains(&share),
-                    "{} returns {:.4} through the seam, outside the designed {:?}",
-                    machine.id,
-                    share,
-                    BAND
-                );
-            }
-        }
-    }
-}
+/// The Seam and its rites (§5.80, §5.81), split out when this file reached the
+/// 800-line limit. A whole feature's worth of measurement, and the only part of
+/// this file that is about one mechanic rather than about the machine as a
+/// whole.
+mod seam;

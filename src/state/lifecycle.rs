@@ -308,7 +308,9 @@ impl GameSession {
                 }
                 _ => EvalContext::base(data, line_bet),
             };
-            self.seam = SeamRound::open(data, resting, found, ctx, &mut self.rng);
+            // No rite yet: in the base game the player picks it (§5.81), and
+            // nothing here consumes randomness deciding for them.
+            self.seam = SeamRound::open(data, resting, found, ctx);
             self.seam_beat = Timer::new(SEAM_OPEN_PAUSE * self.preferences.time_scale());
         }
 

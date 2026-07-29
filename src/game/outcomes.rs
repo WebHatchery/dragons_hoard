@@ -148,6 +148,11 @@ impl Game {
                 self.notifications
                     .info(format!("Free spins set to {} of them", spins));
             }
+            ActionOutcome::RiteChosen(name) => {
+                self.sound.play(Sfx::Scatter);
+                self.notifications
+                    .info(format!("{} — the seam moves", name));
+            }
             ActionOutcome::SessionOverDismissed => {
                 // Put the account away without pretending the cap has lifted:
                 // the reels stay stopped and the summary is one press away

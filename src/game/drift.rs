@@ -309,6 +309,7 @@ const PARAMETERISED: &[UiAction] = &[
     UiAction::BuyFeature(0),
     UiAction::PickBonus(0),
     UiAction::ChooseFreeSpinShape(0),
+    UiAction::ChooseRite(0),
     UiAction::Gamble(crate::state::gamble::Scale::Ember),
     UiAction::GambleHalf(crate::state::gamble::Scale::Ember),
     UiAction::CycleLimit(Cap::Loss),
@@ -361,7 +362,18 @@ impl Drift {
                 self.rng.below(14)
             }),
             52..=54 => UiAction::ChooseFreeSpinShape(self.rng.below(4)),
-            55..=58 => {
+            // A seam waiting on a rite (§5.81) is the third thing the game deals
+            // rather than opens, and it holds the reels behind it — so the
+            // harness has to be able to answer it or every run after the first
+            // seam is a run of presses against a frozen board. Four is
+            // deliberately one wider than any cabinet offers.
+            //
+            // The three points come off the panel band at the end rather than
+            // out of any of the arms below: every one of those was weighted for
+            // a reason, and the tail is the only part of this distribution that
+            // is a remainder rather than a decision.
+            55..=57 => UiAction::ChooseRite(self.rng.below(4)),
+            58..=61 => {
                 let scale = if self.rng.below(2) == 0 {
                     crate::state::gamble::Scale::Ember
                 } else {
@@ -373,17 +385,17 @@ impl Drift {
                     UiAction::GambleHalf(scale)
                 }
             }
-            59..=60 => UiAction::CycleLimit(match self.rng.below(3) {
+            62..=63 => UiAction::CycleLimit(match self.rng.below(3) {
                 0 => Cap::Time,
                 1 => Cap::Loss,
                 _ => Cap::Spins,
             }),
-            61..=63 => {
+            64..=66 => {
                 let screens: Vec<Screen> = Screen::in_menu().collect();
                 UiAction::OpenScreen(screens[self.rng.below(screens.len())])
             }
-            64..=71 => WAGER[self.rng.below(WAGER.len())],
-            72..=76 => SETTINGS[self.rng.below(SETTINGS.len())],
+            67..=74 => WAGER[self.rng.below(WAGER.len())],
+            75..=79 => SETTINGS[self.rng.below(SETTINGS.len())],
             _ => PANELS[self.rng.below(PANELS.len())],
         }
     }
@@ -605,6 +617,10 @@ impl Game {
                 .and_then(|round| round.next_unrevealed())
             {
                 self.apply_action(UiAction::PickBonus(index));
+            }
+            // And a seam waiting on a rite, which holds them the same way.
+            if !self.session.seam_choice().is_empty() {
+                self.apply_action(UiAction::ChooseRite(0));
             }
             // `close_screens`, not a loop of `OpenScreen`. `OpenScreen` is the
             // menu's action and it *sets* the flag — the first version of this
