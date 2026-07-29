@@ -23,6 +23,13 @@ fn run_to_idle(session: &mut GameSession, data: &GameData) -> Vec<SpinEvent> {
         if session.celebrations.is_active() {
             session.celebrations.skip();
         }
+        // A seam waits on a rite exactly as a card waits on a press (§5.81), so
+        // the stand-in player answers both. Without this a test that happened
+        // to deal one would fail on "the spin never came to rest" and give no
+        // hint that a decision was what it never came to rest for.
+        if !session.seam_choice().is_empty() {
+            session.choose_rite(0);
+        }
     }
     assert!(session.is_settled(), "the spin never came to rest");
     events
@@ -499,6 +506,7 @@ mod ledger;
 mod machines;
 mod preferences;
 mod refine;
+mod seam;
 mod shapes;
 
 #[test]

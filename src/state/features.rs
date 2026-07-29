@@ -121,14 +121,18 @@ impl GameSession {
 
     /// The rites a seam is waiting on the player to pick between (§5.81).
     ///
-    /// Empty during free spins and an autospin run, which is what turns the
-    /// choice off there rather than a flag somewhere else deciding it. The
-    /// caller that draws instead reads the same predicate, so the two cannot
-    /// disagree about whether anyone was asked.
+    /// Every seam, wherever it opened. §5.81 excluded free spins and autospin
+    /// runs by analogy with the gamble (§5.16), and the analogy was wrong
+    /// (§5.83): the gamble is *offered* after a win and would have to interrupt
+    /// a chain to be taken, while a seam has already stopped everything by
+    /// existing. The Vault Pick has opened mid-feature and waited on a player
+    /// since §5.10, which is the precedent that actually applies.
+    ///
+    /// An autospin run needs no exclusion either, for a different reason: a
+    /// seam opening tears the run down before this is ever consulted
+    /// (`check_autospin`), so the check was dead code dressed as a policy.
+    /// `a_seam_that_stops_an_autospin_run_still_asks` holds that.
     pub fn seam_choice(&self) -> &[crate::data::RiteDef] {
-        if self.in_free_spins() || self.autospin.is_some() {
-            return &[];
-        }
         self.seam.as_ref().map_or(&[], SeamRound::offered)
     }
 
@@ -149,19 +153,15 @@ impl GameSession {
     /// (§5.80). Once the rite is settled it is decided as it goes: there is
     /// nothing left for the player to do, so there is nothing to hide from them.
     pub(super) fn tick_seam(&mut self, data: &GameData, dt: f32) -> Option<SpinEvent> {
-        // Nobody to ask — a chain that spins itself or a run the player walked
-        // away from — so the rite is drawn and the round gets on with it
-        // (§5.81). Done before the beat rather than after, so the first tick
-        // after a draw is a move rather than a wasted one.
-        if self.seam_choice().is_empty() {
-            let rng = &mut self.rng;
-            if let Some(round) = self.seam.as_mut() {
-                round.draw_rite(rng);
-            }
-        } else {
-            // The board is frozen on a decision. The beat does not run and the
-            // timer does not advance, so the first move lands a full beat after
-            // the press rather than instantly.
+        // The board is frozen on a decision. The beat does not run and the timer
+        // does not advance, so the first move lands a full beat after the press
+        // rather than instantly.
+        //
+        // Nothing draws a rite on the player's behalf here any more (§5.83).
+        // The headless callers still do — `auto_play` draws, because a sim has
+        // nobody to ask — but an interactive session waits, in a free-spin
+        // chain exactly as it does in the base game.
+        if !self.seam_choice().is_empty() {
             return None;
         }
 

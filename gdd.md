@@ -4086,6 +4086,73 @@ deliberately, because one has 374 pixels and the other has a column of a rules
 page; if a third place ever needs it, that is the point to make it data.
 
 
+### 5.83 The decision the feature would not let you make (post-v1)
+
+§5.81 gave the seam to the player and then took it away again in the two places
+it matters most. The predicate read:
+
+```rust
+if self.in_free_spins() || self.autospin.is_some() { return &[]; }
+```
+
+with a comment citing §5.16 — the reason the gamble is base-game only. **The
+analogy was wrong, and both halves of it were wrong differently.**
+
+**Free spins.** The gamble is *offered* after a win; taking it would mean
+interrupting a chain that is spinning itself, which is a real objection. A seam
+does not interrupt anything, because it has already stopped everything by
+existing — `is_settled()` is false the moment one opens, so the chain is halted
+whether or not anyone is asked. The precedent that actually applies is the Vault
+Pick, which has opened mid-feature and waited on a player since §5.10. So a seam
+dealt on free spin three of twenty now asks, and the chain waits, and there is a
+test that says the counter does not move while it does.
+
+**Autospin.** This one was not a policy at all — it was **dead code dressed as
+one**. A seam tears the run down as it opens (`check_autospin`), so by the time
+anything reads the choice there is no run left to exclude. Worse than useless:
+had it ever fired, it would have meant a player whose unattended run had *just
+stopped for this* being handed a rite they never picked.
+
+**And writing the test found the real bug.** The obvious check for "a seam pays
+at the run's multiplier" is to run the same free-spin chain at x1 and at x3 and
+compare. A x3 run returned **1.18 times** what a x1 one did.
+
+The cause is one line, and it is the kind that only a ratio finds:
+
+```rust
+ceiling: ctx.total_bet * config.max_multiple,
+```
+
+The uplift trebles on a x3 run. The ceiling did not. Dragon's Hoard caps a seam
+at 3x total bet, so during the part of the game where every line win is worth
+three times as much, the seam was worth a third as much — quietly, and in the
+one place a player is most likely to see the feature. §5.81 wrote in this very
+document that a seam "pays at the run's multiplier", and the code made that true
+only below a cap it almost always hit. The ceiling now scales with the
+multiplier it is capping.
+
+That is a genuine RTP change and it went round the usual loop: the per-rite
+bands moved by two to five thousandths and all eighteen combinations stayed
+inside 0.005–0.035; the catalog holds 0.961 to 0.979 at a million spins a
+machine; and three **super** buy tiers — the ones that sell a high-multiplier
+run — came back mispriced by one to twelve credits and were corrected. Nothing
+else in the game would have noticed that last one.
+
+**What this iteration is really about.** Two of the three changes are the same
+mistake: a rule written by analogy rather than from the thing itself. The
+gamble's exclusion is right for the gamble and wrong for the seam; the ceiling
+in total bets is right for a base game and wrong under a multiplier. Both read
+as obviously correct until something measured a ratio.
+
+**What is not done, plainly.** There is still no timeout on an unanswered seam,
+and it is now reachable mid-feature, so a player who walks away during free
+spins comes back to a chain that never finished. That is exactly what an open
+Vault Pick does and it has never been a complaint, but a seam is newer and the
+argument is weaker. The awards book still recognises no feature round at all —
+not the Wrath, not the seam — so adding one only for the newest feature would be
+the inconsistency rather than the fix.
+
+
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
 - Winning lines: pulse highlight (`blink`/`pulse`), floating win amounts
@@ -4775,7 +4842,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus eighty-two post-v1 systems
+## 15. Current State — v1 shipped, plus eighty-three post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple

@@ -117,7 +117,15 @@ impl SeamRound {
             steps_left: config.steps.max(1),
             steps_taken: 0,
             ctx,
-            ceiling: ctx.total_bet * config.max_multiple.max(1),
+            // Multiplied by the run's own multiplier, not just by total bet.
+            //
+            // Without that the ceiling silently swallows the free-spin
+            // multiplier: the uplift triples on a x3 run, the cap does not, and
+            // a feature that pays "up to 3x the bet" is worth a third as much
+            // during the part of the game where everything else is worth three
+            // times as much. §5.81 claimed a seam pays at the run's multiplier
+            // and this line is what made that only true below the cap (§5.83).
+            ceiling: ctx.total_bet * config.max_multiple.max(1) * ctx.win_multiplier.max(1),
             finished: false,
         })
     }
