@@ -183,14 +183,27 @@ mod tests {
     /// reel merely stopping at 0.27, with identical RMS. Nothing was watching,
     /// because "louder" had never been written down as something to check.
     ///
-    /// Quietest to loudest: a button, a coin locking, the scatter cue, the
-    /// routine mechanics of a spin, then wins in the order they are worth.
+    /// Quietest to loudest: a button, a seam shifting, a coin locking, the
+    /// scatter cue, the routine mechanics of a spin, a seam opening, then wins
+    /// in the order they are worth.
+    ///
+    /// The two seam sounds land on opposite sides of that list, and the split
+    /// is the decision worth stating. **Opening** stops the whole game and asks
+    /// the player a question, so it sits above a reel merely stopping — it is
+    /// an interruption, not routine. **Moving** happens two or three times while
+    /// the player is still reading the board, and the board is what they are
+    /// deciding on, so it sits below even a coin locking. The loud half is the
+    /// one that wants attention; the quiet half is the one that would steal it
+    /// (§5.81).
     #[test]
     fn the_sound_set_is_in_the_order_it_is_meant_to_be_in() {
         let quieter_than = [
-            (Sfx::Click, Sfx::CoinLock),
+            (Sfx::Click, Sfx::SeamMove),
+            (Sfx::SeamMove, Sfx::CoinLock),
             (Sfx::CoinLock, Sfx::Scatter),
             (Sfx::Scatter, Sfx::ReelStop),
+            (Sfx::ReelStop, Sfx::SeamOpen),
+            (Sfx::SeamOpen, Sfx::WinSmall),
             (Sfx::ReelStop, Sfx::WinSmall),
             (Sfx::SpinStart, Sfx::WinSmall),
             (Sfx::WinSmall, Sfx::WinBig),

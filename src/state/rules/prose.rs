@@ -262,26 +262,26 @@ pub fn rules(data: &GameData) -> Vec<Rule> {
     }
 
     if data.seam.trigger_count > 0 && !data.seam.rites.is_empty() {
-        let rites = data
+        let named: Vec<String> = data
             .seam
             .rites
             .iter()
-            .map(|rite| match rite.kind {
-                RiteKind::Widen { .. } => "takes the symbols around it".to_owned(),
-                RiteKind::Enrich { rungs } => {
-                    format!("climbs {} up the paytable", places(rungs))
-                }
-                RiteKind::Gild { .. } => "multiplies what the board already pays".to_owned(),
-            })
-            .collect::<Vec<_>>()
-            .join(" or ");
+            .map(|rite| format!("{} {}", rite.name.to_lowercase(), promise(rite)))
+            .collect();
         add(
             Topic::Seam,
             "The Seam",
             format!(
-                "{} of one paying symbol opens a seam: over {} moves it {}, leaving wilds, \
-                 scatters and eggs alone. You keep what it adds, up to {}x the bet.",
-                data.seam.trigger_count, data.seam.steps, rites, data.seam.max_multiple,
+                concat!(
+                    "{} of one paying symbol opens a seam and the reels stop. You pick what it ",
+                    "does over the next {} moves — {} — and it never touches wilds, scatters or ",
+                    "eggs. The board is then read again and you keep what the seam added, up ",
+                    "to {}x the bet."
+                ),
+                data.seam.trigger_count,
+                data.seam.steps,
+                named.join("; "),
+                data.seam.max_multiple,
             ),
         );
     }
@@ -346,12 +346,24 @@ pub fn rules(data: &GameData) -> Vec<Rule> {
     rules
 }
 
-/// "one place" or "two places", so the seam rule reads as a sentence rather
-/// than as a config dump.
-fn places(rungs: usize) -> String {
-    match rungs {
-        0 | 1 => "one place".to_owned(),
-        n => format!("{} places", n),
+/// What a rite does, in the fewest words that are still true.
+///
+/// Shared with the choice panel's own captions in `ui::seam` only by being the
+/// same sentence twice — deliberately. The panel has 374 pixels and this has a
+/// column of a rules page, and a shared string would end up the wrong length
+/// for one of them.
+fn promise(rite: &crate::data::RiteDef) -> String {
+    match rite.kind {
+        RiteKind::Widen { .. } => "takes the cells beside it".to_owned(),
+        RiteKind::Enrich { rungs } => format!(
+            "climbs {} up the paytable",
+            if rungs > 1 {
+                format!("{} places", rungs)
+            } else {
+                "a place".to_owned()
+            }
+        ),
+        RiteKind::Gild { .. } => "multiplies what the board already pays".to_owned(),
     }
 }
 

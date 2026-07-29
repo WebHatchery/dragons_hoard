@@ -67,7 +67,15 @@ pub enum Topic {
     Jackpots,
     /// The Dragon's Wrath hold-and-spin round (§5.12).
     Wrath,
-    /// The Seam mini-game a board full of one treasure opens (§5.80).
+    /// The Seam mini-game a board full of one treasure opens (§5.80), and the
+    /// rite the player picks for it (§5.81).
+    ///
+    /// One topic and not two, though the choice is the more interesting half.
+    /// A second topic would earn a second block in the rules panel, and that
+    /// panel is at its limit — four columns and an 11px floor. What holds the
+    /// prose to naming the player instead is
+    /// `the_seam_rule_says_whose_decision_it_is`, which is a narrower check than
+    /// a topic and a more direct one.
     Seam,
     Gamble,
     FeatureBuy,
@@ -292,6 +300,46 @@ mod tests {
                 data.machine.id,
                 trigger
             );
+        }
+    }
+
+    /// A cabinet that asks the player something has to say so.
+    ///
+    /// §5.81 made the seam wait on a decision and the rule kept describing it in
+    /// the passive — "over two moves it takes the cells around it or climbs the
+    /// paytable", which reads as a thing that happens to you. That is the same
+    /// fault §5.64 shipped and this module exists to catch, arriving one level
+    /// down: the *topic* was covered and the *sentence* was wrong.
+    ///
+    /// A topic of its own would have caught it and would have cost a second
+    /// block in a panel that has none to spare, so the check is this instead.
+    #[test]
+    fn the_seam_rule_says_whose_decision_it_is() {
+        for data in every_machine() {
+            if data.seam.rites.len() < 2 {
+                continue;
+            }
+            let rule = rules(&data)
+                .into_iter()
+                .find(|rule| rule.topic == Topic::Seam)
+                .unwrap_or_else(|| panic!("{} has a seam and no rule for it", data.machine.id));
+            assert!(
+                rule.text.contains("You pick") || rule.text.contains("you pick"),
+                "{} offers {} rites and its rule never says the player chooses: {:?}",
+                data.machine.id,
+                data.seam.rites.len(),
+                rule.text
+            );
+            // And every rite has to be named, or the choice is being described
+            // as narrower than it is.
+            for rite in &data.seam.rites {
+                assert!(
+                    rule.text.to_lowercase().contains(&rite.name.to_lowercase()),
+                    "{} offers '{}' and the rule never mentions it",
+                    data.machine.id,
+                    rite.name
+                );
+            }
         }
     }
 

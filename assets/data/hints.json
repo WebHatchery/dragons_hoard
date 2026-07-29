@@ -42,5 +42,13 @@
     "earns": "buys",
     "until": 1,
     "screen": "featurebuy"
+  },
+  {
+    "id": "seam",
+    "text": "Enough of one treasure stops the reels to ask what the seam does. Gilding pays most after a win.",
+    "when": "spins",
+    "after": 25,
+    "earns": "rites",
+    "until": 1
   }
 ]

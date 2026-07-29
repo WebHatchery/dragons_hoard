@@ -360,7 +360,16 @@ impl Game {
                 self.sound.play_at(Sfx::ReelStop, 0.7 + 0.08 * reel as f32);
                 self.spawn_reel_stop_dust(reel);
             }
-            SpinEvent::Settled(resolution) => self.report_spin(&resolution),
+            SpinEvent::Settled(resolution) => {
+                self.report_spin(&resolution);
+                // The board has stopped and is waiting on the player (§5.81).
+                // Announced here rather than from a event of its own: the seam
+                // is opened by the settle, so the settle is when it happened.
+                if self.session.seam.is_some() {
+                    self.add_trauma(0.35);
+                    self.sound.play(Sfx::SeamOpen);
+                }
+            }
             SpinEvent::PayoutFinished => self.autosave(),
             SpinEvent::AutoSpinReady => self.events.push(UiAction::Spin),
             SpinEvent::CelebrationOpened(kind) => self.celebrate(&kind),
@@ -369,7 +378,7 @@ impl Game {
             // player is reading, and a bang per beat would compete with it.
             SpinEvent::SeamMoved => {
                 self.add_trauma(0.12);
-                self.sound.play_at(Sfx::ReelStop, 0.85);
+                self.sound.play(Sfx::SeamMove);
             }
             // The seam credits itself; what is left is the line in the log,
             // since the card only shows the headline figure.

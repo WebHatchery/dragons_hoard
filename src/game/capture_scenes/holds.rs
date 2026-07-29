@@ -74,6 +74,7 @@ impl Game {
             }
             Counter::Gambles => self.hints.progress_mut().gambles = to,
             Counter::Buys => self.hints.progress_mut().buys = to,
+            Counter::Rites => self.hints.progress_mut().rites = to,
             Counter::LedgerOpened => self.hints.progress_mut().ledger_opened = to,
             Counter::RulesOpened => self.hints.progress_mut().rules_opened = to,
             // The ledger counts these, and rebuilding one to order would be a

@@ -149,7 +149,12 @@ impl Game {
                     .info(format!("Free spins set to {} of them", spins));
             }
             ActionOutcome::RiteChosen(name) => {
-                self.sound.play(Sfx::Scatter);
+                // The decision is what earns the hint about deciding (§5.81),
+                // so it is counted here rather than where the seam opens: a
+                // seam drawn for the player during free spins taught them
+                // nothing about choosing.
+                self.note_hint_progress(|counters| counters.rites += 1);
+                self.sound.play(Sfx::Click);
                 self.notifications
                     .info(format!("{} — the seam moves", name));
             }

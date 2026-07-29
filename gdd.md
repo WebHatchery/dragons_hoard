@@ -4020,6 +4020,72 @@ either: a seam waits forever, exactly as an open Vault Pick does. And the seam
 still has no sound of its own.
 
 
+### 5.82 The rule that described a decision in the passive (post-v1)
+
+§5.81 gave the seam to the player. The rules panel went on saying this:
+
+> over 2 moves it takes the symbols around it or climbs one place up the
+> paytable or multiplies what the board already pays
+
+Every word is true and the sentence is wrong. It is the grammar of a thing that
+*happens to you* — the same voice the panel uses for cascades and refining,
+which really are things that happen to you. A player who read it would learn
+that a seam does one of three things and would have no idea a panel was about to
+stop the game and ask them which.
+
+That is §5.64's fault arriving one level down. §5.29 built a gate that says
+every mechanic must be described, §5.66 and §5.67 tightened it until a new
+setting fails the build unless someone declares it — and all of it operates on
+**topics**. The topic was covered. The sentence was passive. Nothing in a
+hundred-odd tests could tell the difference.
+
+**The fix is not a topic.** The obvious move was `Topic::SeamChoice`, present
+whenever a cabinet offers more than one rite, forcing prose. It works, and it
+was written, and it was taken out again: a topic earns a block in the rules
+panel, and that panel is at four columns and an 11px floor with Wyrmspire
+needing a fifth. Buying enforcement with a column the panel does not have is a
+bad trade.
+
+So the check is narrower and more direct than a topic:
+`the_seam_rule_says_whose_decision_it_is` requires the sentence to contain
+"you pick" on any cabinet with more than one rite, and to name every rite by
+name. It is a smaller claim than "this topic is described" and a much better
+one — it is exactly the thing that was wrong.
+
+**The player now hears about it before the panel appears.** A hint (§5.28) after
+twenty-five spins: *"Enough of one treasure stops the reels to ask what the seam
+does. Gilding pays most after a win."* It retires on the first rite **taken**,
+not the first seam seen — a seam that opened during free spins was drawn for the
+player and taught them nothing about choosing, so the counter is the decision
+rather than the event.
+
+**And it has a voice.** §5.80 closed by admitting the seam borrowed the
+coin-lock effect, because the mix is measured against a stated order (§5.51) and
+a new effect belongs in that pass. This is that pass. Two effects, and the
+interesting part is where they land in the order:
+
+- **Opening** — a low swell with a fifth over it, slow attack — sits **above a
+  reel stopping** at 0.31 against 0.27. It halts the whole game to ask a
+  question, so it is an interruption rather than routine.
+- **Moving** — stone against stone, brief and deliberately unmusical — sits
+  **below even a coin locking** at 0.17 against 0.21. It fires two or three
+  times while the player is still reading the board, and the board is the thing
+  they are deciding on.
+
+One feature, two sounds, opposite ends of the list. The loud half is the one
+that wants attention; the quiet half is the one that would steal it. The order
+is asserted pairwise, as it has been since §5.51, and both effects pass the
+aliasing, centring and click gates that every other one does.
+
+**What is not done, plainly.** The choice is still base-game only. The panel
+still cannot be answered from the keyboard in the sense of a *shortcut* — it is
+reachable by tab like every other control (§5.27), but there is no key that
+means "widen". And the two descriptions of what a rite does — the caption under
+each button and the clause in the rules — are the same sentence written twice,
+deliberately, because one has 374 pixels and the other has a column of a rules
+page; if a third place ever needs it, that is the point to make it data.
+
+
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
 - Winning lines: pulse highlight (`blink`/`pulse`), floating win amounts
@@ -4709,7 +4775,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus eighty-one post-v1 systems
+## 15. Current State — v1 shipped, plus eighty-two post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple

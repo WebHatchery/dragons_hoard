@@ -37,11 +37,15 @@ pub enum Sfx {
     Hatch,
     /// A coin locking into a Dragon's Wrath cell (§5.12).
     CoinLock,
+    /// A seam taking the board — the moment the reels stop for it (§5.80).
+    SeamOpen,
+    /// One move of a rite: stone shifting (§5.80).
+    SeamMove,
     Click,
 }
 
 impl Sfx {
-    pub const ALL: [Sfx; 8] = [
+    pub const ALL: [Sfx; 10] = [
         Sfx::SpinStart,
         Sfx::ReelStop,
         Sfx::WinSmall,
@@ -49,6 +53,8 @@ impl Sfx {
         Sfx::Scatter,
         Sfx::Hatch,
         Sfx::CoinLock,
+        Sfx::SeamOpen,
+        Sfx::SeamMove,
         Sfx::Click,
     ];
 }
@@ -109,6 +115,32 @@ pub fn voices_for(sfx: Sfx) -> Vec<Voice> {
             Voice::tone(0.0, 0.45, 2000.0, 0.21)
                 .wave(Wave::Noise)
                 .glide(400.0),
+        ],
+        // The seam taking the board: a low swell with a fifth over it, opening
+        // slowly. It is a *stop* rather than a reward — the reels have halted
+        // and the game is waiting on the player — so it opens rather than
+        // strikes, and it sits under the routine mechanics of a spin for the
+        // same reason the scatter cue does.
+        Sfx::SeamOpen => vec![
+            Voice::tone(0.0, 0.42, 196.0, 0.78)
+                .wave(Wave::Triangle)
+                .glide(294.0)
+                .attack(0.3),
+            Voice::tone(0.06, 0.36, 392.0, 0.39)
+                .wave(Wave::Triangle)
+                .attack(0.35),
+        ],
+        // One move of a rite: stone shifting against stone. Low, brief and
+        // deliberately unmusical — it happens two or three times a round while
+        // the player is reading the board, and a note would make them look at
+        // the sound instead of the symbols.
+        Sfx::SeamMove => vec![
+            Voice::tone(0.0, 0.14, 150.0, 0.46)
+                .glide(105.0)
+                .attack(0.04),
+            Voice::tone(0.0, 0.09, 620.0, 0.15)
+                .wave(Wave::Noise)
+                .attack(0.03),
         ],
         // Metal on stone: a bright strike that rings briefly. Deliberately
         // short — in a full round this fires up to fifteen times in a second,
@@ -218,7 +250,7 @@ mod tests {
     /// Three then changed on purpose: `WinSmall`, `WinBig` and `CoinLock` were
     /// all quieter than a reel stopping, which the waveform panel (§5.19) made
     /// obvious the moment it existed. This test failed, which is what it is for.
-    const BASELINE: [(Sfx, usize, u64); 8] = [
+    const BASELINE: [(Sfx, usize, u64); 10] = [
         (Sfx::SpinStart, 8_864, 1_099_123),
         (Sfx::ReelStop, 5_778, 699_881),
         (Sfx::WinSmall, 11_952, 1_496_569),
@@ -226,6 +258,8 @@ mod tests {
         (Sfx::Scatter, 24_300, 2_997_188),
         (Sfx::Hatch, 34_442, 4_254_136),
         (Sfx::CoinLock, 7_100, 825_784),
+        (Sfx::SeamOpen, 18_566, 2_310_889),
+        (Sfx::SeamMove, 6_218, 761_015),
         (Sfx::Click, 2_250, 272_193),
     ];
 

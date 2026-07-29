@@ -61,6 +61,11 @@ pub enum Counter {
     LedgerOpened,
     /// Times the rules panel has been opened (§5.29).
     RulesOpened,
+    /// Rites taken for an open seam (§5.81). The counter is the *decision*
+    /// rather than the seam: a seam that opened during free spins was drawn
+    /// for the player, and a hint about choosing has not been earned by
+    /// watching one happen.
+    Rites,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -117,6 +122,8 @@ fn spell(count: usize) -> &'static str {
 #[serde(default)]
 pub struct HintProgress {
     pub gambles: i64,
+    #[serde(default)]
+    pub rites: i64,
     pub buys: i64,
     pub ledger_opened: i64,
     pub rules_opened: i64,
@@ -219,6 +226,7 @@ impl HintBook {
             Counter::Buys => self.progress.buys,
             Counter::LedgerOpened => self.progress.ledger_opened,
             Counter::RulesOpened => self.progress.rules_opened,
+            Counter::Rites => self.progress.rites,
         }
     }
 }
