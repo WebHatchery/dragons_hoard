@@ -155,20 +155,35 @@ fn draw_choice(
     }
 }
 
-/// One line saying what a rite will actually do, and for the one rite that is
-/// **fully decided by the board already on screen**, what it is worth (§5.86).
+/// One line per rite, each stating a **fact about the board on screen** (§5.87).
 ///
-/// Only the gilding gets a figure, and that is not a favour to it — it is the
-/// only one that has a figure. A widening rolls for every cell it touches and an
-/// enrichment depends on what the climb happens to line up; neither has a value
-/// until it has run. A gilding multiplies a number the player is looking at, so
-/// quoting it hides nothing that was not already there. The alternative is a
-/// panel that keeps a deterministic answer to itself, which is the sort of thing
-/// this cabinet spends §5.74 proving it does not do.
+/// §5.86 gave the gilding an exact figure because it is the only rite that has
+/// one, and left the other two describing themselves in the abstract. That was
+/// half a fix: a panel showing "pays 400" beside "climbs the paytable" reads as
+/// a recommendation whether or not one is meant, and biasing without informing
+/// is worse than saying nothing.
+///
+/// So all three now answer the same question — *what does this do to the board
+/// I am looking at?* — and none of them answers a different one. How many cells
+/// are offered to a widening and what an enrichment would climb to are both
+/// facts, already on screen and countable by eye. What the widening will
+/// actually take is a roll, and it is not quoted, because that is the part the
+/// player is deciding under.
 fn promise(data: &GameData, round: &SeamRound, rite: &RiteDef) -> String {
     match rite.kind {
-        RiteKind::Widen { .. } => "takes the cells around it".to_owned(),
-        RiteKind::Enrich { .. } => "climbs the paytable".to_owned(),
+        RiteKind::Widen { .. } => match round.frontier(data) {
+            0 => "walled in — no cells to take".to_owned(),
+            1 => "1 cell beside it may turn".to_owned(),
+            cells => format!("{} cells beside it may turn", cells),
+        },
+        RiteKind::Enrich { .. } => match round.next_rung(data) {
+            Some(next) => format!(
+                "{} cells become {}",
+                round.cells().len(),
+                data.symbols.get(next).name
+            ),
+            None => "already the richest — nothing to climb".to_owned(),
+        },
         RiteKind::Gild { multiply_permille } => {
             // Every beat it has left, compounded — the multiplier the round will
             // actually reach. Asked of the round rather than worked out here, so
@@ -309,4 +324,107 @@ fn draw_banner(data: &GameData, round: &SeamRound) {
         standing.h,
         TextStyle::new(20.0, palette::text_bright()),
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::data::MACHINES;
+    use crate::engine::evaluate::EvalContext;
+    use crate::engine::reels::Grid;
+    use crate::engine::seam;
+    use crate::state::seam::SeamRound;
+
+    /// A board of one symbol end to end, which every cabinet's trigger clears.
+    fn flooded(data: &GameData, symbol: usize) -> Grid {
+        let columns: Vec<Vec<usize>> = (0..data.config.reel_count)
+            .map(|_| vec![symbol; data.config.row_count])
+            .collect();
+        Grid::from_columns(&columns)
+    }
+
+    fn round_on(data: &GameData, grid: &Grid) -> SeamRound {
+        let found = seam::find(data, grid, &data.seam).expect("no seam on this board");
+        SeamRound::open(data, grid, found, EvalContext::base(data, 10)).expect("no round")
+    }
+
+    /// Every caption is a fact, and every fact is the engine's (§5.87).
+    ///
+    /// The panel is the only place in the game that tells a player what a rite
+    /// will do to *this* board, and it is read at the moment they commit. A
+    /// caption that drifted from the engine would be a lie told at the worst
+    /// possible time, so each one is compared against the function the rite
+    /// itself uses rather than against a second copy of the arithmetic.
+    #[test]
+    fn every_caption_agrees_with_what_the_rite_would_do() {
+        for machine in MACHINES {
+            let data = GameData::load_machine(machine).unwrap();
+            let ladder = seam::ladder(&data);
+            let grid = flooded(&data, ladder[0]);
+            let round = round_on(&data, &grid);
+
+            for rite in &data.seam.rites {
+                let caption = promise(&data, &round, rite);
+                match rite.kind {
+                    RiteKind::Widen { .. } => {
+                        let offered = round.frontier(&data);
+                        assert!(
+                            caption.contains(&offered.to_string()) || offered == 0,
+                            "{}: {} cells are offered and the caption says {:?}",
+                            machine.id,
+                            offered,
+                            caption
+                        );
+                    }
+                    RiteKind::Enrich { .. } => {
+                        let next = data.symbols.get(ladder[1]).name.clone();
+                        assert!(
+                            caption.contains(&next),
+                            "{}: a flooded board climbs to {} and the caption says {:?}",
+                            machine.id,
+                            next,
+                            caption
+                        );
+                    }
+                    RiteKind::Gild { .. } => {
+                        // A flooded board pays a great deal, so the gilding has
+                        // something to multiply and must quote a figure.
+                        assert!(
+                            !caption.contains("nothing"),
+                            "{}: a flooded board pays and the caption says {:?}",
+                            machine.id,
+                            caption
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    /// The two cases the panel exists to make visible: a rite that will do
+    /// nothing at all has to say so, or it looks exactly like one that will.
+    #[test]
+    fn a_rite_with_nowhere_to_go_says_so() {
+        let data = GameData::load().unwrap();
+        let ladder = seam::ladder(&data);
+
+        // The top rung: an enrichment has nothing above it to climb to.
+        let grid = flooded(&data, *ladder.last().unwrap());
+        let round = round_on(&data, &grid);
+        assert!(round.next_rung(&data).is_none());
+        for rite in &data.seam.rites {
+            if matches!(rite.kind, RiteKind::Enrich { .. }) {
+                assert!(promise(&data, &round, rite).contains("richest"));
+            }
+        }
+
+        // A board with no frontier: the seam already holds every cell a rite is
+        // allowed to take, so a widening is walled in.
+        assert_eq!(round.frontier(&data), 0);
+        for rite in &data.seam.rites {
+            if matches!(rite.kind, RiteKind::Widen { .. }) {
+                assert!(promise(&data, &round, rite).contains("walled in"));
+            }
+        }
+    }
 }

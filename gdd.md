@@ -4336,6 +4336,58 @@ two, which the game can compute and which would turn a decision into a lookup.
 That is a trade this section declines rather than solves.
 
 
+### 5.87 Half a fix reads as a recommendation (post-v1)
+
+§5.86 gave the gilding an exact figure on the choice panel — "pays 400 on this
+board" — because it is the only rite whose value is settled by the grid already
+on screen. It left the other two describing themselves in the abstract:
+"takes the cells around it", "climbs the paytable".
+
+That section closed by naming the problem and declining to solve it. Reading it
+back, declining was wrong. **A panel showing a number beside two adjectives
+reads as a recommendation whether or not one is meant**, and the player has half
+a second and one press. Biasing without informing is worse than saying nothing:
+before §5.86 the three options were at least symmetrical.
+
+The fix is not to price the other two — an expected value for a widening would
+turn the decision into a lookup, which is the trade §5.86 was right to refuse.
+It is to make all three answer **the same question**: *what does this do to the
+board I am looking at?*
+
+- **Widen** — "5 cells beside it may turn". How many are *offered*, never how
+  many will turn. The roll is the part the player is deciding under and it is
+  not quoted.
+- **Deepen** — "6 cells become Gold Coins". Which symbol, by name, from the same
+  ladder the rite climbs.
+- **Gild** — "pays 400 on this board". Unchanged, and now one fact among three
+  rather than the only one.
+
+Every one of those is countable by eye from the grid beside the panel. The game
+is not telling the player anything they could not work out; it is saving them
+from working it out under time pressure, which is the same argument the paytable
+makes for existing at all.
+
+**And the two silences that mattered most now speak.** A widening with no
+frontier says "walled in — no cells to take", and a deepening on the top rung
+says "already the richest — nothing to climb". Both used to look exactly like a
+rite that would do something, and both are how a seam ends dry (§5.85). A player
+can now see the dud coming instead of being told about it afterwards.
+
+The captions are checked against the engine rather than against a second copy of
+the arithmetic: the frontier count comes from `seam::frontier`, the rung name
+from `seam::ladder`, and the figure from the round's own `worth_at`. A caption
+that drifted would be a lie told at the moment of commitment, which is the worst
+time this game has to tell one.
+
+**What is not done, plainly.** Three captions is three lines of prose that a
+translation will lengthen, and the pseudolocale gate covers the panel but not
+the *worst* board — the one where every caption is at its longest at once. And
+the panel still says nothing about how often a widening's offered cells actually
+turn, which is the one number a player would have to play a hundred seams to
+learn. Quoting it would be the lookup this section just declined; not quoting it
+means the spread stays hidden. That is a real tension and it is left standing.
+
+
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
 - Winning lines: pulse highlight (`blink`/`pulse`), floating win amounts
@@ -5025,7 +5077,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus eighty-six post-v1 systems
+## 15. Current State — v1 shipped, plus eighty-seven post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple

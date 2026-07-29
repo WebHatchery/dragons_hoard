@@ -210,6 +210,27 @@ impl SeamRound {
         self.baseline
     }
 
+    /// Cells currently touching the seam that a widening could take.
+    ///
+    /// A fact about the board in front of the player, not a prediction: how many
+    /// are *offered*, never how many will turn. The panel states it so the three
+    /// rites each say something concrete about this board rather than one
+    /// carrying a figure and two carrying adjectives (§5.87).
+    pub fn frontier(&self, data: &GameData) -> usize {
+        seam::frontier(data, &self.grid, &self.seam).len()
+    }
+
+    /// The symbol an enrichment would climb to, if there is one above.
+    ///
+    /// `None` on the top rung, which is the case the panel has to say out loud —
+    /// a deepening there changes nothing and pays nothing, and it looks
+    /// identical to one that would.
+    pub fn next_rung(&self, data: &GameData) -> Option<usize> {
+        let ladder = seam::ladder(data);
+        let at = ladder.iter().position(|rung| *rung == self.seam.symbol)?;
+        ladder.get(at + 1).copied()
+    }
+
     /// What this round would pay if it ended at `multiplier` permille.
     ///
     /// For the choice panel, which can quote a gilding exactly because a gilding
