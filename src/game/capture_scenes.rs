@@ -156,6 +156,7 @@ impl Game {
                 self.fast_forward_to(|session| session.last_win > 0);
             }
             "wrath" => self.hold_a_wrath_round(),
+            "seam" => self.hold_a_seam(),
             // Out of credits with a hoard worth breaking (§5.53). Both halves
             // matter: an empty hoard shows the vault offer instead, and the two
             // read very differently.

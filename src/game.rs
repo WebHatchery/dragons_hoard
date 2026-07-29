@@ -365,6 +365,28 @@ impl Game {
             SpinEvent::AutoSpinReady => self.events.push(UiAction::Spin),
             SpinEvent::CelebrationOpened(kind) => self.celebrate(&kind),
             SpinEvent::HoldSpinRespun => self.report_respin(),
+            // One move of a rite. Quiet on purpose — the board is what the
+            // player is reading, and a bang per beat would compete with it.
+            SpinEvent::SeamMoved => {
+                self.add_trauma(0.12);
+                self.sound.play_at(Sfx::ReelStop, 0.85);
+            }
+            // The seam credits itself; what is left is the line in the log,
+            // since the card only shows the headline figure.
+            SpinEvent::SeamFinished(outcome) => {
+                self.notifications.info(format!(
+                    "{} — {} cells over {} moves for {} credits{}",
+                    outcome.rite_name,
+                    outcome.cells,
+                    outcome.steps,
+                    outcome.credits,
+                    if outcome.capped {
+                        ", at the ceiling"
+                    } else {
+                        ""
+                    }
+                ));
+            }
             // One collapse. The pitch climbs with the chain, so a long run is
             // heard building rather than repeating.
             SpinEvent::Cascaded => {

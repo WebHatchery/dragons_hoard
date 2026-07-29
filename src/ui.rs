@@ -25,6 +25,7 @@ pub mod reality;
 pub mod reels;
 pub mod ruin;
 pub mod rules;
+pub mod seam;
 pub mod sessionover;
 pub mod sessions;
 pub mod settings;
@@ -357,6 +358,12 @@ pub fn draw_game_ui(ctx: UiContext<'_>, nav: &mut Nav) -> Vec<UiAction> {
     // The respin board takes over the reel window while a round is open.
     if let Some(round) = ctx.session.holdspin.as_ref() {
         holdspin::draw(ctx.data, round, ctx.ui_time);
+    }
+
+    // A seam does not take the window over — it marks up the board already
+    // drawn there and puts a banner on top of it (§5.80).
+    if let Some(round) = ctx.session.seam.as_ref() {
+        seam::draw(ctx.data, round, ctx.ui_time);
     }
 
     // The gamble owns the screen while it is up: it is a decision, and the

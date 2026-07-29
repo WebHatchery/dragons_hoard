@@ -3843,6 +3843,109 @@ the touch standard, and the panels that open on top of it have not been turned
 yet.
 
 
+### 5.80 A board full of one treasure, and the mini-game it opens (post-v1)
+
+Seventy-nine sections of slot machine, and every one of them a **spin**. The
+reels turn, a rule reads the board, money arrives. Free spins are more spins.
+The Vault Pick is a second screen. The Dragon's Wrath is spins with most of the
+reels held still. Nothing in the game has ever *changed the symbols the player
+is looking at* and then paid on what it made.
+
+**The Seam** does. When the reels come to rest with enough cells showing one
+paying symbol, the board is held and worked over a few beats: the seam either
+**widens** into the cells around it, or **deepens** — every cell of it climbing
+a rung of the paytable. The board is then read again, and the round pays the
+difference.
+
+**Why the trigger is a count and not a stacked reel.** The obvious reading of
+"a whole reel of one symbol" is the stacked reel, and it was tried first. The
+strips do not carry stacks. Measured across the six cabinets: a window of one
+symbol occurs on **0 of 200** strip positions on Dragon's Hoard, and on the four
+cabinets that have any at all it is a single low symbol — Avalanche's pebble,
+Tidepool's pearl. A full-reel trigger would have been a feature the *default*
+cabinet could never once open, and three of the others could only open as
+gravel.
+
+Weaving stacks in would fix that and re-cut every strip in the game, and the
+strips **are** the RTP (§4). §5.12 made exactly this call when it declined to
+add a coin symbol for the hold-and-spin round and reused the Dragon Egg
+instead. So a seam is a count on the grid — six on Dragon's Hoard, twelve on
+Tidepool's thirty cells — and each cabinet states its own, because six of one
+symbol is a once-in-a-hundred board on a 5x3 grid and a near-certainty on a
+6x5 one.
+
+**It pays the uplift and only the uplift.** The spin has already paid for the
+grid it landed on; paying the final board outright would pay that grid twice.
+So the round records what the board was worth when the reels stopped and pays
+the difference at the end, floored at zero and capped at a stated multiple of
+total bet. On a cascading cabinet the baseline is the *resting* grid, after the
+chain — a seam the chain already cleared away is not a seam.
+
+**A rite never mints a wild, a scatter or an egg, and never takes one.** This is
+the rule the whole feature rests on, and it is not a payout question. A rite
+that could make a scatter would award free spins after the spin that awarded
+them had closed its books; one that could make the hoard symbol would bank eggs
+the reels never landed and could wake the dragon from inside another feature.
+The exclusion is asserted on every cabinet against a board deliberately salted
+with all three.
+
+**What it costs, measured rather than claimed.** The seam is a genuinely new
+prize and it moves RTP — the same bargain §5.6 and §5.12 struck. **The room it
+had to fit into was about two points**: the catalog sat between 0.955 and 0.963
+against a full-run gate of 0.95 +/- 0.03, so the feature was built to live in
+that gap rather than the paytables re-cut to make more. It returns **0.013 to
+0.023 of turnover** on every cabinet, on three separate streams, held there by
+its own test with a 0.005–0.035 band. The floor matters as much as the ceiling:
+a seam returning nothing is a trigger that has quietly stopped firing, which is
+what a strips edit would do.
+
+The first cut of it returned 0.025 to 0.046 and put four of the six cabinets
+over 0.98. That is written down because the sequence matters: the feature was
+built, measured, found to be too generous by a factor of two, and shrunk —
+rather than shipped at whatever it happened to pay with the gate left failing.
+
+**The tuning is per cabinet because the character is.** Avalanche takes a small
+seam roughly every seventieth spin, capped at 6x total bet; Frost Wyrm takes one
+about every thousandth, capped at 50x. That is not decoration. The profiler
+(§5.17) reported *every cabinet as Medium* the first time this ran — a
+mid-sized prize arriving everywhere at the same rate had flattened the catalog
+into one game — and Avalanche is Low again because its seam was made rarer.
+
+Two of that tuning's readings turned out to be noise, and saying so is part of
+the record. The profiler measures volatility over 20,000 rounds, and a seam
+opening at all shifts the RNG stream for every spin after it; Avalanche moved
+2.89 to 3.05 against a "Low" boundary of 3.00 on configurations whose payouts
+differed by a factor of three. The label is being read to a precision the
+measurement does not carry. It is left alone here rather than papered over by
+moving the boundary.
+
+**Two things it broke that were worth breaking.** The rules panel went to four
+columns — Tidepool stopped fitting in three, and the alternative was to stop
+explaining something, which is what §5.29 exists to prevent. And the
+interactive-versus-headless parity soak went from 6,000 rounds to 24,000: the
+two paths do not share an RNG stream (a player picks chests in a different
+order than auto-play does), so that comparison has always been variance-limited
+rather than exact. It was 0.06 apart across the catalog before a third feature
+existed; a single progressive falling on one side and not the other then read
+as a structural difference. Raising the sample is the honest fix, and the gate
+is tighter for it.
+
+**One thing it cost that was not the paytable.** The buy menu reprices itself
+against measured return (§5.13, §5.22), and a bought free-spin run can open a
+seam like any other spin — so four tiers came back mispriced by 4 to 21 credits
+and were corrected. That gate is the reason it was noticed at all; nothing else
+in the game would have.
+
+**What is not done, plainly.** The seam borrows the coin-lock effect rather than
+having a voice of its own — the mix is measured against a stated order (§5.51)
+and a new effect belongs in that pass, not bolted on here. The rites are the two
+the feature was conceived around; a third that stamped a multiplier on the cells
+instead of changing them would fit the same machinery and has not been written.
+And the seam still cannot be *seen* to be worth anything until it ends: the
+banner shows a running total which is zero for most of a widening, because the
+cells it has taken have not finished making a line yet.
+
+
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
 - Winning lines: pulse highlight (`blink`/`pulse`), floating win amounts
@@ -4532,7 +4635,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus seventy-four post-v1 systems
+## 15. Current State — v1 shipped, plus eighty post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple

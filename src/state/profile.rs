@@ -300,7 +300,14 @@ mod tests {
         let mut labels: Vec<&str> = Vec::new();
         for machine in MACHINES {
             let data = GameData::load_machine(machine).unwrap();
-            labels.push(profile(&data).volatility_label());
+            let measured = profile(&data);
+            println!(
+                "{:>9}: volatility {:.2} -> {}",
+                machine.id,
+                measured.volatility,
+                measured.volatility_label()
+            );
+            labels.push(measured.volatility_label());
         }
         labels.sort_unstable();
         labels.dedup();

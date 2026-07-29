@@ -22,6 +22,9 @@ pub struct SessionStats {
     /// strand a player).
     #[serde(default)]
     pub wrath_rounds: u32,
+    /// Seams worked (§5.80). `default` for the same reason as the line above.
+    #[serde(default)]
+    pub seams: u32,
     /// Features bought outright (§5.13). `default` so a save written before the
     /// menu existed still loads.
     #[serde(default)]

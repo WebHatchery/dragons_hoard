@@ -16,6 +16,8 @@ pub enum AutospinStop {
     Hatched,
     /// A clutch of eggs opened the Dragon's Wrath (§5.12).
     WrathWoken,
+    /// The board came to rest full of one treasure (§5.80).
+    SeamOpened,
     JackpotWon,
     BigWin,
     OutOfCredits,
@@ -35,6 +37,7 @@ impl AutospinStop {
             AutospinStop::FeatureTriggered => "Autospin stopped — free spins!",
             AutospinStop::Hatched => "Autospin stopped — the hoard hatched",
             AutospinStop::WrathWoken => "Autospin stopped — the dragon wakes",
+            AutospinStop::SeamOpened => "Autospin stopped — a seam runs through the board",
             AutospinStop::JackpotWon => "Autospin stopped — jackpot!",
             AutospinStop::BigWin => "Autospin stopped — big win",
             AutospinStop::OutOfCredits => "Autospin stopped — out of credits",

@@ -60,6 +60,8 @@ pub enum Cause {
     Hatch,
     /// The Dragon's Wrath woke (§5.12).
     Wrath,
+    /// A seam ran through the board (§5.80).
+    Seam,
     /// A progressive paid (§5.7).
     Jackpot,
     /// A round paid at or above the cabinet's big-win threshold.
@@ -67,10 +69,11 @@ pub enum Cause {
 }
 
 impl Cause {
-    pub const ALL: [Cause; 5] = [
+    pub const ALL: [Cause; 6] = [
         Cause::Feature,
         Cause::Hatch,
         Cause::Wrath,
+        Cause::Seam,
         Cause::Jackpot,
         Cause::BigWin,
     ];
@@ -80,6 +83,7 @@ impl Cause {
             Cause::Feature => "Free spins",
             Cause::Hatch => "Hatch",
             Cause::Wrath => "Wrath",
+            Cause::Seam => "Seam",
             Cause::Jackpot => "Jackpot",
             Cause::BigWin => "Big win",
         }

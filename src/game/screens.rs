@@ -64,6 +64,9 @@ pub enum Screen {
     /// The Dragon's Wrath respin round (§5.12). Advances itself on a beat, but
     /// the reels do not turn while it runs.
     Holdspin,
+    /// A seam working the board (§5.80). Dealt and self-advancing, like the
+    /// respin round beside it.
+    Seam,
     /// A cap the player set has ended the session (§5.68).
     SessionOver,
     /// Out of credits (§5.53). Dealt by the balance rather than opened, and it
@@ -73,7 +76,7 @@ pub enum Screen {
 }
 
 impl Screen {
-    pub const ALL: [Screen; 21] = [
+    pub const ALL: [Screen; 22] = [
         Screen::Paytable,
         Screen::Rules,
         Screen::Limits,
@@ -93,6 +96,7 @@ impl Screen {
         Screen::Bonus,
         Screen::Gamble,
         Screen::Holdspin,
+        Screen::Seam,
         Screen::Ruin,
         Screen::SessionOver,
     ];
@@ -119,6 +123,7 @@ impl Screen {
             Screen::Bonus => "bonus",
             Screen::Gamble => "gamble",
             Screen::Holdspin => "wrath",
+            Screen::Seam => "seam",
             Screen::Ruin => "ruin",
             Screen::SessionOver => "sessionover",
         }
@@ -161,6 +166,7 @@ impl Screen {
             Screen::Bonus => "The Vault Pick",
             Screen::Gamble => "The Gamble",
             Screen::Holdspin => "The Dragon's Wrath",
+            Screen::Seam => "The Seam",
             Screen::Ruin => "Out of credits",
             Screen::SessionOver => "That is the session",
         }
@@ -187,7 +193,12 @@ impl Screen {
     pub fn reachable_by_flag(self) -> bool {
         !matches!(
             self,
-            Screen::Bonus | Screen::Gamble | Screen::Holdspin | Screen::Ruin | Screen::SessionOver
+            Screen::Bonus
+                | Screen::Gamble
+                | Screen::Holdspin
+                | Screen::Seam
+                | Screen::Ruin
+                | Screen::SessionOver
         )
     }
 }
@@ -215,6 +226,7 @@ impl Game {
             Screen::Bonus => self.session.bonus.is_some(),
             Screen::Gamble => self.session.gamble.is_some(),
             Screen::Holdspin => self.session.holdspin.is_some(),
+            Screen::Seam => self.session.seam.is_some(),
             Screen::Ruin => self.session.is_ruined(&self.data),
             Screen::SessionOver => self.limits.breach().is_some() && !self.session_over_dismissed,
         }
@@ -252,6 +264,7 @@ impl Game {
             Screen::Bonus
             | Screen::Gamble
             | Screen::Holdspin
+            | Screen::Seam
             | Screen::Ruin
             | Screen::SessionOver => unreachable!(),
         })
@@ -311,7 +324,7 @@ mod tests {
             .collect();
         assert_eq!(
             dealt,
-            vec!["bonus", "gamble", "wrath", "ruin", "sessionover"]
+            vec!["bonus", "gamble", "wrath", "seam", "ruin", "sessionover"]
         );
     }
 }

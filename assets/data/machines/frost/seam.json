@@ -1,0 +1,21 @@
+{
+  "trigger_count": 9,
+  "steps": 3,
+  "max_multiple": 50,
+  "rites": [
+    {
+      "id": "widen",
+      "name": "The Seam Widens",
+      "weight": 5,
+      "rite": "widen",
+      "spread_permille": 300
+    },
+    {
+      "id": "enrich",
+      "name": "The Seam Deepens",
+      "weight": 3,
+      "rite": "enrich",
+      "rungs": 1
+    }
+  ]
+}

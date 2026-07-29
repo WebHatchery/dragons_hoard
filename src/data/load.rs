@@ -68,6 +68,7 @@ impl GameData {
         let bonus: BonusConfig = load_embedded_json_labeled("bonus", BONUS_JSON)?;
         let holdspin: HoldSpinConfig =
             load_embedded_json_labeled(&label("holdspin"), machine.holdspin)?;
+        let seam: SeamConfig = load_embedded_json_labeled(&label("seam"), machine.seam)?;
         let featurebuy: FeatureBuyConfig =
             load_embedded_json_labeled(&label("featurebuy"), machine.featurebuy)?;
         let gamble: GambleConfig = load_embedded_json_labeled("gamble", GAMBLE_JSON)?;
@@ -88,6 +89,7 @@ impl GameData {
             jackpots,
             bonus,
             holdspin,
+            seam,
             featurebuy,
             gamble,
             cascade,
@@ -295,6 +297,32 @@ impl GameData {
                 self.holdspin.trigger_eggs, cells
             ));
         }
+        // A seam trigger the grid cannot hold is the same unreachable-feature
+        // fault as the one above, and the sim would measure a game without it
+        // rather than complain.
+        if self.seam.trigger_count == 0 || self.seam.trigger_count > cells {
+            return Err(format!(
+                "seam trigger_count ({}) must fit on a {}-cell grid",
+                self.seam.trigger_count, cells
+            ));
+        }
+        if self.seam.rites.is_empty() {
+            return Err("seam.json declared no rites".to_owned());
+        }
+        if self.seam.steps == 0 {
+            return Err("a seam with no steps would never work the board".to_owned());
+        }
+        if self.seam.max_multiple <= 0 {
+            return Err("the seam ceiling must leave something to win".to_owned());
+        }
+        // Two rungs is the minimum an enrichment can climb. A cabinet whose
+        // paytable left only one payable symbol would make the rite a no-op,
+        // and it would look exactly like a feature that never triggered.
+        if crate::engine::seam::ladder(self).len() < 2 {
+            return Err(
+                "a seam needs at least two payable symbols to have a ladder to climb".to_owned(),
+            );
+        }
         Ok(())
     }
 }
@@ -390,6 +418,17 @@ mod tests {
             }),
             corruption("a gamble with nothing to win", "ceiling", |d| {
                 d.gamble.ceiling_multiple = 0
+            }),
+            corruption("a seam nothing can open", "trigger_count", |d| {
+                d.seam.trigger_count = 0
+            }),
+            corruption("a seam bigger than the grid", "trigger_count", |d| {
+                d.seam.trigger_count = 999
+            }),
+            corruption("a seam with no rites", "rites", |d| d.seam.rites.clear()),
+            corruption("a seam that never moves", "steps", |d| d.seam.steps = 0),
+            corruption("a seam with nothing to win", "ceiling", |d| {
+                d.seam.max_multiple = 0
             }),
         ]
     }

@@ -231,6 +231,7 @@ fn mark_colour(cause: Cause) -> Color {
         Cause::Feature => palette::jade(),
         Cause::Hatch => palette::ember(),
         Cause::Wrath => Color::new(0.85, 0.35, 0.85, 1.0),
+        Cause::Seam => Color::new(0.30, 0.85, 0.95, 1.0),
         Cause::Jackpot => palette::gold_bright(),
         Cause::BigWin => Color::new(0.45, 0.70, 1.0, 1.0),
     }

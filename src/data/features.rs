@@ -42,6 +42,54 @@ pub struct CoinValue {
     pub weight: u32,
 }
 
+/// The Seam — the mini-game a board taken over by one treasure opens (§5.80).
+///
+/// Per-cabinet, and necessarily so: `trigger_count` is a statement about that
+/// cabinet's strips and grid. Six of one symbol is a once-in-a-hundred board on
+/// a 5x3 payline machine and a near-certainty on a 6x5 cluster one, so a shared
+/// number would mean a feature that never fires on one cabinet and never stops
+/// on another.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SeamConfig {
+    /// Cells of one paying symbol on the resting grid that open a seam.
+    pub trigger_count: usize,
+    /// Beats the seam works itself out over.
+    pub steps: usize,
+    /// Most a single seam may pay, in multiples of total bet. The rites can
+    /// take a whole grid in the tail of their distribution, and a payline
+    /// cabinet pays every line it makes — without a ceiling the feature's
+    /// variance would swamp the cabinet it is bolted to.
+    pub max_multiple: i64,
+    /// The rites, drawn by weight when a seam opens.
+    pub rites: Vec<RiteDef>,
+}
+
+/// One thing a seam can do, and how often it is the thing that happens.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RiteDef {
+    pub id: String,
+    /// What the banner calls it while it runs.
+    pub name: String,
+    pub weight: u32,
+    #[serde(flatten)]
+    pub kind: RiteKind,
+}
+
+/// What a rite does to the board on each of its beats.
+///
+/// The two the feature was built around: a seam either takes more of the grid,
+/// or it becomes worth more where it already is.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(tag = "rite", rename_all = "snake_case")]
+pub enum RiteKind {
+    /// The seam widens: each cell touching it converts with this chance, in
+    /// permille, and the new cells can spread again on the next beat.
+    Widen { spread_permille: usize },
+    /// The seam deepens: every cell of it climbs this many rungs of the pay
+    /// ladder at once, so what is already there is worth more.
+    Enrich { rungs: usize },
+}
+
 /// Cascading reels (§5.15). Absent on a cabinet whose reels do not cascade,
 /// which is why it is an `Option` on `GameData` rather than a flag.
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -141,6 +141,12 @@ pub enum SpinEvent {
     HoldSpinRespun,
     /// The round ended and has been credited.
     HoldSpinFinished(super::holdspin::HoldSpinOutcome),
+    /// A rite took another bite of the board in an open seam (§5.80).
+    SeamMoved,
+    /// The seam finished and has been credited. Boxed for the same reason
+    /// `Settled` is: the outcome carries the rite's name, and a fat variant
+    /// makes every other event as big as this one.
+    SeamFinished(Box<super::seam::SeamOutcome>),
     /// A cascade collapsed into the next grid (§5.15).
     Cascaded,
 }

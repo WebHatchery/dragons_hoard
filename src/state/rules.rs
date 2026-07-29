@@ -67,6 +67,8 @@ pub enum Topic {
     Jackpots,
     /// The Dragon's Wrath hold-and-spin round (§5.12).
     Wrath,
+    /// The Seam mini-game a board full of one treasure opens (§5.80).
+    Seam,
     Gamble,
     FeatureBuy,
     /// The side bet that buys a better chance at the feature (§5.75).
@@ -121,6 +123,9 @@ impl Topic {
         }
         if data.holdspin.trigger_eggs > 0 {
             topics.push(Topic::Wrath);
+        }
+        if data.seam.trigger_count > 0 && !data.seam.rites.is_empty() {
+            topics.push(Topic::Seam);
         }
         if data.gamble.max_steps > 0 {
             topics.push(Topic::Gamble);
@@ -379,6 +384,11 @@ mod coverage {
         ("holdspin", "respins", Topic::Wrath),
         ("holdspin", "coin_values", Topic::Wrath),
         ("holdspin", "full_board_multiple", Topic::Wrath),
+        // The Seam.
+        ("seam", "trigger_count", Topic::Seam),
+        ("seam", "steps", Topic::Seam),
+        ("seam", "rites", Topic::Seam),
+        ("seam", "max_multiple", Topic::Seam),
         // The gamble.
         ("gamble", "max_steps", Topic::Gamble),
         ("gamble", "ceiling_multiple", Topic::Gamble),
@@ -422,6 +432,7 @@ mod coverage {
             ("freespins", serde_json::to_value(&data.freespins).unwrap()),
             ("bonus", serde_json::to_value(&data.bonus).unwrap()),
             ("holdspin", serde_json::to_value(&data.holdspin).unwrap()),
+            ("seam", serde_json::to_value(&data.seam).unwrap()),
             ("gamble", serde_json::to_value(&data.gamble).unwrap()),
             (
                 "featurebuy",

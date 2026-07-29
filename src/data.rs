@@ -14,7 +14,7 @@ mod machines;
 
 pub use features::{
     BonusConfig, CascadeConfig, FeatureAward, FeatureBuyConfig, FeatureBuyTier, GambleConfig,
-    HoldSpinConfig,
+    HoldSpinConfig, RiteDef, RiteKind, SeamConfig,
 };
 pub use machines::{machine_by_id, symbol_set, MachineDef, MACHINES};
 use std::collections::HashMap;
@@ -462,6 +462,8 @@ pub struct GameData {
     pub jackpots: Jackpots,
     pub bonus: BonusConfig,
     pub holdspin: HoldSpinConfig,
+    /// The Seam mini-game (§5.80).
+    pub seam: SeamConfig,
     pub featurebuy: FeatureBuyConfig,
     pub gamble: GambleConfig,
     /// `Some` only on a cascading cabinet (§5.15).

@@ -193,6 +193,7 @@ pub fn play(data: &GameData, seed: u64, rounds: u64) -> Result<Tally, Fault> {
 
     tally.features = session.stats.hatches as u64
         + session.stats.wrath_rounds as u64
+        + session.stats.seams as u64
         + session.stats.free_spins_played;
     Ok(tally)
 }
@@ -297,8 +298,15 @@ mod tests {
         // goes through `pick_bonus` and `tick_holdspin`. If the two ever
         // diverged, the sim would keep measuring itself correctly forever and
         // every published figure would be about a game nobody plays.
+        // Raised from 6,000 when the Seam (§5.80) landed. The two paths do not
+        // share a stream — a player picks chests in a different order than
+        // `auto_play` does — so this comparison has always been variance-limited
+        // rather than exact, and 6,000 rounds left it thin enough that a single
+        // progressive falling on one side and not the other read as a structural
+        // difference. It was 0.06 apart across the catalog before; a third
+        // feature was simply the straw.
         for data in every_machine() {
-            let rounds = 6_000;
+            let rounds = 24_000;
             let live = play(&data, 0xA11CE, rounds).expect("interactive run failed");
             let headless = sim::run(
                 &data,
@@ -310,6 +318,13 @@ mod tests {
             );
 
             let apart = (live.rtp() - headless.rtp()).abs();
+            println!(
+                "{:>9}: interactive {:.4} against headless {:.4} ({:+.4})",
+                data.machine.id,
+                live.rtp(),
+                headless.rtp(),
+                live.rtp() - headless.rtp()
+            );
             assert!(
                 apart < 0.22,
                 "{}: interactive {:.4} against headless {:.4}",

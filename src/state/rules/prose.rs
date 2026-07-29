@@ -15,7 +15,7 @@
 //! three scatters at a cabinet that wants four.
 
 use super::{Rule, Topic};
-use crate::data::{Evaluation, GameData};
+use crate::data::{Evaluation, GameData, RiteKind};
 use crate::state::{bonus, holdspin, jackpot};
 
 /// Everything this cabinet does, in the order a player meets it.
@@ -261,6 +261,30 @@ pub fn rules(data: &GameData) -> Vec<Rule> {
         );
     }
 
+    if data.seam.trigger_count > 0 && !data.seam.rites.is_empty() {
+        let rites = data
+            .seam
+            .rites
+            .iter()
+            .map(|rite| match rite.kind {
+                RiteKind::Widen { .. } => "takes the symbols around it".to_owned(),
+                RiteKind::Enrich { rungs } => {
+                    format!("climbs {} up the paytable", places(rungs))
+                }
+            })
+            .collect::<Vec<_>>()
+            .join(" or ");
+        add(
+            Topic::Seam,
+            "The Seam",
+            format!(
+                "{} of one paying symbol opens a seam: over {} moves it {}, leaving wilds, \
+                 scatters and eggs alone. You keep what it adds, up to {}x the bet.",
+                data.seam.trigger_count, data.seam.steps, rites, data.seam.max_multiple,
+            ),
+        );
+    }
+
     if data.gamble.max_steps > 0 {
         add(
             Topic::Gamble,
@@ -319,6 +343,15 @@ pub fn rules(data: &GameData) -> Vec<Rule> {
     }
 
     rules
+}
+
+/// "one place" or "two places", so the seam rule reads as a sentence rather
+/// than as a config dump.
+fn places(rungs: usize) -> String {
+    match rungs {
+        0 | 1 => "one place".to_owned(),
+        n => format!("{} places", n),
+    }
 }
 
 /// The free spins paragraph, which has to read an award table of arbitrary size.

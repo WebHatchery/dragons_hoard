@@ -56,12 +56,15 @@ pub struct SimReport {
     pub hatch_won: i64,
     pub jackpot_won: i64,
     pub wrath_won: i64,
+    /// What the Seam mini-game returned (§5.80).
+    pub seam_won: i64,
     pub scatter_won: i64,
     /// Paid spins that returned anything at all.
     pub hits: u64,
     pub features_triggered: u64,
     pub hatches: u64,
     pub wrath_rounds: u64,
+    pub seams: u64,
     pub biggest_win: i64,
 
     /// Return distribution across completed rounds.
@@ -203,7 +206,7 @@ impl SimReport {
 
     pub fn summary(&self) -> String {
         format!(
-            "spins {} (+{} free) | RTP {:.4} | hit {:.3} | base {:.4} free {:.4} hatch {:.4} jackpot {:.4} wrath {:.4} scatter {:.4} | features {} hatches {} wrath {} | max win {}",
+            "spins {} (+{} free) | RTP {:.4} | hit {:.3} | base {:.4} free {:.4} hatch {:.4} jackpot {:.4} wrath {:.4} seam {:.4} scatter {:.4} | features {} hatches {} wrath {} seams {} | max win {}",
             self.paid_spins,
             self.free_spins,
             self.rtp(),
@@ -213,10 +216,12 @@ impl SimReport {
             self.contribution(self.hatch_won),
             self.contribution(self.jackpot_won),
             self.contribution(self.wrath_won),
+            self.contribution(self.seam_won),
             self.contribution(self.scatter_won),
             self.features_triggered,
             self.hatches,
             self.wrath_rounds,
+            self.seams,
             self.biggest_win,
         )
     }
@@ -263,6 +268,11 @@ pub fn run(data: &GameData, config: SimConfig) -> SimReport {
     }
 
     report.total_wagered = session.stats.total_wagered;
+    // Read off the session rather than counted from payouts: a seam that walled
+    // itself in and paid nothing still happened, and a frequency that only
+    // counts the profitable ones would hide exactly the tuning fault worth
+    // finding.
+    report.seams = session.stats.seams as u64;
     report
 }
 
@@ -378,6 +388,11 @@ pub fn simulate_gambling_everything(data: &GameData, spins: u64, seed: u64) -> S
     }
 
     report.total_wagered = session.stats.total_wagered;
+    // Read off the session rather than counted from payouts: a seam that walled
+    // itself in and paid nothing still happened, and a frequency that only
+    // counts the profitable ones would hide exactly the tuning fault worth
+    // finding.
+    report.seams = session.stats.seams as u64;
     report
 }
 
@@ -389,6 +404,7 @@ fn accumulate(report: &mut SimReport, resolution: &crate::state::SpinResolution,
     report.hatch_won += resolution.hatch_credits;
     report.jackpot_won += resolution.jackpot_credits();
     report.wrath_won += resolution.wrath_credits;
+    report.seam_won += resolution.seam_credits;
     report.scatter_won += resolution.outcome().scatter_credits;
 
     if free {

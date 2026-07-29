@@ -47,6 +47,14 @@ pub enum CelebrationKind {
         coins: usize,
         full_board: bool,
     },
+    /// A seam finished working the board (§5.80).
+    Seam {
+        credits: i64,
+        /// The rite that ran, in the words the cabinet uses for it.
+        rite: String,
+        /// Cells the seam held at the end.
+        cells: usize,
+    },
     /// A gamble busted (§5.16). Losing needs a beat of its own — without one
     /// the win simply vanishes from the readout and reads as a bug.
     GambleLost {
@@ -65,6 +73,7 @@ impl CelebrationKind {
             CelebrationKind::Jackpot { .. } => 3.4,
             CelebrationKind::BigWin { .. } => 1.9,
             CelebrationKind::GambleLost { .. } => 1.8,
+            CelebrationKind::Seam { .. } => 2.4,
             CelebrationKind::Wrath { full_board, .. } => {
                 if *full_board {
                     3.6
@@ -92,6 +101,9 @@ impl CelebrationKind {
                 format!("{} CREDITS", crate::ui::naming::credits(*credits))
             }
             CelebrationKind::GambleLost { .. } => "NOTHING".to_owned(),
+            CelebrationKind::Seam { credits, .. } => {
+                format!("{} CREDITS", crate::ui::naming::credits(*credits))
+            }
             CelebrationKind::Wrath { credits, .. } => {
                 format!("{} CREDITS", crate::ui::naming::credits(*credits))
             }
@@ -107,6 +119,7 @@ impl CelebrationKind {
             CelebrationKind::Jackpot { .. } => "JACKPOT",
             CelebrationKind::BigWin { .. } => "BIG WIN",
             CelebrationKind::GambleLost { .. } => "THE SCALE TURNS",
+            CelebrationKind::Seam { .. } => "THE SEAM RUNS",
             CelebrationKind::Wrath { full_board, .. } => {
                 if *full_board {
                     "THE HOARD IS YOURS"
@@ -131,6 +144,9 @@ impl CelebrationKind {
             CelebrationKind::BigWin { .. } => "The vault gives up its gold".to_owned(),
             CelebrationKind::GambleLost { lost, landed } => {
                 format!("{} landed — {} credits gone", landed, lost)
+            }
+            CelebrationKind::Seam { rite, cells, .. } => {
+                format!("{} — {} cells of one treasure", rite, cells)
             }
             CelebrationKind::Wrath {
                 coins, full_board, ..

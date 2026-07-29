@@ -1,0 +1,376 @@
+//! An open Seam round (§5.80).
+//!
+//! The engine next door knows how to find a seam and how to work one beat of
+//! it. This is the round: which rite was drawn, how many beats are left, the
+//! board as it stands, and what the whole thing ends up being worth.
+//!
+//! # What it pays
+//!
+//! The **uplift**, and only the uplift: the board is read again at the end and
+//! the round pays the difference between what it is worth now and what it was
+//! worth when the reels stopped. Nothing else would be honest — the spin has
+//! already paid for the grid it landed on, and paying the final board outright
+//! would pay that grid twice.
+//!
+//! Only line/ways/cluster wins are counted. Scatters and eggs are read off the
+//! landing grid by the spin that owns them and are not read again here, which is
+//! the other half of the rule that a rite never mints a special symbol: the
+//! feature cannot award free spins, cannot bank an egg, and cannot wake the
+//! dragon. It moves money and nothing else.
+//!
+//! # Held like the respin round, not like the pick board
+//!
+//! There is nothing to press. The round advances on a beat and ends by itself,
+//! so it holds the game the way the Dragon's Wrath does (§5.12) rather than the
+//! way the Vault Pick does (§5.10).
+
+use crate::data::{GameData, RiteDef, RiteKind, SeamConfig};
+use crate::engine::evaluate::{evaluate, EvalContext};
+use crate::engine::reels::Grid;
+use crate::engine::seam::{self, Seam};
+use macroquad_toolkit::rng::SeededRng;
+
+/// What a finished seam paid.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SeamOutcome {
+    pub credits: i64,
+    /// The rite that ran, for the card and the sound.
+    pub rite_id: String,
+    pub rite_name: String,
+    /// The symbol the seam ended as. Not the one it started as, when the rite
+    /// was an enrichment.
+    pub symbol: usize,
+    /// Cells the seam held at the end.
+    pub cells: usize,
+    /// Beats actually taken. Shorter than the cabinet's `steps` when a rite ran
+    /// out of board or out of ladder.
+    pub steps: usize,
+    /// Whether the ceiling caught the payout. Worth surfacing: a capped seam is
+    /// the one moment the feature's own limit is visible to the player.
+    pub capped: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct SeamRound {
+    /// The board as the rite has left it. Starts as the grid the reels rested
+    /// on and is what the reel window draws while the round is open.
+    grid: Grid,
+    seam: Seam,
+    rite: RiteDef,
+    steps_left: usize,
+    steps_taken: usize,
+    /// Cells the last beat changed, so the UI can flash them rather than diff
+    /// two frames.
+    changed: Vec<usize>,
+    /// Bet and multiplier as they were on the spin that opened this, so a seam
+    /// opened during free spins pays at the run's multiplier.
+    ctx: EvalContext,
+    /// What the board was worth before the rite touched it.
+    baseline: i64,
+    ceiling: i64,
+    finished: bool,
+}
+
+impl SeamRound {
+    /// Open a round on a grid that has already been found to hold a seam.
+    ///
+    /// The rite is drawn here rather than passed in because which rite runs is
+    /// part of this round, not part of the spin that opened it — the same
+    /// reasoning that puts coin values inside the respin round (§5.12).
+    pub fn open(
+        data: &GameData,
+        grid: &Grid,
+        seam: Seam,
+        ctx: EvalContext,
+        rng: &mut SeededRng,
+    ) -> Option<Self> {
+        let config = &data.seam;
+        let rite = seam::draw_rite(config, rng)?.clone();
+        Some(Self {
+            baseline: evaluate(data, grid, &ctx).win_credits,
+            grid: grid.clone(),
+            changed: seam.cells.clone(),
+            seam,
+            rite,
+            steps_left: config.steps.max(1),
+            steps_taken: 0,
+            ctx,
+            ceiling: ctx.total_bet * config.max_multiple.max(1),
+            finished: false,
+        })
+    }
+
+    pub fn grid(&self) -> &Grid {
+        &self.grid
+    }
+
+    pub fn symbol(&self) -> usize {
+        self.seam.symbol
+    }
+
+    pub fn cells(&self) -> &[usize] {
+        &self.seam.cells
+    }
+
+    pub fn just_changed(&self, cell: usize) -> bool {
+        self.changed.contains(&cell)
+    }
+
+    pub fn rite(&self) -> &RiteDef {
+        &self.rite
+    }
+
+    pub fn steps_left(&self) -> usize {
+        self.steps_left
+    }
+
+    /// What the board is worth over what it was worth, before the ceiling.
+    pub fn standing(&self, data: &GameData) -> i64 {
+        (evaluate(data, &self.grid, &self.ctx).win_credits - self.baseline).max(0)
+    }
+
+    /// Work one beat. Returns the outcome on the beat that ends the round.
+    ///
+    /// A finished round is inert rather than an error, for the same reason a
+    /// re-picked chest is (§5.10): a double input must not be able to spend
+    /// something.
+    pub fn step(&mut self, data: &GameData, rng: &mut SeededRng) -> Option<SeamOutcome> {
+        if self.finished {
+            return None;
+        }
+
+        self.steps_taken += 1;
+        self.steps_left = self.steps_left.saturating_sub(1);
+        self.changed = match self.rite.kind {
+            RiteKind::Widen { spread_permille } => {
+                seam::widen(data, &mut self.grid, &mut self.seam, spread_permille, rng)
+            }
+            RiteKind::Enrich { rungs } => seam::enrich(data, &mut self.grid, &mut self.seam, rungs),
+        };
+
+        // A beat that changed nothing has nothing left to change: a widening
+        // seam with no frontier is walled in, and an enriched one is on the top
+        // rung. Spending the remaining beats redrawing the same board would be
+        // three seconds of nothing.
+        if self.steps_left == 0 || self.changed.is_empty() {
+            self.finished = true;
+            return Some(self.outcome(data));
+        }
+        None
+    }
+
+    fn outcome(&self, data: &GameData) -> SeamOutcome {
+        let standing = self.standing(data);
+        SeamOutcome {
+            credits: standing.min(self.ceiling),
+            capped: standing > self.ceiling,
+            rite_id: self.rite.id.clone(),
+            rite_name: self.rite.name.clone(),
+            symbol: self.seam.symbol,
+            cells: self.seam.cells.len(),
+            steps: self.steps_taken,
+        }
+    }
+}
+
+/// Work a round to its end without a player.
+///
+/// Used by the headless spin path, the sim and the capture harness. As with the
+/// respin round there is no ordering to be honest about — the player never
+/// chooses anything, so auto-play *is* the feature.
+pub fn auto_play(round: &mut SeamRound, data: &GameData, rng: &mut SeededRng) -> SeamOutcome {
+    // Bounded on the cell count rather than trusting the beat counter: a
+    // hand-edited `steps` of zero is clamped to one, but the bound is what makes
+    // it impossible for a future rite to loop here.
+    for _ in 0..=round.grid.cell_count() + config_steps(&data.seam) {
+        if let Some(outcome) = round.step(data, rng) {
+            return outcome;
+        }
+    }
+    round.finished = true;
+    round.outcome(data)
+}
+
+fn config_steps(config: &SeamConfig) -> usize {
+    config.steps.max(1)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::data::MACHINES;
+    use crate::engine::seam::ladder;
+
+    fn dragon() -> GameData {
+        GameData::load().unwrap()
+    }
+
+    fn flooded(data: &GameData, symbol: usize) -> Grid {
+        let columns: Vec<Vec<usize>> = (0..data.config.reel_count)
+            .map(|_| vec![symbol; data.config.row_count])
+            .collect();
+        Grid::from_columns(&columns)
+    }
+
+    fn round_on(data: &GameData, grid: &Grid, rng: &mut SeededRng) -> SeamRound {
+        let seam = seam::find(data, grid, &data.seam).expect("no seam on this board");
+        SeamRound::open(data, grid, seam, EvalContext::base(data, 10), rng).unwrap()
+    }
+
+    #[test]
+    fn a_round_never_pays_for_the_board_the_spin_already_paid_for() {
+        // A grid that is already one symbol end to end pays a great deal, and
+        // all of it belongs to the spin. A rite that only widens has nothing
+        // left to take, so the uplift is zero rather than the whole board again.
+        let data = dragon();
+        let copper = data.symbols.index_of("copper").unwrap();
+        let grid = flooded(&data, copper);
+        let mut rng = SeededRng::new(3);
+
+        let mut round = round_on(&data, &grid, &mut rng);
+        let baseline = round.baseline;
+        assert!(baseline > 0, "a flooded board should pay something");
+
+        let outcome = auto_play(&mut round, &data, &mut rng);
+        if outcome.rite_id == "widen" {
+            assert_eq!(outcome.credits, 0);
+        }
+    }
+
+    #[test]
+    fn an_enrichment_is_worth_the_climb_and_nothing_else() {
+        let data = dragon();
+        let rungs = ladder(&data);
+        let grid = flooded(&data, rungs[0]);
+        let ctx = EvalContext::base(&data, 10);
+
+        let mut rng = SeededRng::new(5);
+        let seam = seam::find(&data, &grid, &data.seam).unwrap();
+        let mut round = SeamRound::open(&data, &grid, seam, ctx, &mut rng).unwrap();
+        round.rite = RiteDef {
+            id: "enrich".to_owned(),
+            name: "test".to_owned(),
+            weight: 1,
+            kind: RiteKind::Enrich { rungs: 1 },
+        };
+
+        let outcome = auto_play(&mut round, &data, &mut rng);
+
+        // Every rung above the bottom one, until the ladder runs out or the
+        // ceiling does.
+        assert!(outcome.credits > 0);
+        assert_eq!(outcome.symbol, rungs[outcome.steps.min(rungs.len() - 1)]);
+    }
+
+    #[test]
+    fn a_rite_can_never_mint_a_wild_a_scatter_or_an_egg() {
+        // The rule the whole feature rests on, asserted on every cabinet against
+        // a board the rites are given every chance to take.
+        for machine in MACHINES {
+            let data = GameData::load_machine(machine).unwrap();
+            let rungs = ladder(&data);
+            let wild = data.symbols.wild().unwrap();
+            let scatter = data.symbols.scatter().unwrap();
+            let hoard = data.symbols.hoard();
+
+            for seed in 0..40u64 {
+                let mut rng = SeededRng::new(seed);
+                let mut grid = flooded(&data, rungs[0]);
+                // Salt the board with the three symbols a rite must not touch.
+                grid.set(0, 0, wild);
+                grid.set(1, 0, scatter);
+                if let Some(egg) = hoard {
+                    grid.set(2, 0, egg);
+                }
+                let before = (
+                    grid.count_of(wild),
+                    grid.count_of(scatter),
+                    hoard.map(|egg| grid.count_of(egg)),
+                );
+
+                let mut round = round_on(&data, &grid, &mut rng);
+                auto_play(&mut round, &data, &mut rng);
+                let after = (
+                    round.grid().count_of(wild),
+                    round.grid().count_of(scatter),
+                    hoard.map(|egg| round.grid().count_of(egg)),
+                );
+
+                assert_eq!(
+                    before, after,
+                    "{} seed {} moved a special",
+                    machine.id, seed
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn the_ceiling_holds_on_every_cabinet() {
+        for machine in MACHINES {
+            let data = GameData::load_machine(machine).unwrap();
+            let rungs = ladder(&data);
+            let ceiling = data.total_bet(10) * data.seam.max_multiple;
+
+            for seed in 0..30u64 {
+                let mut rng = SeededRng::new(seed);
+                let grid = flooded(&data, rungs[0]);
+                let mut round = round_on(&data, &grid, &mut rng);
+                let outcome = auto_play(&mut round, &data, &mut rng);
+                assert!(
+                    outcome.credits <= ceiling,
+                    "{} paid {} over a ceiling of {}",
+                    machine.id,
+                    outcome.credits,
+                    ceiling
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn a_round_that_has_finished_cannot_be_stepped_again() {
+        let data = dragon();
+        let rungs = ladder(&data);
+        let grid = flooded(&data, rungs[0]);
+        let mut rng = SeededRng::new(9);
+
+        let mut round = round_on(&data, &grid, &mut rng);
+        auto_play(&mut round, &data, &mut rng);
+
+        assert!(round.step(&data, &mut rng).is_none());
+    }
+
+    #[test]
+    fn a_bigger_stake_pays_proportionally_more() {
+        let data = dragon();
+        let rungs = ladder(&data);
+        let grid = flooded(&data, rungs[0]);
+        let seam = seam::find(&data, &grid, &data.seam).unwrap();
+
+        let mut small_rng = SeededRng::new(21);
+        let mut large_rng = SeededRng::new(21);
+        let mut small = SeamRound::open(
+            &data,
+            &grid,
+            seam.clone(),
+            EvalContext::base(&data, 1),
+            &mut small_rng,
+        )
+        .unwrap();
+        let mut large = SeamRound::open(
+            &data,
+            &grid,
+            seam,
+            EvalContext::base(&data, 10),
+            &mut large_rng,
+        )
+        .unwrap();
+
+        let small_outcome = auto_play(&mut small, &data, &mut small_rng);
+        let large_outcome = auto_play(&mut large, &data, &mut large_rng);
+
+        assert_eq!(large_outcome.cells, small_outcome.cells);
+        assert_eq!(large_outcome.credits, small_outcome.credits * 10);
+    }
+}

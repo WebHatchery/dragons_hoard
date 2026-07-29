@@ -9,7 +9,7 @@
         "kind": "free_spins",
         "spins": 10
       },
-      "price_multiple": 98
+      "price_multiple": 105
     },
     {
       "id": "super",
@@ -19,7 +19,7 @@
         "kind": "free_spins",
         "spins": 20
       },
-      "price_multiple": 189
+      "price_multiple": 210
     },
     {
       "id": "wrath",
@@ -29,7 +29,7 @@
         "kind": "wrath",
         "coins": 4
       },
-      "price_multiple": 29
+      "price_multiple": 31
     }
   ]
 }

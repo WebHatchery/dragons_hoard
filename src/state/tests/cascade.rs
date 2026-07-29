@@ -83,7 +83,11 @@ fn the_board_comes_to_rest_on_the_last_grid_of_the_chain() {
     let last = session.pending_last_grid();
     for _ in 0..6_000 {
         session.update_spin(&data, 1.0 / 60.0);
-        if session.phase.is_idle() || session.celebrations.is_active() {
+        // A seam opens on the grid the chain came to rest on and then changes
+        // it (§5.80), so the comparison has to be made before the rite starts —
+        // otherwise this would be asserting that a *different* feature left the
+        // board alone.
+        if session.phase.is_idle() || session.celebrations.is_active() || session.seam.is_some() {
             break;
         }
     }
@@ -114,7 +118,11 @@ fn the_animated_and_headless_paths_agree_on_a_cascading_machine() {
         animated.begin_spin(&data).unwrap();
         for _ in 0..12_000 {
             animated.update_spin(&data, 1.0 / 60.0);
-            if animated.phase.is_idle() && animated.bonus.is_none() && animated.holdspin.is_none() {
+            if animated.phase.is_idle()
+                && animated.bonus.is_none()
+                && animated.holdspin.is_none()
+                && animated.seam.is_none()
+            {
                 break;
             }
             animated.celebrations.clear();
@@ -123,6 +131,7 @@ fn the_animated_and_headless_paths_agree_on_a_cascading_machine() {
         // has to as well or the two are not comparing the same event.
         animated.auto_play_bonus(&data);
         animated.auto_play_holdspin(&data);
+        animated.auto_play_seam(&data);
 
         assert_eq!(
             animated.grid, headless.grid,

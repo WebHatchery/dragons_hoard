@@ -9,13 +9,16 @@
 //! reveals it. Nothing below `roll_spin` touches the RNG.
 
 use super::holdspin::HoldSpinRound;
+use super::seam::SeamRound;
 use super::spin::{ReelSpinner, SpinEvent, SpinPhase};
 use super::{
     bonus::BonusRound, egg_cells, scatters_per_reel, spin, GameSession, PendingSpin, SpinBlocked,
     SpinHighlights, SpinMode, SpinResolution, AUTO_SPIN_PAUSE, HOLD_SPIN_OPEN_PAUSE,
+    SEAM_OPEN_PAUSE,
 };
 use crate::data::GameData;
 use crate::engine;
+use crate::engine::evaluate::EvalContext;
 use macroquad_toolkit::timing::Timer;
 
 impl GameSession {
@@ -73,6 +76,13 @@ impl GameSession {
         // not waiting on the player — it advances itself on a beat.
         if self.holdspin.is_some() {
             if let Some(event) = self.tick_holdspin(data, dt) {
+                events.push(event);
+            }
+            return events;
+        }
+        // And a seam, which holds them the same way (§5.80).
+        if self.seam.is_some() {
+            if let Some(event) = self.tick_seam(data, dt) {
                 events.push(event);
             }
             return events;
@@ -282,6 +292,26 @@ impl GameSession {
             self.holdspin_beat = Timer::new(HOLD_SPIN_OPEN_PAUSE * self.preferences.time_scale());
         }
 
+        // A board that came to rest full of one treasure opens a seam (§5.80).
+        //
+        // Read off the *resting* grid rather than the landing one, so a
+        // cascading cabinet judges the board the player is actually looking at
+        // — a seam the chain has already cleared away is not a seam.
+        let resting = result.resting_grid();
+        if let Some(found) = engine::seam::find(data, resting, &data.seam) {
+            // The same context the spin was evaluated under, so a seam opened
+            // during free spins pays at the run's multiplier rather than at the
+            // base game's. It is the same money, arriving a beat later.
+            let ctx = match self.free_spins.as_ref() {
+                Some(run) if was_free_spin => {
+                    EvalContext::free_spin_at(data, line_bet, run.multiplier(data))
+                }
+                _ => EvalContext::base(data, line_bet),
+            };
+            self.seam = SeamRound::open(data, resting, found, ctx, &mut self.rng);
+            self.seam_beat = Timer::new(SEAM_OPEN_PAUSE * self.preferences.time_scale());
+        }
+
         // Only a paid spin rolls for a progressive: a free spin staked nothing,
         // so it fed nothing into the pots and cannot draw from them.
         let jackpot = if was_free_spin {
@@ -330,6 +360,7 @@ impl GameSession {
             was_free_spin,
             opened_bonus: self.bonus.is_some(),
             opened_holdspin: self.holdspin.is_some(),
+            opened_seam: self.seam.is_some(),
         };
         self.queue_celebrations(data, &highlights);
         self.check_autospin(data, &highlights);
@@ -341,6 +372,7 @@ impl GameSession {
             hatch_credits,
             jackpot,
             wrath_credits: 0,
+            seam_credits: 0,
         }
     }
 }

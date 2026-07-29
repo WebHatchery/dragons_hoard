@@ -148,6 +148,10 @@ impl Game {
             // is what the capture is actually of.
             self.session.auto_play_bonus(&self.data);
 
+            // A seam opened by the same grid would put its banner over the
+            // board this scene is a picture of.
+            self.session.auto_play_seam(&self.data);
+
             if self.session.holdspin.is_some() {
                 self.session.celebrations.clear();
                 for _ in 0..3 {
@@ -157,6 +161,36 @@ impl Game {
                     self.session.update_spin(&self.data, 2.0);
                 }
                 return;
+            }
+        }
+    }
+
+    /// Stop on an open Seam, part-way through the rite (§5.80).
+    ///
+    /// One move is taken before returning, for the same reason the Wrath scene
+    /// takes a few respins: a board frozen the instant the seam opened is
+    /// indistinguishable from an ordinary spin with a banner over it, and the
+    /// whole feature is the fact that the symbols change.
+    pub(super) fn hold_a_seam(&mut self) {
+        for _ in 0..200_000 {
+            self.session.balance = self.data.config.starting_balance;
+            self.session.celebrations.clear();
+            if self.session.spin_leaving_bonus(&self.data).is_err() {
+                break;
+            }
+            // The same grid can fill the hoard or wake the dragon; both hold the
+            // reel window in front of the seam, so they are resolved first.
+            self.session.auto_play_bonus(&self.data);
+            self.session.auto_play_holdspin(&self.data);
+
+            if self.session.seam.is_some() {
+                self.session.celebrations.clear();
+                // One beat, and only one: a two-step rite would finish and the
+                // scene would photograph the base game again.
+                self.session.update_spin(&self.data, 2.0);
+                if self.session.seam.is_some() {
+                    return;
+                }
             }
         }
     }
@@ -240,6 +274,13 @@ impl Game {
             // rather than left open — without this a fast-forward stalls the
             // moment a clutch of eggs lands.
             if self.session.auto_play_holdspin(&self.data).is_some() && reached(&self.session) {
+                return;
+            }
+
+            // And a seam, for the same reason (§5.80): it advances itself, so
+            // leaving one open stalls every scene that is looking for something
+            // else.
+            if self.session.auto_play_seam(&self.data).is_some() && reached(&self.session) {
                 return;
             }
 

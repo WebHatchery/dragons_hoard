@@ -26,6 +26,7 @@ pub struct MachineDef {
     pub(super) freespins: &'static str,
     pub(super) jackpots: &'static str,
     pub(super) holdspin: &'static str,
+    pub(super) seam: &'static str,
     pub(super) cascade: Option<&'static str>,
     pub(super) featurebuy: &'static str,
 }
@@ -66,6 +67,7 @@ macro_rules! machine {
                 $dir,
                 "/holdspin.json"
             )),
+            seam: include_str!(concat!("../../assets/data/machines/", $dir, "/seam.json")),
             featurebuy: include_str!(concat!(
                 "../../assets/data/machines/",
                 $dir,

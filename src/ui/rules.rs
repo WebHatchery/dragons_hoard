@@ -125,10 +125,15 @@ pub fn draw(ctx: &UiContext<'_>, pointer: Pointer, actions: &mut Vec<UiAction>, 
 ///
 /// Two until §5.64 added a thirteenth topic and Wyrmspire — which has the most
 /// mechanics of any cabinet, six of them — stopped fitting even at the minimum
-/// readable size. Three is the honest answer: the alternative was to stop
-/// explaining something, and this panel exists because the game used to do
-/// exactly that (§5.29).
-const COLUMNS: usize = 3;
+/// readable size. Three until §5.80 added the Seam, at which point Tidepool
+/// stopped fitting for the same reason. Four is still the honest answer: the
+/// alternative was to stop explaining something, and this panel exists because
+/// the game used to do exactly that (§5.29).
+///
+/// The count is what gives, not the readability floor. `MIN_BODY` is 11px
+/// because that is where the type stops being worth reading, and a panel that
+/// bought its layout by going below it would be a panel nobody reads.
+const COLUMNS: usize = 4;
 
 /// Column width and the vertical room a column has.
 fn geometry() -> (f32, f32) {

@@ -14,8 +14,9 @@ use super::celebration::CelebrationKind;
 use super::featurebuy::{self, BuyBlocked, BuyResult};
 use super::gamble::{GambleBlocked, GambleFlip, GambleRound, Scale};
 use super::holdspin::{self, HoldSpinOutcome, HoldSpinRound};
+use super::seam::{self, SeamOutcome};
 use super::spin::SpinEvent;
-use super::{FreeSpinState, GameSession, HOLD_SPIN_BEAT};
+use super::{FreeSpinState, GameSession, HOLD_SPIN_BEAT, SEAM_BEAT};
 use crate::data::{FeatureAward, GameData};
 use macroquad_toolkit::timing::Timer;
 
@@ -116,6 +117,55 @@ impl GameSession {
         let outcome = holdspin::auto_play(round, &data.holdspin, &mut self.rng);
         self.finish_holdspin(&outcome);
         Some(outcome)
+    }
+
+    /// Advance an open seam on its beat, one move per tick of the timer
+    /// (§5.80). Like the respin round it is decided as it goes: there is
+    /// nothing for the player to do, so there is nothing to hide from them.
+    pub(super) fn tick_seam(&mut self, data: &GameData, dt: f32) -> Option<SpinEvent> {
+        if !self.seam_beat.tick(dt) {
+            return None;
+        }
+        self.seam_beat = Timer::new(SEAM_BEAT * self.preferences.time_scale());
+
+        let round = self.seam.as_mut()?;
+        match round.step(data, &mut self.rng) {
+            Some(outcome) => {
+                self.finish_seam(&outcome);
+                Some(SpinEvent::SeamFinished(Box::new(outcome)))
+            }
+            None => Some(SpinEvent::SeamMoved),
+        }
+    }
+
+    /// Work an open seam out at once — the headless spin path, the sim and the
+    /// capture harness.
+    pub fn auto_play_seam(&mut self, data: &GameData) -> Option<SeamOutcome> {
+        let round = self.seam.as_mut()?;
+        let outcome = seam::auto_play(round, data, &mut self.rng);
+        self.finish_seam(&outcome);
+        Some(outcome)
+    }
+
+    fn finish_seam(&mut self, outcome: &SeamOutcome) {
+        // The board the rite left behind is the board the player keeps looking
+        // at until the next spin. Anything else would snap the grid back to the
+        // one that opened the seam the instant the round ended.
+        if let Some(round) = self.seam.take() {
+            self.grid = round.grid().clone();
+        }
+        self.balance += outcome.credits;
+        self.open_round.credits += outcome.credits;
+        self.open_round.feature = true;
+        self.stats.total_won += outcome.credits;
+        self.stats.biggest_win = self.stats.biggest_win.max(outcome.credits);
+        self.last_win += outcome.credits;
+        self.stats.seams += 1;
+        self.celebrations.push(CelebrationKind::Seam {
+            credits: outcome.credits,
+            rite: outcome.rite_name.clone(),
+            cells: outcome.cells,
+        });
     }
 
     fn finish_holdspin(&mut self, outcome: &HoldSpinOutcome) {

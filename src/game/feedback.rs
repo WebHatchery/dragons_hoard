@@ -27,6 +27,7 @@ impl Game {
             CelebrationKind::Jackpot { .. } => Some(Cause::Jackpot),
             CelebrationKind::Hatch { .. } => Some(Cause::Hatch),
             CelebrationKind::Wrath { .. } => Some(Cause::Wrath),
+            CelebrationKind::Seam { .. } => Some(Cause::Seam),
             CelebrationKind::FreeSpinsEntry { .. } => Some(Cause::Feature),
             CelebrationKind::BigWin { .. } => Some(Cause::BigWin),
             _ => None,
@@ -75,6 +76,16 @@ impl Game {
             CelebrationKind::BigWin { .. } => {
                 self.add_trauma(0.5);
                 self.sound.play(Sfx::WinBig);
+            }
+            // A seam is a middling event dressed as one: shake and a burst, but
+            // below the Wrath it sits next to. It borrows the coin-lock effect
+            // rather than adding a voice — the sound mix is measured against a
+            // stated order (§5.51) and a new effect belongs in that pass, not
+            // bolted on here.
+            CelebrationKind::Seam { .. } => {
+                self.add_trauma(0.55);
+                self.sound.play(Sfx::CoinLock);
+                self.spawn_hatch_burst();
             }
             CelebrationKind::FreeSpinsSummary { .. } => self.sound.play(Sfx::WinSmall),
         }

@@ -5,6 +5,7 @@ pub mod cascade;
 pub mod cluster;
 pub mod evaluate;
 pub mod reels;
+pub mod seam;
 pub mod sim;
 /// The interactive path, driven headless (§5.33). Test-only, like the parts of
 /// `sim` it is checked against: it exists to prove the shipped game pays what

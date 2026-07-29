@@ -24,6 +24,7 @@ pub mod proof;
 pub mod ruin;
 pub mod rules;
 pub mod save;
+pub mod seam;
 pub mod sessions;
 pub mod spin;
 pub mod wallet;
@@ -40,6 +41,7 @@ use ledger::OpenRound;
 use macroquad_toolkit::rng::SeededRng;
 use macroquad_toolkit::timing::Timer;
 use preferences::Preferences;
+use seam::SeamRound;
 use serde::{Deserialize, Serialize};
 use spin::SpinPhase;
 
@@ -55,6 +57,13 @@ const HOLD_SPIN_BEAT: f32 = 0.75;
 /// A longer pause before the first respin, so the locked eggs are read as coins
 /// before anything moves.
 const HOLD_SPIN_OPEN_PAUSE: f32 = 1.1;
+/// Beat between the moves a seam makes (§5.80). Slower than a cascade collapse
+/// and slower than a respin: a rite changes the symbols the player is reading,
+/// and they have to be readable at each step or the whole feature is a blur.
+const SEAM_BEAT: f32 = 0.85;
+/// A longer pause before the first move, so the board that opened the seam is
+/// read as a board before anything on it changes.
+const SEAM_OPEN_PAUSE: f32 = 1.2;
 
 /// Active free-spin feature. `line_bet` is frozen at the triggering bet.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -107,6 +116,9 @@ pub struct SpinResolution {
     /// (§5.12). Zero while a round is still on screen, for the same reason
     /// `hatch_credits` is.
     pub wrath_credits: i64,
+    /// The Seam this spin opened, once the rite has run (§5.80). Zero while the
+    /// board is still being worked, for the same reason the two above are.
+    pub seam_credits: i64,
 }
 
 impl SpinResolution {
@@ -115,7 +127,11 @@ impl SpinResolution {
     }
 
     pub fn total_credits(&self) -> i64 {
-        self.spin_credits + self.hatch_credits + self.jackpot_credits() + self.wrath_credits
+        self.spin_credits
+            + self.hatch_credits
+            + self.jackpot_credits()
+            + self.wrath_credits
+            + self.seam_credits
     }
 
     pub fn outcome(&self) -> &SpinOutcome {
@@ -148,6 +164,8 @@ struct SpinHighlights {
     opened_bonus: bool,
     /// A clutch of eggs woke the dragon (§5.12).
     opened_holdspin: bool,
+    /// The board came to rest full of one treasure (§5.80).
+    opened_seam: bool,
 }
 
 /// A spin that has been paid for and decided but not yet revealed.
@@ -215,6 +233,10 @@ pub struct GameSession {
     /// An open Dragon's Wrath round (§5.12). Holds the game like a card does,
     /// but advances on a beat rather than on a pick.
     pub holdspin: Option<HoldSpinRound>,
+    /// An open Seam (§5.80). Holds the game and advances on its own beat, as
+    /// the respin round does.
+    pub seam: Option<SeamRound>,
+    seam_beat: Timer,
     /// An open Dragon's Gamble (§5.16). Holds the game while the player decides.
     pub gamble: Option<GambleRound>,
     /// The round being played, for the Ledger (§5.18). One paid spin and
@@ -261,6 +283,8 @@ impl GameSession {
             holdspin_beat: Timer::new(HOLD_SPIN_BEAT),
             bonus: None,
             holdspin: None,
+            seam: None,
+            seam_beat: Timer::new(SEAM_BEAT),
             gamble: None,
             committed: None,
             open_round: OpenRound::default(),
@@ -294,6 +318,8 @@ impl GameSession {
             holdspin_beat: Timer::new(HOLD_SPIN_BEAT),
             bonus: None,
             holdspin: None,
+            seam: None,
+            seam_beat: Timer::new(SEAM_BEAT),
             gamble: None,
             committed: None,
             open_round: OpenRound::default(),
@@ -349,6 +375,12 @@ impl GameSession {
     /// refusing to lock on their result, and a win hid it only because the
     /// payout count-up holds the board afterwards.
     pub fn display_grid(&self) -> &Grid {
+        // A seam is worked on the board it opened on, and that board *is* the
+        // reel window while the rite runs (§5.80) — the reels do not turn, the
+        // symbols on them change.
+        if let Some(round) = self.seam.as_ref() {
+            return round.grid();
+        }
         let Some(pending) = self.pending.as_ref() else {
             return &self.grid;
         };
@@ -421,6 +453,7 @@ impl GameSession {
             && !self.celebrations.is_active()
             && self.bonus.is_none()
             && self.holdspin.is_none()
+            && self.seam.is_none()
             && self.gamble.is_none()
     }
 
@@ -514,6 +547,10 @@ impl GameSession {
         if let Some(outcome) = self.auto_play_holdspin(data) {
             resolution.wrath_credits += outcome.credits;
         }
+        // And the seam, for the same reason again (§5.80).
+        if let Some(outcome) = self.auto_play_seam(data) {
+            resolution.seam_credits += outcome.credits;
+        }
         Ok(resolution)
     }
 
@@ -580,6 +617,11 @@ impl GameSession {
             // torn down too — otherwise it resumes the moment the round ends and
             // the player never gets the board back.
             Some(AutospinStop::WrathWoken)
+        } else if highlights.opened_seam {
+            // Same argument as the respin round: the seam holds the game on its
+            // own, but the run has to come down with it or it resumes the
+            // moment the rite finishes.
+            Some(AutospinStop::SeamOpened)
         } else if highlights.opened_bonus {
             Some(AutospinStop::Hatched)
         } else if highlights.credited >= self.big_win_threshold(data) {
