@@ -280,23 +280,39 @@ impl Game {
             // A Dragon's Wrath round is not waiting on anyone, so it is resolved
             // rather than left open — without this a fast-forward stalls the
             // moment a clutch of eggs lands.
-            if self.session.auto_play_holdspin(&self.data).is_some() && reached(&self.session) {
-                return;
+            //
+            // Each resolved round is also noted against the awards book, for the
+            // same reason the game notes them (§5.84): a scene that photographs
+            // the awards panel after a hatch should show the hatch.
+            if self.session.auto_play_holdspin(&self.data).is_some() {
+                self.achievements
+                    .note_round(crate::state::achievements::FeatureRound::Wrath);
+                if reached(&self.session) {
+                    return;
+                }
             }
 
             // And a seam, for the same reason (§5.80): it advances itself, so
             // leaving one open stalls every scene that is looking for something
             // else.
-            if self.session.auto_play_seam(&self.data).is_some() && reached(&self.session) {
-                return;
+            if self.session.auto_play_seam(&self.data).is_some() {
+                self.achievements
+                    .note_round(crate::state::achievements::FeatureRound::Seam);
+                if reached(&self.session) {
+                    return;
+                }
             }
 
             // Nothing wanted the open board, so play it out — and look again,
             // because finishing a board is what raises the Hatch card. Checking
             // only before this is what left the `hatch` scene spinning 20,000
             // times and photographing nothing.
-            if self.session.auto_play_bonus(&self.data).is_some() && reached(&self.session) {
-                return;
+            if self.session.auto_play_bonus(&self.data).is_some() {
+                self.achievements
+                    .note_round(crate::state::achievements::FeatureRound::Hatch);
+                if reached(&self.session) {
+                    return;
+                }
             }
         }
     }

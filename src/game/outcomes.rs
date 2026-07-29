@@ -54,6 +54,10 @@ impl Game {
             }
             ActionOutcome::BonusPicked => self.sound.play(Sfx::Click),
             ActionOutcome::BonusFinished(credits) => {
+                // The round is over and paid, which is the moment the awards
+                // book can be told about it — the spin it grew out of settled
+                // several presses ago (§5.84).
+                self.note_feature_round(crate::state::achievements::FeatureRound::Hatch);
                 self.sound.play(Sfx::WinBig);
                 self.notifications
                     .success(format!("The vault yields {} credits", credits));

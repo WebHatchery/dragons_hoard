@@ -4153,6 +4153,73 @@ not the Wrath, not the seam — so adding one only for the newest feature would 
 the inconsistency rather than the fix.
 
 
+### 5.84 Two awards nobody could ever have won (post-v1)
+
+This began as a small thing: the seam deserves an achievement. It ended in a
+defect that had been shipped since §5.10.
+
+**The paytable now says what a symbol does in a seam.** Every paying row reads
+"low tier — a seam at 6, deepens to Gold Coins". Two figures a player needs and
+neither existed anywhere in the game: the rules panel quotes the trigger but not
+what *this* symbol becomes, and the choice panel cannot carry it because by the
+time that panel is up the decision is being made. The deepening target is named
+rather than positional — "the row above" is true today and quietly false the day
+a cabinet reprices a symbol, because the paytable lists symbols in the set's
+order and the ladder sorts them by what they pay. A test walks every symbol on
+every cabinet and checks the sentence against `seam::ladder` itself; the
+function takes `GameData` rather than the `UiContext` around it purely so the
+test can call the real one rather than agree with a copy.
+
+**Then the achievement.** Adding "Seam Worked" meant finding where a feature
+round increments a counter, and the answer was: it does not. The awards book is
+fed one thing, a settled `SpinResolution`, and **every feature in this game that
+opens a round credits itself after that resolution has gone out.** The Vault
+Pick pays when the last chest turns (§5.10), the Wrath when the respins run down
+(§5.12), the seam when the rite finishes (§5.80). Each of those is documented
+behaviour. Nothing had ever put the three facts next to the thing that consumes
+them.
+
+So `AchievementProgress::observe` counted hatches from `resolution.hatch_credits
+> 0`, which is **always zero in the interactive game**. *It Hatches* and *Clutch*
+have been in the awards list since v1 and could not be unlocked by playing.
+
+The test that proves it is four lines of play: spin until the hoard fills, turn
+the chests as a player does, and compare the session's own count against the
+book's. It reported 1 against 0.
+
+Counting now happens where a round *finishes* — `note_round(FeatureRound)`, with
+a closed enum of the three, so a fourth cannot be added without someone deciding
+here whether the awards book should know about it. That is the decision that was
+never made for the first three. The capture harness notes them too, so a scene
+that photographs the awards panel after a hatch shows the hatch.
+
+**And the panel could not hold the result.** Three new awards took the list to
+fifteen, and the panel's height was `108 + rows * 44` — 768 pixels in a 720
+frame. It drew its first and last rows off both ends of the screen. The layout
+audit called it clean, correctly: the rows are inside the panel, and it was the
+*panel* that had left the building. Nothing anywhere related its height to the
+frame's.
+
+It now flows into columns from what actually fits, the way the rules panel
+derives its type size — one column while the list is short, which is every
+cabinet before this one, and two at fifteen. The test asserts the panel stays on
+screen for one to sixty awards at three screen heights, because the fault was
+never "fifteen is too many".
+
+**The thread worth pulling.** Three iterations of this feature have now found
+three faults in things it merely touched: a rules gate that checked topics and
+not sentences (§5.82), a ceiling that swallowed a multiplier (§5.83), and two
+awards that were never winnable. None of them were in the seam. A new feature is
+a set of questions asked of the systems around it, and the answers are where the
+old mistakes are.
+
+**What is not done, plainly.** The Wrath and the seam now have one award each
+and the seam has two, which is one more than symmetry wants; it is there because
+the seam is the only feature the player *plays*, and repeating a decision is a
+different thing from repeating an event. The floor-walker award still says "play
+every machine on the floor" at a threshold of two, and there are six.
+
+
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
 - Winning lines: pulse highlight (`blink`/`pulse`), floating win amounts
@@ -4842,7 +4909,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus eighty-three post-v1 systems
+## 15. Current State — v1 shipped, plus eighty-four post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple

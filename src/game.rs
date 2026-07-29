@@ -383,6 +383,7 @@ impl Game {
             // The seam credits itself; what is left is the line in the log,
             // since the card only shows the headline figure.
             SpinEvent::SeamFinished(outcome) => {
+                self.note_feature_round(crate::state::achievements::FeatureRound::Seam);
                 self.notifications.info(format!(
                     "{} — {} cells over {} moves for {} credits{}",
                     outcome.rite_name,
@@ -411,6 +412,7 @@ impl Game {
             // The round credits itself; what is left is the noise it makes and
             // a line in the log, since the card only shows the headline figure.
             SpinEvent::HoldSpinFinished(outcome) => {
+                self.note_feature_round(crate::state::achievements::FeatureRound::Wrath);
                 self.add_trauma(0.6);
                 self.sound.play(Sfx::CoinLock);
                 self.notifications.info(format!(
@@ -722,6 +724,20 @@ impl Game {
         let earned =
             self.achievements
                 .observe(self.data.machine_id(), resolution, self.session.balance);
+        self.announce_achievements(earned);
+    }
+
+    /// Fold in a feature round that has just paid out (§5.84).
+    ///
+    /// A round finishes long after the spin that opened it settled, so it
+    /// cannot ride in on a resolution — which is exactly how two hatch awards
+    /// came to be unreachable by playing the game.
+    pub(super) fn note_feature_round(&mut self, round: crate::state::achievements::FeatureRound) {
+        let earned = self.achievements.note_round(round);
+        self.announce_achievements(earned);
+    }
+
+    fn announce_achievements(&mut self, earned: Vec<crate::state::achievements::AchievementDef>) {
         if earned.is_empty() {
             return;
         }

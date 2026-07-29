@@ -179,3 +179,93 @@ fn seam_credits_over(data: &GameData, multiplier: i64) -> i64 {
     }
     credits
 }
+
+/// The counters the awards book keeps, driven the way a player drives them.
+///
+/// The book is fed one thing: a settled `SpinResolution`, from
+/// `SpinEvent::Settled`. Every feature in this game that opens a *round* —
+/// the Vault Pick, the Dragon's Wrath, the Seam — credits itself after that
+/// event has already gone out, so its figure on the resolution is zero at the
+/// moment the book reads it. That is documented behaviour for each of them
+/// individually (§5.10, §5.12, §5.80) and nothing had ever put the three facts
+/// next to the thing that consumes them.
+mod awards {
+    use super::*;
+    use crate::state::achievements::{AchievementBook, FeatureRound};
+
+    /// Play interactively until the hoard hatches, feeding the book exactly what
+    /// the game feeds it.
+    #[test]
+    fn a_hatch_a_player_watched_reaches_the_awards_book() {
+        let data = data();
+        let mut session = GameSession::new(&data, 6_006);
+        let mut book = AchievementBook::load(&data.config).unwrap();
+
+        for _ in 0..40_000 {
+            session.balance = 1_000_000;
+            session.celebrations.clear();
+            let Ok(resolution) = session.spin_leaving_bonus(&data) else {
+                break;
+            };
+            book.observe(data.machine_id(), &resolution, session.balance);
+
+            // What a player does with an open board: turn chests until it ends.
+            // The book is told when the *round* finishes, which is what `Game`
+            // does and what §5.84 had to add.
+            let had_board = session.bonus.is_some();
+            while let Some(index) = session
+                .bonus
+                .as_ref()
+                .and_then(|round| round.next_unrevealed())
+            {
+                session.pick_bonus(index, &data);
+            }
+            if had_board {
+                book.note_round(FeatureRound::Hatch);
+            }
+            session.auto_play_holdspin(&data);
+            session.auto_play_seam(&data);
+
+            if session.stats.hatches > 0 {
+                assert_eq!(
+                    book.progress().hatches,
+                    session.stats.hatches as i64,
+                    "the session counted {} hatches and the awards book {}",
+                    session.stats.hatches,
+                    book.progress().hatches
+                );
+                return;
+            }
+        }
+        panic!("no hatch in 40,000 spins");
+    }
+
+    /// And the same for the two rounds that had never been counted at all.
+    #[test]
+    fn every_feature_round_moves_a_counter_of_its_own() {
+        let data = data();
+        let mut book = AchievementBook::load(&data.config).unwrap();
+
+        for (round, read) in [
+            (FeatureRound::Hatch, 0usize),
+            (FeatureRound::Wrath, 1),
+            (FeatureRound::Seam, 2),
+        ] {
+            let before = counters(&book);
+            book.note_round(round);
+            let after = counters(&book);
+            for (index, (was, now)) in before.iter().zip(&after).enumerate() {
+                if index == read {
+                    assert_eq!(*now, was + 1, "{:?} did not move its own counter", round);
+                } else {
+                    assert_eq!(now, was, "{:?} moved somebody else's counter", round);
+                }
+            }
+        }
+    }
+
+    fn counters(book: &AchievementBook) -> [i64; 3] {
+        let progress = book.progress();
+        [progress.hatches, progress.wraths, progress.seams]
+    }
+}

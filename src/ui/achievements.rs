@@ -14,6 +14,43 @@ use macroquad_toolkit::ui::{
 };
 
 const ROW_HEIGHT: f32 = 44.0;
+/// Header, and the gap under the last row.
+const CHROME: f32 = 108.0;
+/// Gap between two columns of awards.
+const COLUMN_GAP: f32 = 24.0;
+/// The panel at one column and at more than one. Wider once it has to flow,
+/// because two 400px columns cannot hold a name, a sentence and a tally.
+const NARROW: f32 = 820.0;
+const WIDE: f32 = 1180.0;
+
+/// How the awards are laid out at this list length and screen height.
+///
+/// The panel used to be `108 + rows * 44` tall and centred, which is fine until
+/// the list outgrows the screen — at fifteen awards it is 768 tall in a 720
+/// frame, and the first and last rows are drawn off both ends of it (§5.84).
+/// Nothing caught that: the rows are inside the panel, and it was the *panel*
+/// that had left the building.
+///
+/// So the count of columns is derived from what actually fits, the same way the
+/// rules panel derives its type size (§5.29). One column while the list is
+/// short, which is every cabinet before this one.
+fn layout(awards: usize, height: f32) -> (Rect, usize) {
+    let room = ((height - CHROME - 24.0) / ROW_HEIGHT).floor().max(1.0) as usize;
+    let columns = awards.div_ceil(room).max(1);
+    let per_column = awards.div_ceil(columns).max(1);
+    let width = if columns > 1 { WIDE } else { NARROW };
+    let tall = CHROME + per_column as f32 * ROW_HEIGHT;
+    // Centred against the height it was handed rather than through
+    // `frame::centred`, so the arithmetic can be tested at a screen size that is
+    // not the one the game happens to be running at.
+    let panel = Rect::new(
+        ((frame::width() - width) * 0.5).max(0.0),
+        ((height - tall) * 0.5).max(0.0),
+        width,
+        tall,
+    );
+    (panel, per_column)
+}
 
 pub fn draw(book: &AchievementBook, pointer: Pointer, actions: &mut Vec<UiAction>, nav: &mut Nav) {
     draw_rectangle(
@@ -24,8 +61,7 @@ pub fn draw(book: &AchievementBook, pointer: Pointer, actions: &mut Vec<UiAction
         Color::new(0.0, 0.0, 0.0, 0.82),
     );
 
-    let height = 108.0 + book.defs().len() as f32 * ROW_HEIGHT;
-    let panel = frame::centred(820.0, height);
+    let (panel, per_column) = layout(book.defs().len(), frame::height());
     // Everything drawn below is measured against this panel (§5.37).
     let _region = Region::on(panel, palette::stone());
     draw_surface(
@@ -54,11 +90,13 @@ pub fn draw(book: &AchievementBook, pointer: Pointer, actions: &mut Vec<UiAction
         actions.push(UiAction::ToggleAchievements);
     }
 
+    let columns = book.defs().len().div_ceil(per_column).max(1);
+    let column_width = (panel.w - 32.0 - COLUMN_GAP * (columns - 1) as f32) / columns as f32;
     for (index, def) in book.defs().iter().enumerate() {
         let row = Rect::new(
-            panel.x + 16.0,
-            panel.y + 58.0 + index as f32 * ROW_HEIGHT,
-            panel.w - 32.0,
+            panel.x + 16.0 + (index / per_column) as f32 * (column_width + COLUMN_GAP),
+            panel.y + 58.0 + (index % per_column) as f32 * ROW_HEIGHT,
+            column_width,
             ROW_HEIGHT - 6.0,
         );
         let earned = book.is_unlocked(&def.id);
@@ -128,9 +166,67 @@ fn current(book: &AchievementBook, kind: ConditionKind) -> i64 {
         ConditionKind::Spins => progress.spins,
         ConditionKind::FreeSpins => progress.free_spins,
         ConditionKind::Hatches => progress.hatches,
+        ConditionKind::Wraths => progress.wraths,
+        ConditionKind::Seams => progress.seams,
         ConditionKind::Jackpots => progress.jackpots,
         ConditionKind::BiggestWin => progress.biggest_win,
         ConditionKind::Balance => progress.best_balance,
         ConditionKind::MachinesPlayed => progress.machines_played.len() as i64,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::data::GameData;
+
+    /// The panel has to stay on the screen, whatever the list does.
+    ///
+    /// Asserted against the shipped award list and against lists far longer than
+    /// it, because the fault this replaces was not "fifteen awards is too many"
+    /// — it was that nothing anywhere related the panel's height to the frame's.
+    #[test]
+    fn the_panel_never_leaves_the_screen_however_many_awards_there_are() {
+        for height in [600.0, 720.0, 900.0] {
+            for awards in 1..=60 {
+                let (panel, per_column) = layout(awards, height);
+                assert!(
+                    panel.y >= 0.0 && panel.bottom() <= height,
+                    "{} awards at {}px: panel spans {}..{}",
+                    awards,
+                    height,
+                    panel.y,
+                    panel.bottom()
+                );
+                let columns = awards.div_ceil(per_column);
+                assert!(
+                    columns * per_column >= awards,
+                    "{} awards do not fit in {}x{}",
+                    awards,
+                    columns,
+                    per_column
+                );
+            }
+        }
+    }
+
+    /// The shipped list, at the size the game actually runs at.
+    ///
+    /// Fifteen awards is two columns on a 720 frame, and that is the answer
+    /// rather than a smaller row: the panel is a list of goals and a goal in
+    /// eleven-point type is not one.
+    #[test]
+    fn the_shipped_list_lands_on_the_screen_in_at_most_two_columns() {
+        let data = GameData::load().unwrap();
+        let book = AchievementBook::load(&data.config).unwrap();
+        let (panel, per_column) = layout(book.defs().len(), frame::height());
+
+        assert!(panel.y >= 0.0 && panel.bottom() <= frame::height());
+        assert!(
+            book.defs().len().div_ceil(per_column) <= 2,
+            "{} awards want {} columns",
+            book.defs().len(),
+            book.defs().len().div_ceil(per_column)
+        );
     }
 }

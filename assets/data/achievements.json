@@ -3,72 +3,135 @@
     "id": "first_pull",
     "name": "First Pull",
     "description": "Spin the reels.",
-    "condition": { "kind": "spins", "at_least": 1 }
+    "condition": {
+      "kind": "spins",
+      "at_least": 1
+    }
   },
   {
     "id": "regular",
     "name": "Regular",
     "description": "Spin 100 times.",
-    "condition": { "kind": "spins", "at_least": 100 }
+    "condition": {
+      "kind": "spins",
+      "at_least": 100
+    }
   },
   {
     "id": "devoted",
     "name": "Devoted",
     "description": "Spin 1,000 times.",
-    "condition": { "kind": "spins", "at_least": 1000 }
+    "condition": {
+      "kind": "spins",
+      "at_least": 1000
+    }
   },
   {
     "id": "dragon_stirs",
     "name": "The Dragon Stirs",
     "description": "Trigger free spins.",
-    "condition": { "kind": "free_spins", "at_least": 1 }
+    "condition": {
+      "kind": "free_spins",
+      "at_least": 1
+    }
   },
   {
     "id": "wingbeat",
     "name": "Wingbeat",
     "description": "Play 100 free spins.",
-    "condition": { "kind": "free_spins", "at_least": 100 }
+    "condition": {
+      "kind": "free_spins",
+      "at_least": 100
+    }
   },
   {
     "id": "it_hatches",
     "name": "It Hatches",
     "description": "Fill the hoard and hatch it.",
-    "condition": { "kind": "hatches", "at_least": 1 }
+    "condition": {
+      "kind": "hatches",
+      "at_least": 1
+    }
   },
   {
     "id": "clutch",
     "name": "Clutch",
     "description": "Hatch the hoard 10 times.",
-    "condition": { "kind": "hatches", "at_least": 10 }
+    "condition": {
+      "kind": "hatches",
+      "at_least": 10
+    }
   },
   {
     "id": "vault_cracked",
     "name": "Vault Cracked",
     "description": "Win 2,000 credits on a single spin.",
-    "condition": { "kind": "biggest_win", "at_least": 2000 }
+    "condition": {
+      "kind": "biggest_win",
+      "at_least": 2000
+    }
   },
   {
     "id": "dragonslayer",
     "name": "Dragonslayer",
     "description": "Win 20,000 credits on a single spin.",
-    "condition": { "kind": "biggest_win", "at_least": 20000 }
+    "condition": {
+      "kind": "biggest_win",
+      "at_least": 20000
+    }
   },
   {
     "id": "pot_falls",
     "name": "The Pot Falls",
     "description": "Win a progressive jackpot.",
-    "condition": { "kind": "jackpots", "at_least": 1 }
+    "condition": {
+      "kind": "jackpots",
+      "at_least": 1
+    }
   },
   {
     "id": "hoarder",
     "name": "Hoarder",
     "description": "Hold 25,000 credits at once.",
-    "condition": { "kind": "balance", "at_least": 25000 }
+    "condition": {
+      "kind": "balance",
+      "at_least": 25000
+    }
   },
   {
     "id": "floor_walker",
     "name": "Floor Walker",
     "description": "Play every machine on the floor.",
-    "condition": { "kind": "machines_played", "at_least": 2 }
+    "condition": {
+      "kind": "machines_played",
+      "at_least": 2
+    }
+  },
+  {
+    "id": "wrath_woken",
+    "name": "Wrath Woken",
+    "description": "Play out a Dragon's Wrath round.",
+    "condition": {
+      "kind": "wraths",
+      "at_least": 1
+    }
+  },
+  {
+    "id": "seam_worked",
+    "name": "Seam Worked",
+    "description": "Choose a rite and work a seam.",
+    "condition": {
+      "kind": "seams",
+      "at_least": 1
+    }
+  },
+  {
+    "id": "prospector",
+    "name": "Prospector",
+    "description": "Work 25 seams.",
+    "condition": {
+      "kind": "seams",
+      "at_least": 25
+    }
   }
 ]

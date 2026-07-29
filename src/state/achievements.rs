@@ -30,6 +30,10 @@ pub enum ConditionKind {
     Spins,
     FreeSpins,
     Hatches,
+    /// Dragon's Wrath rounds played out (§5.12).
+    Wraths,
+    /// Seams worked (§5.80).
+    Seams,
     Jackpots,
     /// Largest single spin, ever, on any machine.
     BiggestWin,
@@ -37,6 +41,21 @@ pub enum ConditionKind {
     Balance,
     /// Distinct machines played.
     MachinesPlayed,
+}
+
+/// A feature that opens a round of its own and pays when the round ends.
+///
+/// Closed, so a fourth one cannot be added without someone deciding here
+/// whether the awards book should know about it — which is the decision that
+/// was never made for the first three.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FeatureRound {
+    /// The hoard filled and its Vault Pick was played out (§5.10).
+    Hatch,
+    /// A Dragon's Wrath respin round ended (§5.12).
+    Wrath,
+    /// A seam finished working the board (§5.80).
+    Seam,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -60,6 +79,11 @@ pub struct AchievementProgress {
     pub spins: i64,
     pub free_spins: i64,
     pub hatches: i64,
+    /// `default` on both so a save written before §5.84 still loads (§5.49).
+    #[serde(default)]
+    pub wraths: i64,
+    #[serde(default)]
+    pub seams: i64,
     pub jackpots: i64,
     pub biggest_win: i64,
     pub best_balance: i64,
@@ -73,6 +97,8 @@ impl AchievementProgress {
             ConditionKind::Spins => self.spins,
             ConditionKind::FreeSpins => self.free_spins,
             ConditionKind::Hatches => self.hatches,
+            ConditionKind::Wraths => self.wraths,
+            ConditionKind::Seams => self.seams,
             ConditionKind::Jackpots => self.jackpots,
             ConditionKind::BiggestWin => self.biggest_win,
             ConditionKind::Balance => self.best_balance,
@@ -82,14 +108,18 @@ impl AchievementProgress {
 
     /// Fold one settled spin in. `balance` is read after crediting, so the
     /// high-water mark includes the spin that produced it.
+    ///
+    /// **A feature round is not counted here** (§5.84). Every round in this
+    /// game — the Vault Pick, the Dragon's Wrath, the Seam — credits itself
+    /// *after* the spin has settled and the resolution has gone out, so its
+    /// figure is zero at the moment this reads it. Counting hatches from
+    /// `hatch_credits` is what it used to do, and the two achievements resting
+    /// on that counter could not be unlocked by playing the game.
     fn observe(&mut self, machine_id: &str, resolution: &SpinResolution, balance: i64) {
         if resolution.was_free_spin {
             self.free_spins += 1;
         } else {
             self.spins += 1;
-        }
-        if resolution.hatch_credits > 0 {
-            self.hatches += 1;
         }
         if resolution.jackpot.is_some() {
             self.jackpots += 1;
@@ -205,6 +235,20 @@ impl AchievementBook {
         balance: i64,
     ) -> Vec<AchievementDef> {
         self.progress.observe(machine_id, resolution, balance);
+        self.check()
+    }
+
+    /// Note a feature round that has just paid out (§5.84).
+    ///
+    /// Separate from [`observe`](Self::observe) because a round finishes on its
+    /// own clock — a chest turned over, a respin allowance run down, a rite
+    /// worked out — and there is no spin resolution left to hang it on by then.
+    pub fn note_round(&mut self, round: FeatureRound) -> Vec<AchievementDef> {
+        match round {
+            FeatureRound::Hatch => self.progress.hatches += 1,
+            FeatureRound::Wrath => self.progress.wraths += 1,
+            FeatureRound::Seam => self.progress.seams += 1,
+        }
         self.check()
     }
 

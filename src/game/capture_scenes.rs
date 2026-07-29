@@ -101,8 +101,12 @@ impl Game {
             }
             "achievements" => {
                 self.fast_forward_to(|session| session.stats.hatches > 0);
-                // The hatch that got us here raised a card; the panel is the
-                // subject of this capture, not the card.
+                // The hatch that got us here raised a card and dealt a board;
+                // the panel is the subject of this capture, not either of them.
+                // The board went unnoticed for four sections because it happens
+                // to be narrower than the panel was — and stopped being
+                // unnoticeable the moment the panel grew a second column.
+                self.session.auto_play_bonus(&self.data);
                 self.session.celebrations.clear();
                 self.show_achievements = true;
             }
