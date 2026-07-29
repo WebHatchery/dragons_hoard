@@ -27,7 +27,9 @@ impl Game {
             CelebrationKind::Jackpot { .. } => Some(Cause::Jackpot),
             CelebrationKind::Hatch { .. } => Some(Cause::Hatch),
             CelebrationKind::Wrath { .. } => Some(Cause::Wrath),
-            CelebrationKind::Seam { .. } => Some(Cause::Seam),
+            // Only a seam that paid marks the balance graph. A run of dry
+            // ones would be a line of dots against a flat line (§5.85).
+            CelebrationKind::Seam { credits, .. } if *credits > 0 => Some(Cause::Seam),
             CelebrationKind::FreeSpinsEntry { .. } => Some(Cause::Feature),
             CelebrationKind::BigWin { .. } => Some(Cause::BigWin),
             _ => None,
@@ -77,11 +79,16 @@ impl Game {
                 self.add_trauma(0.5);
                 self.sound.play(Sfx::WinBig);
             }
-            // A seam is a middling event dressed as one: shake and a burst, but
-            // below the Wrath it sits next to. It borrows the coin-lock effect
-            // rather than adding a voice — the sound mix is measured against a
-            // stated order (§5.51) and a new effect belongs in that pass, not
-            // bolted on here.
+            // A dry seam gets the busted-gamble treatment (§5.16): a beat, so
+            // the player sees the round ended, and nothing else. It was showering
+            // gold over a total of nothing on more than half the seams Avalanche
+            // deals (§5.85).
+            CelebrationKind::Seam { dry: Some(_), .. } => {
+                self.add_trauma(0.2);
+                self.sound.play_at(Sfx::SeamMove, 0.7);
+            }
+            // A seam that paid is a middling event dressed as one: shake and a
+            // burst, but below the Wrath it sits next to.
             CelebrationKind::Seam { .. } => {
                 self.add_trauma(0.55);
                 self.sound.play(Sfx::CoinLock);

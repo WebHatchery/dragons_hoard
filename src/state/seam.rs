@@ -60,6 +60,15 @@ pub struct SeamOutcome {
     /// Whether the ceiling caught the payout. Worth surfacing: a capped seam is
     /// the one moment the feature's own limit is visible to the player.
     pub capped: bool,
+    /// What the board was worth when the reels stopped (§5.85).
+    ///
+    /// Carried so a round that paid nothing can say *which* nothing it was: a
+    /// gilding on a board that was not paying is a multiple of zero, and a rite
+    /// on a board that was already paying and added nothing is a different
+    /// disappointment. The card is the only thing that reads it, and it is
+    /// cheaper to carry the figure than to have the card work out the reason
+    /// from a grid it does not have.
+    pub baseline: i64,
 }
 
 /// Applied to nothing until a gilding rite raises it. Permille so a cabinet can
@@ -255,6 +264,7 @@ impl SeamRound {
             symbol: self.seam.symbol,
             cells: self.seam.cells.len(),
             steps: self.steps_taken,
+            baseline: self.baseline,
         }
     }
 }

@@ -4220,6 +4220,58 @@ different thing from repeating an event. The floor-walker award still says "play
 every machine on the floor" at a threshold of two, and there are six.
 
 
+### 5.85 A shower of gold over a total of nothing (post-v1)
+
+The seam's card was written when the seam always paid. It does not always pay,
+and §5.81 is the reason: a gilding multiplies what the board is already worth,
+so on a board that won nothing it is worth exactly nothing. That is not a bug —
+it is the whole shape of the decision, and it is what makes choosing a choice.
+
+What was a bug is what the game did about it. **"THE SEAM RUNS", "0 CREDITS",
+half a second of screen shake and a burst of gold particles.**
+
+**How often, measured.** The rite-parity harness (§5.81) already runs every rite
+over six hundred real seams per cabinet; counting the ones that came out empty
+cost four lines:
+
+| | widen | deepen | gild |
+|---|---|---|---|
+| Dragon's Hoard | 5.7% | 7.7% | **36.2%** |
+| Frost Wyrm | 16.0% | 2.5% | 11.5% |
+| Emberfall | 31.7% | 0.8% | 9.8% |
+| Wyrmspire | 37.5% | 4.7% | 9.8% |
+| Avalanche | **58.0%** | **51.3%** | — |
+| Tidepool | 1.0% | 12.0% | — |
+
+Between one seam in a hundred and **more than half of them**. On Avalanche the
+celebration was wrong more often than it was right.
+
+**The fix is the one §5.16 already made.** A busted gamble gets a card of its
+own — "THE SCALE TURNS", "NOTHING" — with shake and no burst, because losing
+needs a beat or the win just vanishes from the readout and reads as a fault. A
+dry seam now gets the same: a shorter card headed **"THE SEAM RUNS DRY"**, no
+particles, a fifth of the shake, and the stone-shifting effect at low pitch
+rather than the coin. It does not mark the balance graph either — a run of dry
+seams would be a line of dots against a flat line.
+
+**And it says which nothing it was.** Two reasons, and they are different
+disappointments: *"the board was paying nothing to begin with"* is a decision
+that did not suit the board, and *"the board is worth no more than it was"* is a
+board that would not give anything up. The round carries its baseline out with
+the outcome so the card can tell them apart, which is cheaper than having the
+card reconstruct it from a grid it no longer has.
+
+**What is not done, plainly.** Avalanche's numbers are a *tuning* question as
+well as a presentation one, and this section only answers the presentation half.
+A seam there is deliberately small and frequent — one spin in seventy, capped at
+6x, which is what keeps the cabinet the only Low-volatility one in the catalog
+(§5.81). But cascades clear their winners before the board comes to rest, so the
+grid a seam opens on has already paid out and a couple of extra cells rarely
+make a new win from reel one. That is structural to the cabinet rather than a
+knob, and making the seam bigger there would cost the catalog its only Low
+machine. It is named here rather than quietly left.
+
+
 ### 5.4 Juice / feel (toolkit FX)
 - Reel deceleration with easing (`Tween` / easing curves).
 - Winning lines: pulse highlight (`blink`/`pulse`), floating win amounts
@@ -4909,7 +4961,7 @@ the web root as this document originally guessed.)
 
 ---
 
-## 15. Current State — v1 shipped, plus eighty-four post-v1 systems
+## 15. Current State — v1 shipped, plus eighty-five post-v1 systems
 
 **All five phases are done, every item in §14 is met**, and twenty-three systems have
 been built on top since: progressive jackpots (§5.6), settings (§5.7), multiple

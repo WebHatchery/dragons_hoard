@@ -180,6 +180,64 @@ fn seam_credits_over(data: &GameData, multiplier: i64) -> i64 {
     credits
 }
 
+/// A seam that pays nothing must not be celebrated as though it did (§5.85).
+#[test]
+fn a_seam_that_comes_to_nothing_says_so() {
+    use crate::state::celebration::CelebrationKind;
+
+    let data = data();
+    let mut session = GameSession::new(&data, 3_141);
+    let mut dry = 0;
+    let mut paid = 0;
+
+    for _ in 0..40_000 {
+        session.balance = 1_000_000;
+        session.celebrations.clear();
+        if session.spin_leaving_bonus(&data).is_err() {
+            break;
+        }
+        session.auto_play_bonus(&data);
+        session.auto_play_holdspin(&data);
+        if session.seam.is_none() {
+            continue;
+        }
+        session.celebrations.clear();
+        let Some(outcome) = session.auto_play_seam(&data) else {
+            continue;
+        };
+
+        let card = session
+            .celebrations
+            .active()
+            .map(|card| card.kind().clone())
+            .expect("a finished seam raises no card at all");
+        let CelebrationKind::Seam {
+            credits, dry: why, ..
+        } = card
+        else {
+            panic!("a seam raised somebody else's card");
+        };
+
+        assert_eq!(credits, outcome.credits);
+        assert_eq!(
+            why.is_some(),
+            outcome.credits == 0,
+            "a seam paying {} was described as {}",
+            outcome.credits,
+            if why.is_some() { "dry" } else { "a win" }
+        );
+        if why.is_some() {
+            dry += 1;
+        } else {
+            paid += 1;
+        }
+        if dry >= 3 && paid >= 3 {
+            return;
+        }
+    }
+    panic!("only saw {} dry and {} paying seams", dry, paid);
+}
+
 /// The counters the awards book keeps, driven the way a player drives them.
 ///
 /// The book is fed one thing: a settled `SpinResolution`, from

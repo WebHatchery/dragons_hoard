@@ -203,10 +203,19 @@ impl GameSession {
         self.stats.biggest_win = self.stats.biggest_win.max(outcome.credits);
         self.last_win += outcome.credits;
         self.stats.seams += 1;
+        // Why it came to nothing, when it did (§5.85). Two reasons and they
+        // are genuinely different: one is a decision that did not suit the
+        // board, the other is a board that would not give anything up.
+        let dry = (outcome.credits == 0).then_some(if outcome.baseline == 0 {
+            "the board was paying nothing to begin with"
+        } else {
+            "the board is worth no more than it was"
+        });
         self.celebrations.push(CelebrationKind::Seam {
             credits: outcome.credits,
             rite: outcome.rite_name.clone(),
             cells: outcome.cells,
+            dry,
         });
     }
 

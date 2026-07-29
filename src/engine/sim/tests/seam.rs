@@ -51,6 +51,11 @@ fn no_rite_dominates_the_others_on_any_cabinet() {
         let data = GameData::load_machine(machine).unwrap();
         let mut session = GameSession::new(&data, 0x5EA_11FE);
         let mut totals = vec![0i64; data.seam.rites.len()];
+        // Seams that paid nothing at all, per rite. A rite comes out empty two
+        // ways: a widening walled in by wilds and eggs, or a gilding on a board
+        // that was not paying — and the second is the shape of the whole
+        // decision (§5.85).
+        let mut duds = vec![0u32; data.seam.rites.len()];
         let mut seams = 0u32;
 
         // Spin until enough real seams have been dealt, then run *every*
@@ -78,7 +83,7 @@ fn no_rite_dominates_the_others_on_any_cabinet() {
             let Some(found) = seam::find(&data, &grid, &data.seam) else {
                 continue;
             };
-            for (index, total) in totals.iter_mut().enumerate() {
+            for index in 0..totals.len() {
                 let ctx = crate::engine::evaluate::EvalContext::base(&data, line_bet);
                 let mut copy = SeamRound::open(&data, &grid, found.clone(), ctx).expect("no round");
                 assert!(copy.choose(index));
@@ -86,7 +91,11 @@ fn no_rite_dominates_the_others_on_any_cabinet() {
                 // widening's dice are not being compared against a
                 // gilding's.
                 let mut rng = macroquad_toolkit::rng::SeededRng::new(0x21FE + seams as u64);
-                *total += crate::state::seam::auto_play(&mut copy, &data, &mut rng).credits;
+                let paid = crate::state::seam::auto_play(&mut copy, &data, &mut rng).credits;
+                totals[index] += paid;
+                if paid == 0 {
+                    duds[index] += 1;
+                }
             }
         }
 
@@ -96,10 +105,13 @@ fn no_rite_dominates_the_others_on_any_cabinet() {
             .iter()
             .map(|sum| *sum as f64 / seams as f64 / total_bet as f64)
             .collect();
-        for (rite, mean) in data.seam.rites.iter().zip(&means) {
+        for (index, (rite, mean)) in data.seam.rites.iter().zip(&means).enumerate() {
             println!(
-                "{:>9} {:>8}: {:>6.2}x total bet per seam",
-                machine.id, rite.id, mean
+                "{:>9} {:>8}: {:>6.2}x total bet per seam | nothing {:>5.1}% of the time",
+                machine.id,
+                rite.id,
+                mean,
+                duds[index] as f64 / seams as f64 * 100.0
             );
         }
 

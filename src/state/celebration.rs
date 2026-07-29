@@ -54,6 +54,15 @@ pub enum CelebrationKind {
         rite: String,
         /// Cells the seam held at the end.
         cells: usize,
+        /// Why it came to nothing, when it did — `None` when it paid (§5.85).
+        ///
+        /// A seam can end empty and it is not rare: measured across the
+        /// catalog, between 0.8% and 58% of them do, depending on the cabinet
+        /// and the rite the player took. Those need the same beat of their own
+        /// that a busted gamble does, for the same reason — a card headed
+        /// "THE SEAM RUNS" over a total of nothing reads as a bug, and one that
+        /// showers gold over it reads as a taunt.
+        dry: Option<&'static str>,
     },
     /// A gamble busted (§5.16). Losing needs a beat of its own — without one
     /// the win simply vanishes from the readout and reads as a bug.
@@ -73,6 +82,9 @@ impl CelebrationKind {
             CelebrationKind::Jackpot { .. } => 3.4,
             CelebrationKind::BigWin { .. } => 1.9,
             CelebrationKind::GambleLost { .. } => 1.8,
+            // A dry seam is over quickly, like a busted gamble. There is
+            // nothing to count and nothing to look at.
+            CelebrationKind::Seam { dry: Some(_), .. } => 1.8,
             CelebrationKind::Seam { .. } => 2.4,
             CelebrationKind::Wrath { full_board, .. } => {
                 if *full_board {
@@ -101,6 +113,7 @@ impl CelebrationKind {
                 format!("{} CREDITS", crate::ui::naming::credits(*credits))
             }
             CelebrationKind::GambleLost { .. } => "NOTHING".to_owned(),
+            CelebrationKind::Seam { dry: Some(_), .. } => "NOTHING".to_owned(),
             CelebrationKind::Seam { credits, .. } => {
                 format!("{} CREDITS", crate::ui::naming::credits(*credits))
             }
@@ -119,6 +132,7 @@ impl CelebrationKind {
             CelebrationKind::Jackpot { .. } => "JACKPOT",
             CelebrationKind::BigWin { .. } => "BIG WIN",
             CelebrationKind::GambleLost { .. } => "THE SCALE TURNS",
+            CelebrationKind::Seam { dry: Some(_), .. } => "THE SEAM RUNS DRY",
             CelebrationKind::Seam { .. } => "THE SEAM RUNS",
             CelebrationKind::Wrath { full_board, .. } => {
                 if *full_board {
@@ -145,6 +159,12 @@ impl CelebrationKind {
             CelebrationKind::GambleLost { lost, landed } => {
                 format!("{} landed — {} credits gone", landed, lost)
             }
+            CelebrationKind::Seam {
+                rite,
+                cells,
+                dry: Some(why),
+                ..
+            } => format!("{} — {}, and {} cells came to nothing", rite, why, cells),
             CelebrationKind::Seam { rite, cells, .. } => {
                 format!("{} — {} cells of one treasure", rite, cells)
             }
