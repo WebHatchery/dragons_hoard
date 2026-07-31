@@ -1,48 +1,81 @@
-# Macroquad Toolkit Game Template
+# Dragon's Hoard
 
-This is a working starter crate for new Rust + Macroquad games in this workspace.
-It intentionally uses `macroquad-toolkit` heavily so new projects begin with the
-same shared patterns as the existing games.
+A dragon-themed slot floor built in Rust + `macroquad`, wired to
+`macroquad-toolkit`. Five reels, twenty paylines, coins and gems paying small
+and often, treasure and dragon eggs paying big, and the Dragon itself as the
+wild that completes lines and drives the features.
 
-## Toolkit Features Already Wired
+**This is a play-money arcade slot.** Credits are a local score — no purchases,
+no real currency, nothing of value is wagered.
 
-- `AssetManager` with a texture manifest at `assets/data/texture_manifest.json`
-- `DataRegistry` and embedded JSON loading for data-driven actions
-- `save_to_slot_with_version`, `load_from_slot_with_migration`, `delete_slot`, and `get_save_slots`
-- `NotificationManager` with toolkit toast rendering
-- `VirtualUi`, `SurfaceStyle`, `TextStyle`, `GridLayout`, meters, badges, tooltips, and text fitting
-- `FlatGrid`, `FogState`, `TilePos`, line-of-sight visibility, and flood-fill reachability
-- `Camera2D` with bounds, right-mouse drag, keyboard pan, and zoom limits
-- `EventBus<UiAction>` so UI returns intents and game logic applies them
-- Rust 2018 module layout using `data.rs`, `state.rs`, and `ui.rs` parent
-  files instead of `mod.rs`
+Six cabinets share one bankroll and one floor-wide Grand: the original Dragon's
+Hoard, Frost Wyrm, Emberfall (ways-to-win), Avalanche (cascading), Tidepool
+(cluster pays) and Wyrmspire. On top of the base spin sit free spins with
+expanding wilds, the Dragon's Hoard egg meter and its Hatch bonus, progressive
+jackpots, the Vault Pick, the Dragon's Wrath, the Dragon's Gamble, the Feature
+Buy, seams, achievements, a session ledger and per-session limits.
 
-The template avoids browser-incompatible filesystem access. Static data is
-embedded with `include_str!()`, runtime browser assets go through Macroquad or
-toolkit async loaders, and save data uses macroquad-toolkit persistence.
-Shared UI math, such as grid layout and mouse selection, is kept in helper
-types so rendering and input do not duplicate coordinate calculations.
+Read [`gdd.md`](gdd.md) first — it is the design spec, the build plan, and the
+running record of what has been built. §15 carries the current state and the
+short list of what is genuinely still outstanding.
 
-## Run
+## Layout
 
-```powershell
-cargo run --manifest-path template/Cargo.toml
+```
+src/
+├── data.rs, data/       # typed mirror of assets/data/*.json — no engine or UI knowledge
+├── engine.rs, engine/   # pure reel spinning, payline evaluation, headless simulation
+├── state.rs, state/     # GameSession, features, persistence, save migration
+├── game.rs, game/       # frame loop, state machine, capture scenes
+├── ui.rs, ui/           # pure view layer; every screen returns UiAction intents
+├── audio.rs, music.rs   # SFX and music, synthesised at boot — no audio files ship
+└── actions.rs           # the intent dispatcher; the only thing that mutates the session
 ```
 
-## Test
+Symbol art and the whole SFX set are generated in code rather than shipped as
+assets (§7.1). Paytables, reel strips, paylines, machine profiles, symbol sets,
+achievements, hints and limits are all data under `assets/data/`.
+
+## Build and run
 
 ```powershell
-cargo test --manifest-path template/Cargo.toml
+cargo run                     # native debug build
+cargo test                    # tests
+cargo fmt -- --check          # CI enforces this
+cargo clippy --all-targets --all-features -- -D warnings
+cargo build --release --target wasm32-unknown-unknown   # WebGL
 ```
 
-## Rename For A New Game
+## Verify
 
-1. Copy `template/` to your new game folder.
-2. Rename the package in `Cargo.toml`.
-3. Update `assets/data/game_config.json`.
-4. Replace `actions.json` with your game data.
-5. Add textures to `assets/data/texture_manifest.json`.
-6. Update `index.html` to load the new wasm filename.
-7. In `index.html`, set the bug-report widget's `data-roost-slug` to `rust_<your_game_dir>`
-   (matching the folder name) so player reports attach to the right project. The
-   shared `../bug-report.css` / `../bug-report.js` assets need no changes.
+```powershell
+.\verify.ps1                  # every gate this game has, in one command
+.\verify.ps1 -Long            # plus the million-spin RTP run and the conservation soak
+.\verify.ps1 -SkipBuild       # reuse the release binary already built
+```
+
+The layout, contrast, motion and audio audits need a real window and a real
+font, so they run through the capture harness rather than as `cargo test`.
+
+## Publish
+
+```powershell
+.\publish.ps1                 # build Windows + WebGL, deploy to the local preview root
+.\publish.ps1 -WebGLOnly      # -WindowsOnly, -DeployOnly, -Production (-p), -FTP, -DryRun
+```
+
+## Screenshots
+
+```powershell
+.\scripts\capture_ui.ps1 -Scenes idle,spin,win -SkipBuild
+```
+
+Drives the headless capture harness through the `DRAGONS_HOARD_CAPTURE_*` env
+vars. Output lands in `docs/verification/`; §15 of the GDD lists the scenes.
+
+## Project docs
+
+`AGENTS.md`, `CODE_STANDARDS.md`, `MACROQUAD_TOOLKIT.md`, and
+`GAME_DEVELOPMENT_GUIDE.md` are synced copies of the canonical versions in
+`rust_management/docs/` — don't hand-edit them. Project-specific guidance goes
+here or in `gdd.md`.
