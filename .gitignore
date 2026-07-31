@@ -12,3 +12,4 @@ dist/
 *.history
 .vscode
 .gemini
+.claude/scheduled_tasks.lock

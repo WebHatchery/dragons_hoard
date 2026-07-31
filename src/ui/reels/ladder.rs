@@ -51,7 +51,7 @@ pub(super) fn draw_jackpot_ladder(
         );
         // A pot the whole floor feeds is lit differently rather than labelled:
         // the plate is barely a hundred pixels wide and a second word on it
-        // would not survive 130% text, let alone a translation (Â§5.57). The
+        // would not survive 130% text, let alone a translation (§5.57). The
         // rules panel carries the explanation.
         let shared = data
             .jackpots
