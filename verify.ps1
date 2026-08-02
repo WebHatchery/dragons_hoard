@@ -133,30 +133,12 @@ Write-Host ''
 Write-Host "Dragon's Hoard - verification" -ForegroundColor Cyan
 Write-Host ''
 
-# The oldest rule in this workspace, and the only one nothing was checking.
-#
-# `AGENTS.md` and `CODE_STANDARDS.md` state an 800-line hard limit on every .rs
-# file, duplicated verbatim into every game here. There is even a script for it
-# in `rust_management`. Nothing ran it, and the shared toolkit — the crate twenty
-# games depend on — was sitting at 851 lines while this game's largest file was
-# one line under the limit (§5.54).
-function Sizes {
-    param([string]$Dir, [string]$What)
-    $over = Get-ChildItem -Path (Join-Path $Dir 'src') -Filter '*.rs' -Recurse |
-        ForEach-Object {
-            # Every line, blank ones included. `Measure-Object -Line` counts
-            # only non-empty lines, so this under-reported by about a tenth and
-            # let two files sit over the limit for two iterations (§5.69). The
-            # disproof at the time could not have caught it: the 900-line probe
-            # was `// probe` repeated, with no blank lines in it.
-            $lines = @(Get-Content $_.FullName).Count
-            if ($lines -gt 800) { "{0}: {1} lines" -f $_.FullName.Substring($Dir.Length + 1), $lines }
-        }
-    if ($over) { throw ($What + "`n" + ($over -join "`n")) }
-}
+# The 800-line file gate born here (§5.54, blank-line fix §5.69) now lives in
+# `macroquad_toolkit::source_gate`, run by every game's `tests/code_standards.rs`
+# — so the toolkit-tests and game-tests steps below enforce it, per the current
+# CODE_STANDARDS accounting (non-test lines only).
 
 Write-Host 'Source' -ForegroundColor Cyan
-Step 'file sizes'     { Sizes -Dir $ToolkitRoot -What 'toolkit files over the 800-line limit'; Sizes -Dir $ProjectRoot -What 'game files over the 800-line limit' }
 Step 'toolkit format' { Cargo -Dir $ToolkitRoot -What 'toolkit is unformatted' -Argv @('fmt','--','--check') }
 Step 'toolkit lint'   { Cargo -Dir $ToolkitRoot -What 'toolkit lints' -Argv @('clippy','--all-targets','--','-D','warnings') }
 Step 'toolkit tests'  { Cargo -Dir $ToolkitRoot -What 'toolkit tests failed' -Argv @('test','--quiet') }
