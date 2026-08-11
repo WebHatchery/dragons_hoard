@@ -36,39 +36,47 @@ macro_rules! machine {
         MachineDef {
             id: $id,
             blurb: $blurb,
-            config: include_str!(concat!(
+            config: macroquad_toolkit::include_json_str!(concat!(
                 "../../assets/data/machines/",
                 $dir,
                 "/game_config.json"
             )),
-            paytable: include_str!(concat!(
+            paytable: macroquad_toolkit::include_json_str!(concat!(
                 "../../assets/data/machines/",
                 $dir,
                 "/paytable.json"
             )),
-            reels: include_str!(concat!("../../assets/data/machines/", $dir, "/reels.json")),
-            paylines: include_str!(concat!(
+            reels: macroquad_toolkit::include_json_str!(concat!(
+                "../../assets/data/machines/",
+                $dir,
+                "/reels.json"
+            )),
+            paylines: macroquad_toolkit::include_json_str!(concat!(
                 "../../assets/data/machines/",
                 $dir,
                 "/paylines.json"
             )),
-            freespins: include_str!(concat!(
+            freespins: macroquad_toolkit::include_json_str!(concat!(
                 "../../assets/data/machines/",
                 $dir,
                 "/freespins.json"
             )),
-            jackpots: include_str!(concat!(
+            jackpots: macroquad_toolkit::include_json_str!(concat!(
                 "../../assets/data/machines/",
                 $dir,
                 "/jackpots.json"
             )),
-            holdspin: include_str!(concat!(
+            holdspin: macroquad_toolkit::include_json_str!(concat!(
                 "../../assets/data/machines/",
                 $dir,
                 "/holdspin.json"
             )),
-            seam: include_str!(concat!("../../assets/data/machines/", $dir, "/seam.json")),
-            featurebuy: include_str!(concat!(
+            seam: macroquad_toolkit::include_json_str!(concat!(
+                "../../assets/data/machines/",
+                $dir,
+                "/seam.json"
+            )),
+            featurebuy: macroquad_toolkit::include_json_str!(concat!(
                 "../../assets/data/machines/",
                 $dir,
                 "/featurebuy.json"
@@ -84,7 +92,7 @@ macro_rules! machine {
 macro_rules! cascading_machine {
     ($id:literal, $dir:literal, $blurb:literal) => {
         MachineDef {
-            cascade: Some(include_str!(concat!(
+            cascade: Some(macroquad_toolkit::include_json_str!(concat!(
                 "../../assets/data/machines/",
                 $dir,
                 "/cascade.json"
@@ -102,12 +110,14 @@ macro_rules! cascading_machine {
 /// added without touching every cabinet that does not use it.
 pub fn symbol_set(name: &str) -> Option<&'static str> {
     Some(match name {
-        "hoard" => include_str!("../../assets/data/symbols/hoard.json"),
-        "frost" => include_str!("../../assets/data/symbols/frost.json"),
-        "tidepool" => include_str!("../../assets/data/symbols/tidepool.json"),
-        "ember" => include_str!("../../assets/data/symbols/ember.json"),
-        "spire" => include_str!("../../assets/data/symbols/spire.json"),
-        "slide" => include_str!("../../assets/data/symbols/slide.json"),
+        "hoard" => macroquad_toolkit::include_json_str!("../../assets/data/symbols/hoard.json"),
+        "frost" => macroquad_toolkit::include_json_str!("../../assets/data/symbols/frost.json"),
+        "tidepool" => {
+            macroquad_toolkit::include_json_str!("../../assets/data/symbols/tidepool.json")
+        }
+        "ember" => macroquad_toolkit::include_json_str!("../../assets/data/symbols/ember.json"),
+        "spire" => macroquad_toolkit::include_json_str!("../../assets/data/symbols/spire.json"),
+        "slide" => macroquad_toolkit::include_json_str!("../../assets/data/symbols/slide.json"),
         _ => return None,
     })
 }

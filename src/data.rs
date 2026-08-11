@@ -19,12 +19,13 @@ pub use features::{
 pub use machines::{machine_by_id, symbol_set, MachineDef, MACHINES};
 use std::collections::HashMap;
 
-const TEXTURE_MANIFEST_JSON: &str = include_str!("../assets/data/texture_manifest.json");
+const TEXTURE_MANIFEST_JSON: &str =
+    macroquad_toolkit::include_json_str!("../assets/data/texture_manifest.json");
 /// Shared across machines on purpose: the bonus is a presentation layer over
 /// the hoard whose expected value is normalised to 1000 permille, so each
 /// cabinet's own `hatch_pot_multiplier` is what scales it (§5.10).
-const BONUS_JSON: &str = include_str!("../assets/data/bonus.json");
-const GAMBLE_JSON: &str = include_str!("../assets/data/gamble.json");
+const BONUS_JSON: &str = macroquad_toolkit::include_json_str!("../assets/data/bonus.json");
+const GAMBLE_JSON: &str = macroquad_toolkit::include_json_str!("../assets/data/gamble.json");
 
 /// Longest run a paytable entry can describe. Index 0..=5, so a 5-reel game
 /// indexes `pay_table[symbol][count]` directly.
@@ -640,87 +641,7 @@ impl GameData {
     }
 }
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn embedded_data_loads() {
-        let data = GameData::load().unwrap();
-
-        assert_eq!(data.config.game_name, "dragons_hoard");
-        assert_eq!(data.reels.len(), data.config.reel_count);
-        assert_eq!(data.paylines.len(), 20);
-        assert!(data.symbols.wild().is_some());
-        assert!(data.symbols.scatter().is_some());
-        assert!(data.symbols.hoard().is_some());
-    }
-
-    #[test]
-    fn paytable_resolves_by_run_length() {
-        let data = GameData::load().unwrap();
-        let chest = data.symbols.index_of("chest").unwrap();
-
-        // Nothing pays below three, and longer runs always pay more.
-        assert_eq!(data.symbols.pay(chest, 2), 0);
-        assert!(data.symbols.pay(chest, 3) > 0);
-        assert!(data.symbols.pay(chest, 4) > data.symbols.pay(chest, 3));
-        assert!(data.symbols.pay(chest, 5) > data.symbols.pay(chest, 4));
-        assert_eq!(data.symbols.pay(chest, MAX_RUN + 1), 0);
-    }
-
-    #[test]
-    fn the_lowest_symbols_only_pay_from_four() {
-        let data = GameData::load().unwrap();
-
-        for id in ["copper", "gold"] {
-            let symbol = data.symbols.index_of(id).unwrap();
-            assert_eq!(data.symbols.pay(symbol, 3), 0, "{} should not pay at 3", id);
-            assert!(data.symbols.pay(symbol, 4) > 0);
-        }
-    }
-
-    #[test]
-    fn every_reel_strip_carries_the_same_symbol_pool() {
-        let data = GameData::load().unwrap();
-        let scatter = data.symbols.scatter().unwrap();
-
-        for (index, strip) in data.reels.iter().enumerate() {
-            let scatters = strip.iter().filter(|symbol| **symbol == scatter).count();
-            assert_eq!(
-                scatters, 1,
-                "reel {} should carry exactly one scatter, found {}",
-                index, scatters
-            );
-        }
-    }
-
-    #[test]
-    fn total_bet_covers_every_payline() {
-        let data = GameData::load().unwrap();
-        assert_eq!(data.total_bet(10), 200);
-    }
-
-    #[test]
-    fn free_spin_awards_scale_with_scatters() {
-        let data = GameData::load().unwrap();
-
-        assert_eq!(data.freespins.award_for(2), 0);
-        assert_eq!(data.freespins.award_for(3), 10);
-        assert_eq!(data.freespins.award_for(5), 20);
-    }
-}
+mod tests;
 
 #[cfg(test)]
-mod ante_tests {
-    use super::*;
-
-    #[test]
-    fn the_catalog_agrees_with_the_json() {
-        for machine in MACHINES {
-            let data = GameData::load_machine(machine).unwrap();
-            println!("{:<11} ante {:?}", machine.id, data.ante().is_some());
-        }
-        let dragon = GameData::load_machine(machine_by_id("dragon")).unwrap();
-        assert!(dragon.ante().is_some(), "dragon lost its ante");
-    }
-}
+mod ante_tests;

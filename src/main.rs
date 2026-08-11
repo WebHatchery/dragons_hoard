@@ -36,27 +36,29 @@ async fn main() {
 
     // Screenshot harness: when DRAGONS_HOARD_CAPTURE_PATH is set, seed the
     // requested scene, render deterministic frames, write a PNG, and exit.
-    if let Some(config) = capture::CaptureConfig::from_env("DRAGONS_HOARD") {
-        game.begin_capture_scene(&config.scene);
-        // A strip rather than a photograph when asked for one: a settled frame
-        // cannot show a fault that only exists while something is moving
-        // (§5.52), and the motion audit wants every frame rather than every
-        // fourth one, so it rides along with the tiling.
-        if let Some(strip) = capture::filmstrip::StripConfig::from_env("DRAGONS_HOARD") {
-            capture::filmstrip::run_filmstrip(&config, &strip, |dt| {
+    if let Some(configs) = capture::CaptureConfig::all_from_env("DRAGONS_HOARD") {
+        for config in configs {
+            game.begin_capture_scene(&config.scene);
+            // A strip rather than a photograph when asked for one: a settled frame
+            // cannot show a fault that only exists while something is moving
+            // (§5.52), and the motion audit wants every frame rather than every
+            // fourth one, so it rides along with the tiling.
+            if let Some(strip) = capture::filmstrip::StripConfig::from_env("DRAGONS_HOARD") {
+                capture::filmstrip::run_filmstrip(&config, &strip, |dt| {
+                    game.update(dt);
+                    game.draw();
+                    game.observe_motion();
+                })
+                .await;
+                game.finish_motion_audit();
+                continue;
+            }
+            capture::run_capture_once(&config, |dt| {
                 game.update(dt);
                 game.draw();
-                game.observe_motion();
             })
             .await;
-            game.finish_motion_audit();
-            return;
         }
-        capture::run_capture(&config, |dt| {
-            game.update(dt);
-            game.draw();
-        })
-        .await;
         return;
     }
 
