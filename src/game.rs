@@ -125,12 +125,11 @@ impl Game {
             .unwrap_or_else(|err| panic!("Dragon's Hoard limits failed to load: {}", err));
 
         // Symbols are drawn procedurally (see `ui::symbols`), so the manifest is
-        // empty by design. It is still loaded so the asset pipeline stays wired
-        // up for anything that does need a texture later.
+        // empty by design. It is still loaded so registered loose textures will
+        // work without another runtime wiring change if the game gains any.
         let mut assets = AssetManager::new();
         let placeholder = Image::gen_image_color(16, 16, Color::new(0.5, 0.4, 0.2, 1.0));
         assets.set_placeholder_texture_direct(Texture2D::from_image(&placeholder));
-        let _ = assets.load_asset_pack("assets.zip").await;
         let loaded = assets.load_texture_configs(&data.texture_manifest).await;
 
         // The screenshot harness runs headless; opening an audio device there
