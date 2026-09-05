@@ -146,8 +146,10 @@ struct HintSave {
 
 impl HintBook {
     pub fn load(config: &GameConfig) -> Result<Self, String> {
-        let defs: Vec<HintDef> =
-            serde_json::from_str(HINTS_JSON).map_err(|err| format!("hints.json: {}", err))?;
+        let defs: Vec<HintDef> = macroquad_toolkit::data_loader::parse_json_labeled(
+            "assets/data/hints.json",
+            HINTS_JSON,
+        )?;
         validate(&defs)?;
 
         let saved: HintSave = load_json_key(&config.game_name, HINTS_KEY).unwrap_or_default();

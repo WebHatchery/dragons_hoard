@@ -156,8 +156,10 @@ struct AchievementSave {
 
 impl AchievementBook {
     pub fn load(config: &GameConfig) -> Result<Self, String> {
-        let defs: Vec<AchievementDef> = serde_json::from_str(ACHIEVEMENTS_JSON)
-            .map_err(|err| format!("achievements.json: {}", err))?;
+        let defs: Vec<AchievementDef> = macroquad_toolkit::data_loader::parse_json_labeled(
+            "assets/data/achievements.json",
+            ACHIEVEMENTS_JSON,
+        )?;
         validate(&defs)?;
 
         let saved: AchievementSave =
