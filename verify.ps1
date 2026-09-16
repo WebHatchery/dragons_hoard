@@ -36,6 +36,10 @@ $ErrorActionPreference = 'Stop'
 $ProjectRoot = $PSScriptRoot
 $ToolkitRoot = Join-Path (Split-Path $ProjectRoot -Parent) 'macroquad-toolkit'
 $Exe = Join-Path (Split-Path (Split-Path $ProjectRoot -Parent) -Parent) '.cargo-target\release\dragons_hoard.exe'
+$VerificationDir = Join-Path $ProjectRoot 'docs\verification'
+if (-not (Test-Path $VerificationDir)) {
+    New-Item -ItemType Directory -Path $VerificationDir -Force | Out-Null
+}
 
 $script:Results = @()
 $script:Failed = $false
@@ -106,7 +110,7 @@ function Audit {
     [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_SCENE', $Scene)
     # `audit:<screen>` carries a colon, which Windows will not take in a path.
     $file = 'verify_' + ($Scene -replace '[^A-Za-z0-9_]', '_') + '.png'
-    [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_PATH', (Join-Path $env:TEMP $file))
+    [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_PATH', (Join-Path $VerificationDir $file))
     if (-not ($Vars -and $Vars.ContainsKey('DRAGONS_HOARD_CAPTURE_FRAMES'))) {
         [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_FRAMES', '3')
     }
@@ -136,7 +140,7 @@ Write-Host ''
 # The 800-line file gate born here (§5.54, blank-line fix §5.69) now lives in
 # `macroquad_toolkit::source_gate`, run by every game's `tests/code_standards.rs`
 # — so the toolkit-tests and game-tests steps below enforce it, per the current
-# CODE_STANDARDS accounting (non-test lines only).
+# CODE_STANDARDS accounting across every source file.
 
 Write-Host 'Source' -ForegroundColor Cyan
 Step 'toolkit format' { Cargo -Dir $ToolkitRoot -What 'toolkit is unformatted' -Argv @('fmt','--','--check') }
@@ -213,7 +217,7 @@ Step 'the game remembers' {
         $save.data.hoard.count = 11
         $save.data.hoard.pot = 2468
         ($save | ConvertTo-Json -Depth 12) | Set-Content $slot -NoNewline
-        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_PATH', (Join-Path $env:TEMP 'verify_boot.png'))
+        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_PATH', (Join-Path $VerificationDir 'verify_boot.png'))
         [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_SCENE', 'boot_report')
         $report = & $Exe 2>&1 | Where-Object { $_ -match '^boot ' }
         [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_PATH', $null)
@@ -250,7 +254,7 @@ Write-Host 'One screen at a time' -ForegroundColor Cyan
 # the ruin screen (§5.53) was registered, tested and reachable, the sweep still
 # did not know it existed — which is the exact drift §5.50 built the registry to
 # stop, reintroduced one file over.
-[Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_PATH', (Join-Path $env:TEMP 'verify_screens.png'))
+[Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_PATH', (Join-Path $VerificationDir 'verify_screens.png'))
 [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_SCENE', 'screens')
 $Screens = @(& $Exe 2>&1 | Where-Object { $_ -match '^screen ' } | ForEach-Object { ($_ -split ' ')[1] })
 [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_PATH', $null)
@@ -305,7 +309,7 @@ Step 'a tablet can actually press it' {
         [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_WINDOW_WIDTH', '1080')
         [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_WINDOW_HEIGHT', '810')
         [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_SCENE', $scene)
-        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_PATH', (Join-Path $env:TEMP 'verify_touch.png'))
+        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_PATH', (Join-Path $VerificationDir 'verify_touch.png'))
         $out = & $Exe 2>&1
         [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_WINDOW_WIDTH', $null)
         [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_WINDOW_HEIGHT', $null)
@@ -336,7 +340,7 @@ Step 'a tablet can actually press it' {
     # able to say so. This sweeps the whole registry, because the target audit
     # used to be armed in three hand-written scenes while the layout audit swept
     # all twenty-one.
-    [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_PATH', (Join-Path $env:TEMP 'verify_screens.png'))
+    [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_PATH', (Join-Path $VerificationDir 'verify_screens.png'))
     [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_SCENE', 'screens')
     $all = @(& $Exe 2>&1 | Where-Object { $_ -match '^screen ' } | ForEach-Object { ($_ -split ' ')[1] })
     foreach ($screen in $all) {
