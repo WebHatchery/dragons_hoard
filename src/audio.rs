@@ -206,6 +206,10 @@ impl SoundBank {
         self.sounds.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.sounds.is_empty()
+    }
+
     /// Follow the player's volume preference. Zero is true silence, not a
     /// near-inaudible floor.
     pub fn set_volume(&mut self, volume: f32) {

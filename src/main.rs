@@ -3,16 +3,8 @@
 use macroquad::prelude::*;
 use macroquad_toolkit::capture;
 
-mod actions;
-mod audio;
-mod data;
-mod engine;
-mod game;
-mod music;
-mod state;
-mod ui;
-
-use game::Game;
+use dragons_hoard::game::Game;
+use dragons_hoard::ui;
 
 fn window_conf() -> Conf {
     capture::capture_window_conf(
@@ -30,7 +22,7 @@ async fn main() {
     // Random-play harness (§5.76): ten thousand arbitrary presses, checked
     // after every one. Before the capture branch because it is not a capture —
     // it draws nothing and exits with a code.
-    if let Some(config) = game::drift::DriftConfig::from_env() {
+    if let Some(config) = dragons_hoard::game::drift::DriftConfig::from_env() {
         std::process::exit(game.drift(&config));
     }
 
