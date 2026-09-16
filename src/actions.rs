@@ -92,22 +92,54 @@ pub fn apply(
     action: UiAction,
 ) -> ActionOutcome {
     match action {
-        UiAction::Spin => match session.begin_spin(data) {
-            Ok(()) => ActionOutcome::SpinStarted,
-            Err(blocked) => ActionOutcome::SpinBlocked(blocked),
-        },
-        UiAction::BetUp => {
-            let changed = session.adjust_bet(data, 1);
-            bet_outcome(data, session, changed)
+        UiAction::TogglePaytable
+        | UiAction::ToggleSettings
+        | UiAction::ToggleMachines
+        | UiAction::ToggleAchievements
+        | UiAction::ToggleFeatureBuy
+        | UiAction::ToggleLedger
+        | UiAction::ToggleLines
+        | UiAction::ToggleMenu
+        | UiAction::OpenScreen(_)
+        | UiAction::ToggleSessions
+        | UiAction::ToggleAnte
+        | UiAction::ToggleProofs
+        | UiAction::CheckProofs
+        | UiAction::DismissSessionOver
+        | UiAction::ToggleRules
+        | UiAction::ToggleLimits
+        | UiAction::ToggleHistory
+        | UiAction::CycleLimit(_)
+        | UiAction::CycleRealityCheck
+        | UiAction::AcknowledgeRealityCheck
+        | UiAction::DismissHint
+        | UiAction::ToggleWaveforms
+        | UiAction::ToggleVision
+        | UiAction::SelectMachine(_) => apply_navigation(show_paytable, action),
+        UiAction::VolumeUp
+        | UiAction::VolumeDown
+        | UiAction::MusicVolumeUp
+        | UiAction::MusicVolumeDown
+        | UiAction::CycleTextScale
+        | UiAction::CycleSpinSpeed
+        | UiAction::CycleAutospinLength
+        | UiAction::ToggleShake
+        | UiAction::ToggleParticles => apply_preferences(data, session, action),
+        UiAction::NewGame | UiAction::Save | UiAction::Load | UiAction::DeleteSave => {
+            ActionOutcome::Session(match action {
+                UiAction::NewGame => SessionRequest::NewGame,
+                UiAction::Save => SessionRequest::Save,
+                UiAction::Load => SessionRequest::Load,
+                UiAction::DeleteSave => SessionRequest::DeleteSave,
+                _ => unreachable!(),
+            })
         }
-        UiAction::BetDown => {
-            let changed = session.adjust_bet(data, -1);
-            bet_outcome(data, session, changed)
-        }
-        UiAction::MaxBet => {
-            let changed = session.set_max_bet(data);
-            bet_outcome(data, session, changed)
-        }
+        _ => apply_gameplay(data, session, action),
+    }
+}
+
+fn apply_navigation(show_paytable: &mut bool, action: UiAction) -> ActionOutcome {
+    match action {
         UiAction::TogglePaytable => {
             *show_paytable = !*show_paytable;
             ActionOutcome::PaytableToggled
@@ -125,17 +157,6 @@ pub fn apply(
         UiAction::ToggleProofs => ActionOutcome::ProofsToggled,
         UiAction::CheckProofs => ActionOutcome::ProofsChecked,
         UiAction::DismissSessionOver => ActionOutcome::SessionOverDismissed,
-        UiAction::ChooseFreeSpinShape(index) => match session.choose_free_spin_shape(index, data) {
-            Some(spins) => ActionOutcome::FreeSpinShapeChosen(spins),
-            // The run has started since the frame that drew the button.
-            None => ActionOutcome::Ignored,
-        },
-        UiAction::ChooseRite(index) => match session.choose_rite(index) {
-            Some(name) => ActionOutcome::RiteChosen(name),
-            // The rite was settled between the frame that drew the button and
-            // the press — by the other button, or by a run starting.
-            None => ActionOutcome::Ignored,
-        },
         UiAction::ToggleRules => ActionOutcome::RulesToggled,
         UiAction::ToggleLimits => ActionOutcome::LimitsToggled,
         UiAction::ToggleHistory => ActionOutcome::HistoryToggled,
@@ -145,6 +166,57 @@ pub fn apply(
         UiAction::DismissHint => ActionOutcome::HintDismissed,
         UiAction::ToggleWaveforms => ActionOutcome::WaveformsToggled,
         UiAction::ToggleVision => ActionOutcome::VisionToggled,
+        UiAction::SelectMachine(index) => ActionOutcome::MachineSelected(index),
+        _ => unreachable!("navigation helper received gameplay action"),
+    }
+}
+
+fn apply_preferences(
+    data: &GameData,
+    session: &mut GameSession,
+    action: UiAction,
+) -> ActionOutcome {
+    match action {
+        UiAction::VolumeUp => session.preferences.adjust_volume(0.1),
+        UiAction::VolumeDown => session.preferences.adjust_volume(-0.1),
+        UiAction::MusicVolumeUp => session.preferences.adjust_music_volume(0.1),
+        UiAction::MusicVolumeDown => session.preferences.adjust_music_volume(-0.1),
+        UiAction::CycleTextScale => session.preferences.cycle_text_scale(),
+        UiAction::CycleSpinSpeed => session.preferences.cycle_spin_speed(),
+        UiAction::CycleAutospinLength => session.preferences.cycle_autospin(&data.config),
+        UiAction::ToggleShake => session.preferences.toggle_shake(),
+        UiAction::ToggleParticles => session.preferences.toggle_particles(),
+        _ => unreachable!("preference helper received another action"),
+    }
+    ActionOutcome::PreferenceChanged
+}
+
+fn apply_gameplay(data: &GameData, session: &mut GameSession, action: UiAction) -> ActionOutcome {
+    match action {
+        UiAction::Spin => match session.begin_spin(data) {
+            Ok(()) => ActionOutcome::SpinStarted,
+            Err(blocked) => ActionOutcome::SpinBlocked(blocked),
+        },
+        UiAction::BetUp => {
+            let changed = session.adjust_bet(data, 1);
+            bet_outcome(data, session, changed)
+        }
+        UiAction::BetDown => {
+            let changed = session.adjust_bet(data, -1);
+            bet_outcome(data, session, changed)
+        }
+        UiAction::MaxBet => {
+            let changed = session.set_max_bet(data);
+            bet_outcome(data, session, changed)
+        }
+        UiAction::ChooseFreeSpinShape(index) => match session.choose_free_spin_shape(index, data) {
+            Some(spins) => ActionOutcome::FreeSpinShapeChosen(spins),
+            None => ActionOutcome::Ignored,
+        },
+        UiAction::ChooseRite(index) => match session.choose_rite(index) {
+            Some(name) => ActionOutcome::RiteChosen(name),
+            None => ActionOutcome::Ignored,
+        },
         UiAction::OfferGamble => match session.begin_gamble(data) {
             Ok(_) => ActionOutcome::GambleOffered,
             Err(reason) => ActionOutcome::GambleRefused(reason),
@@ -169,43 +241,6 @@ pub fn apply(
             Some(outcome) => ActionOutcome::BonusFinished(outcome.credits),
             None => ActionOutcome::BonusPicked,
         },
-        UiAction::SelectMachine(index) => ActionOutcome::MachineSelected(index),
-        UiAction::VolumeUp => {
-            session.preferences.adjust_volume(0.1);
-            ActionOutcome::PreferenceChanged
-        }
-        UiAction::VolumeDown => {
-            session.preferences.adjust_volume(-0.1);
-            ActionOutcome::PreferenceChanged
-        }
-        UiAction::MusicVolumeUp => {
-            session.preferences.adjust_music_volume(0.1);
-            ActionOutcome::PreferenceChanged
-        }
-        UiAction::MusicVolumeDown => {
-            session.preferences.adjust_music_volume(-0.1);
-            ActionOutcome::PreferenceChanged
-        }
-        UiAction::CycleTextScale => {
-            session.preferences.cycle_text_scale();
-            ActionOutcome::PreferenceChanged
-        }
-        UiAction::CycleSpinSpeed => {
-            session.preferences.cycle_spin_speed();
-            ActionOutcome::PreferenceChanged
-        }
-        UiAction::CycleAutospinLength => {
-            session.preferences.cycle_autospin(&data.config);
-            ActionOutcome::PreferenceChanged
-        }
-        UiAction::ToggleShake => {
-            session.preferences.toggle_shake();
-            ActionOutcome::PreferenceChanged
-        }
-        UiAction::ToggleParticles => {
-            session.preferences.toggle_particles();
-            ActionOutcome::PreferenceChanged
-        }
         UiAction::ToggleAutospin => toggle_autospin(data, session),
         UiAction::DismissCelebration => {
             if session.celebrations.is_active() {
@@ -217,14 +252,9 @@ pub fn apply(
         }
         UiAction::TakeLifeline => match session.take_lifeline(data) {
             Some(lifeline) => ActionOutcome::LifelineTaken(lifeline),
-            // Not stuck any more — a press from a frame whose offer has since
-            // gone must never mint credits (§5.53).
             None => ActionOutcome::Ignored,
         },
-        UiAction::NewGame => ActionOutcome::Session(SessionRequest::NewGame),
-        UiAction::Save => ActionOutcome::Session(SessionRequest::Save),
-        UiAction::Load => ActionOutcome::Session(SessionRequest::Load),
-        UiAction::DeleteSave => ActionOutcome::Session(SessionRequest::DeleteSave),
+        _ => unreachable!("gameplay helper received another action"),
     }
 }
 
