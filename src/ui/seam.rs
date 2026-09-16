@@ -169,7 +169,7 @@ fn draw_choice(
 /// facts, already on screen and countable by eye. What the widening will
 /// actually take is a roll, and it is not quoted, because that is the part the
 /// player is deciding under.
-fn promise(data: &GameData, round: &SeamRound, rite: &RiteDef) -> String {
+pub fn promise(data: &GameData, round: &SeamRound, rite: &RiteDef) -> String {
     match rite.kind {
         RiteKind::Widen { .. } => match round.frontier(data) {
             0 => "walled in — no cells to take".to_owned(),
@@ -326,5 +326,4 @@ fn draw_banner(data: &GameData, round: &SeamRound) {
     );
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

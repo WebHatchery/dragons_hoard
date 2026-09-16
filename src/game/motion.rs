@@ -98,12 +98,12 @@ impl MotionFault {
 /// Half a symbol per frame. Above this the art crosses more than its own centre
 /// between one drawn frame and the next, and reads as a streak — which is what
 /// a player reported before `BASE_SPIN_TIME` went from 0.62 to 0.95.
-const READABLE_SYMBOLS_PER_FRAME: f32 = 0.5;
+pub const READABLE_SYMBOLS_PER_FRAME: f32 = 0.5;
 
 /// Accumulates what it has seen, so a fault can be about a sequence.
 #[derive(Debug, Default)]
 pub struct MotionAudit {
-    frame: u32,
+    pub frame: u32,
     /// What each reel showed the frame it settled. `None` until it does.
     settled: Vec<Option<Vec<usize>>>,
     positions: Vec<f32>,
@@ -206,7 +206,7 @@ impl MotionAudit {
         }
     }
 
-    fn check_stable(&mut self, reel: usize, column: Vec<usize>) {
+    pub fn check_stable(&mut self, reel: usize, column: Vec<usize>) {
         match &self.settled[reel] {
             Some(was) if *was != column => {
                 self.faults.push(MotionFault::SettledReelChanged {
@@ -264,5 +264,4 @@ impl MotionAudit {
     }
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

@@ -252,5 +252,4 @@ pub fn draw_weighted<'a>(rites: &'a [RiteDef], rng: &mut SeededRng) -> Option<&'
     rites.last()
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

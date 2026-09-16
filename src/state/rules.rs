@@ -35,7 +35,7 @@
 //! is read from the same data the engine pays out of, so a rule cannot quote a
 //! trigger of three scatters at a cabinet that wants four.
 
-mod prose;
+pub mod prose;
 pub use prose::rules;
 
 use crate::data::{Evaluation, GameData};
@@ -173,29 +173,6 @@ pub struct Rule {
     pub text: String,
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.
 
-/// Whether a setting in the data can exist without anyone explaining it (§5.66).
-///
-/// # The gate that did not fire
-///
-/// This module opens by promising that "add a cabinet with a mechanic and forget
-/// to describe it and the build fails naming the topic". §5.64 added a mechanic
-/// — the free-spin run can be traded short and sharp — and **nothing failed**.
-/// The game shipped a decision it never mentioned.
-///
-/// The reason is that [`Topic::present`] is a hand-written list of things to
-/// look for. It compares the prose against a set of topics; it cannot notice a
-/// mechanic nobody added a topic for. The same shape as §5.50's screen registry
-/// and §5.53's copy of it in the harness: a list that must be maintained is a
-/// list that goes stale, and staleness looks exactly like correctness.
-///
-/// So the question is turned round. Every key in the feature data is either
-/// **a mechanic**, which must be named by a topic that is present when the key
-/// is on, or **tuning**, which is excused here in writing. A key that is neither
-/// fails the test. Adding a field to `freespins.json` now forces a decision
-/// rather than permitting silence — the default is "explain this", and getting
-/// out of it means saying why in a place someone reviews.
-#[cfg(test)]
-mod coverage;
+// Coverage tests live in the crate-level integration harness.

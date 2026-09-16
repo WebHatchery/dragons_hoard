@@ -25,7 +25,7 @@
 //! draw from the player's RNG, or looking at the machine picker would change the
 //! spins that came after it. A test asserts exactly that.
 
-mod features;
+pub mod features;
 pub use features::{ShapeProfile, TierProfile};
 use features::{ShapeProfiler, TierProfiler};
 
@@ -48,7 +48,7 @@ const ROUNDS_PER_STEP: u64 = 400;
 /// `SeededRng::new` xors to a zero state — an xorshift fixed point that returns
 /// 0 forever. Every cabinet profiled to the same grid on every round. The
 /// toolkit now guards against it, and this is an ordinary number regardless.
-const PROFILE_SEED: u64 = 0x5CA1_AB1E_D00D;
+pub const PROFILE_SEED: u64 = 0x5CA1_AB1E_D00D;
 /// Balance the scratch session is topped up to, so a losing run cannot stall it.
 const SCRATCH_BANKROLL: i64 = 1_000_000_000;
 
@@ -172,8 +172,7 @@ impl Profiler {
     }
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.
 
 /// Every cabinet's profile, measured on demand.
 ///

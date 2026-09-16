@@ -83,7 +83,7 @@ pub struct SeamRound {
     seam: Seam,
     /// `None` until the rite is settled — by the player in the base game, by a
     /// weighted draw everywhere else. The round holds the game either way.
-    rite: Option<RiteDef>,
+    pub rite: Option<RiteDef>,
     /// Every rite this cabinet offers, so the panel can lay the choice out
     /// without reaching back into `GameData`.
     offered: Vec<RiteDef>,
@@ -98,8 +98,8 @@ pub struct SeamRound {
     /// opened during free spins pays at the run's multiplier.
     ctx: EvalContext,
     /// What the board was worth before the rite touched it.
-    baseline: i64,
-    ceiling: i64,
+    pub baseline: i64,
+    pub ceiling: i64,
     finished: bool,
 }
 
@@ -337,5 +337,4 @@ fn config_steps(config: &SeamConfig) -> usize {
     config.steps.max(1)
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

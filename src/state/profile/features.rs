@@ -203,8 +203,7 @@ impl TierProfiler {
     }
 }
 
-#[cfg(test)]
-mod tier_tests;
+// Tier tests live in the crate-level integration harness.
 
 /// Runs measured per shape. Fewer than a tier needs: a free-spin run is
 /// several internal spins and both shapes are being compared to each other
@@ -320,5 +319,4 @@ impl ShapeProfiler {
     }
 }
 
-#[cfg(test)]
-mod shape_tests;
+// Shape tests live in the crate-level integration harness.

@@ -13,15 +13,15 @@ use macroquad_toolkit::ui::{
     draw_surface, draw_text_right, draw_ui_text_ex, ButtonTone, Region, SurfaceStyle, TextStyle,
 };
 
-const ROW_HEIGHT: f32 = 44.0;
+pub const ROW_HEIGHT: f32 = 44.0;
 /// Header, and the gap under the last row.
-const CHROME: f32 = 108.0;
+pub const CHROME: f32 = 108.0;
 /// Gap between two columns of awards.
-const COLUMN_GAP: f32 = 24.0;
+pub const COLUMN_GAP: f32 = 24.0;
 /// The panel at one column and at more than one. Wider once it has to flow,
 /// because two 400px columns cannot hold a name, a sentence and a tally.
-const NARROW: f32 = 820.0;
-const WIDE: f32 = 1180.0;
+pub const NARROW: f32 = 820.0;
+pub const WIDE: f32 = 1180.0;
 
 /// How the awards are laid out at this list length and screen height.
 ///
@@ -34,7 +34,7 @@ const WIDE: f32 = 1180.0;
 /// So the count of columns is derived from what actually fits, the same way the
 /// rules panel derives its type size (§5.29). One column while the list is
 /// short, which is every cabinet before this one.
-fn layout(awards: usize, height: f32) -> (Rect, usize) {
+pub fn layout(awards: usize, height: f32) -> (Rect, usize) {
     let room = ((height - CHROME - 24.0) / ROW_HEIGHT).floor().max(1.0) as usize;
     let columns = awards.div_ceil(room).max(1);
     let per_column = awards.div_ceil(columns).max(1);
@@ -175,5 +175,4 @@ fn current(book: &AchievementBook, kind: ConditionKind) -> i64 {
     }
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

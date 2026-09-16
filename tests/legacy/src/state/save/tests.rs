@@ -62,7 +62,7 @@ fn a_legacy_save_migrates_to_the_current_shape() {
 fn a_save_never_carries_an_in_flight_feature() {
     let data = data();
     let mut session = GameSession::new(&data, 12);
-    session.free_spins = Some(super::super::FreeSpinState {
+    session.free_spins = Some(crate::state::FreeSpinState {
         remaining: 7,
         awarded: 10,
         line_bet: 5,

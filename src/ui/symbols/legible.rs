@@ -9,5 +9,4 @@
 //! divides the same window six ways, which is the smallest a symbol is ever
 //! drawn in this game. That is the size the checks run at.
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

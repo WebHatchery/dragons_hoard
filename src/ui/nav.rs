@@ -42,21 +42,21 @@ pub struct Hit {
 /// the controls do not.
 #[derive(Debug, Clone, Default)]
 pub struct Nav {
-    index: usize,
+    pub index: usize,
     /// Controls seen this frame so far.
-    seen: usize,
+    pub seen: usize,
     /// How many there were last frame, so a changed count can reset focus.
-    previous: usize,
-    step: i32,
-    activate: bool,
+    pub previous: usize,
+    pub step: i32,
+    pub activate: bool,
     /// Set once the player uses the keyboard, so the focus ring does not appear
     /// on a control the mouse merely happens to be near.
-    engaged: bool,
+    pub engaged: bool,
     /// Held focus, for the capture harness only.
-    pinned: Option<usize>,
+    pub pinned: Option<usize>,
     /// Everything drawn now is behind an open panel, so nothing drawn now can
     /// be pressed (§5.78).
-    inert: bool,
+    pub inert: bool,
 }
 
 impl Nav {
@@ -202,5 +202,4 @@ pub fn focus_ring(rect: Rect) {
     );
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

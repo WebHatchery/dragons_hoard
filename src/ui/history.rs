@@ -32,7 +32,7 @@ use macroquad_toolkit::ui::{
 };
 
 /// Sized per frame, now that the screen can change shape (§5.46).
-fn panel() -> Rect {
+pub fn panel() -> Rect {
     frame::centred_at(960.0, 90.0, 540.0)
 }
 
@@ -125,7 +125,7 @@ pub fn draw(
 }
 
 /// Vertical range, padded so the line never rides the frame.
-fn range(history: &History) -> (f32, f32) {
+pub fn range(history: &History) -> (f32, f32) {
     let (low, high) = history.extremes().unwrap_or((0, 1));
     let opening = history.opening().unwrap_or(low);
     // The opening balance is always in view, because "am I up or down" is the
@@ -226,7 +226,7 @@ fn draw_marks(history: &History, plot: Rect, step: f32, y_of: &dyn Fn(f32) -> f3
     }
 }
 
-fn mark_colour(cause: Cause) -> Color {
+pub fn mark_colour(cause: Cause) -> Color {
     match cause {
         Cause::Feature => palette::jade(),
         Cause::Hatch => palette::ember(),
@@ -314,5 +314,4 @@ fn draw_figures(history: &History, ledger: &Ledger, row: Rect) {
     let _ = ledger;
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

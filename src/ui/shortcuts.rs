@@ -173,5 +173,4 @@ pub fn actions_from_keys(celebrating: bool) -> Vec<UiAction> {
     actions
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

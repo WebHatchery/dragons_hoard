@@ -256,5 +256,4 @@ fn pot_total(data: &GameData, session: &GameSession) -> i64 {
         .sum()
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

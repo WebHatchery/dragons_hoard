@@ -504,8 +504,10 @@ mod holdspin;
 mod jackpots;
 mod ledger;
 mod machines;
+#[path = "preferences_nested.rs"]
 mod preferences;
 mod refine;
+#[path = "seam_nested.rs"]
 mod seam;
 mod shapes;
 

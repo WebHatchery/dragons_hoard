@@ -138,7 +138,7 @@ pub fn draw(log: &SessionLog, pointer: Pointer, actions: &mut Vec<UiAction>, nav
     );
 }
 
-fn title(log: &SessionLog) -> String {
+pub fn title(log: &SessionLog) -> String {
     match log.len() {
         0 => "Your sessions".to_owned(),
         1 => "Your last session".to_owned(),
@@ -147,7 +147,7 @@ fn title(log: &SessionLog) -> String {
 }
 
 /// One line of the log, as `(text, right edge)` pairs.
-fn row(session: &Session, ordinal: usize, open: bool) -> Vec<(String, f32)> {
+pub fn row(session: &Session, ordinal: usize, open: bool) -> Vec<(String, f32)> {
     vec![
         (format!("#{}", ordinal), 40.0),
         (minutes(session), 150.0),
@@ -167,7 +167,7 @@ fn minutes(session: &Session) -> String {
 }
 
 /// Why it stopped, in as few words as the column has room for.
-fn ended(session: &Session, open: bool) -> String {
+pub fn ended(session: &Session, open: bool) -> String {
     if open {
         // It has not ended, and saying "you stopped" about the evening someone
         // is in the middle of would be the one plainly false thing on the page.
@@ -181,5 +181,4 @@ fn ended(session: &Session, open: bool) -> String {
     }
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

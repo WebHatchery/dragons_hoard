@@ -29,10 +29,10 @@ use macroquad_toolkit::ui::{
 };
 
 const PANEL: Color = Color::new(0.09, 0.09, 0.10, 1.0);
-const ROW: f32 = 26.0;
+pub const ROW: f32 = 26.0;
 /// Rows the panel has room for. The log keeps more than this only if someone
 /// raises `proof::KEPT` without looking here, which the tests catch.
-const VISIBLE: usize = 12;
+pub const VISIBLE: usize = 12;
 
 pub fn draw(
     log: &ProofLog,
@@ -253,5 +253,4 @@ fn footnote(panel: Rect) {
     );
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

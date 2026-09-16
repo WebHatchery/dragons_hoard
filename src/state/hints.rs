@@ -38,7 +38,7 @@ use macroquad_toolkit::persistence::{json_key_exists, load_json_key, save_json_k
 use serde::{Deserialize, Serialize};
 
 const HINTS_KEY: &str = "hints";
-const HINTS_JSON: &str = macroquad_toolkit::include_json_str!("../../assets/data/hints.json");
+pub const HINTS_JSON: &str = macroquad_toolkit::include_json_str!("../../assets/data/hints.json");
 
 /// A counter a hint can watch. Deliberately a small, closed set: a hint that
 /// needed a new counter is usually a hint about something the game should have
@@ -108,7 +108,7 @@ pub fn render(text: &str) -> String {
 /// Number words, up to more cabinets than this game will ever have. Past that
 /// the numeral is honest: a hint quoting "thirteen" of anything has stopped
 /// being a sentence anyway.
-fn spell(count: usize) -> &'static str {
+pub fn spell(count: usize) -> &'static str {
     const WORDS: [&str; 13] = [
         "no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
         "eleven", "twelve",
@@ -132,9 +132,9 @@ pub struct HintProgress {
 /// Everything the hint system knows, and what it has already said.
 #[derive(Debug, Clone, Default)]
 pub struct HintBook {
-    defs: Vec<HintDef>,
-    seen: Vec<String>,
-    progress: HintProgress,
+    pub defs: Vec<HintDef>,
+    pub seen: Vec<String>,
+    pub progress: HintProgress,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -223,7 +223,12 @@ impl HintBook {
         })
     }
 
-    fn value(&self, counter: Counter, achievements: &AchievementProgress, ledger: &Ledger) -> i64 {
+    pub fn value(
+        &self,
+        counter: Counter,
+        achievements: &AchievementProgress,
+        ledger: &Ledger,
+    ) -> i64 {
         match counter {
             Counter::Spins => achievements.spins,
             Counter::FreeSpins => achievements.free_spins,
@@ -319,8 +324,4 @@ pub fn validate(defs: &[HintDef]) -> Result<(), String> {
     Ok(())
 }
 
-#[cfg(test)]
-mod tests;
-
-#[cfg(test)]
-mod reachability;
+// Tests live in the crate-level integration harness.

@@ -103,7 +103,7 @@ impl GameData {
         Ok(data)
     }
 
-    fn validate(&self) -> Result<(), String> {
+    pub fn validate(&self) -> Result<(), String> {
         validate_board(self)?;
         validate_economy(self)?;
         validate_bonus(self)?;
@@ -398,5 +398,4 @@ fn resolve_strips(symbols: &Symbols, strips: &[Vec<String>]) -> Result<Vec<Vec<u
         .collect()
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

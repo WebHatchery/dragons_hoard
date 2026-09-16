@@ -258,7 +258,7 @@ pub struct GameSession {
     /// deleted save leaves them alone.
     pub preferences: Preferences,
     /// Where each reel is currently resting; the animation starts from here.
-    reel_stops: Vec<usize>,
+    pub reel_stops: Vec<usize>,
     pending: Option<PendingSpin>,
 }
 
@@ -405,7 +405,6 @@ impl GameSession {
     }
 
     /// The grid the pending chain will come to rest on.
-    #[cfg(test)]
     pub fn pending_last_grid(&self) -> Grid {
         self.pending
             .as_ref()
@@ -695,5 +694,4 @@ impl GameSession {
     }
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

@@ -118,7 +118,6 @@ pub fn simulate(colour: [f32; 3], vision: Vision) -> [f32; 3] {
 /// Weighted Euclidean with the "redmean" correction — not a full Lab conversion,
 /// but far closer to how a difference actually reads than plain RGB distance,
 /// and enough to tell "two gems" from "the same gem twice".
-#[cfg(test)]
 pub fn distance(a: [f32; 3], b: [f32; 3]) -> f32 {
     let red_mean = (a[0] + b[0]) * 0.5;
     let dr = a[0] - b[0];
@@ -128,7 +127,6 @@ pub fn distance(a: [f32; 3], b: [f32; 3]) -> f32 {
 }
 
 /// Closest any two of these colours come under the given vision.
-#[cfg(test)]
 pub fn closest_pair(colours: &[[f32; 3]], vision: Vision) -> (usize, usize, f32) {
     let mut worst = (0, 0, f32::INFINITY);
     for (i, first) in colours.iter().enumerate() {
@@ -142,5 +140,4 @@ pub fn closest_pair(colours: &[[f32; 3]], vision: Vision) -> (usize, usize, f32)
     worst
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

@@ -65,7 +65,7 @@ impl LimitChoices {
         Ok(choices)
     }
 
-    fn validate(&self) -> Result<(), String> {
+    pub fn validate(&self) -> Result<(), String> {
         for (name, list) in [
             ("reality_check_minutes", &self.reality_check_minutes),
             ("time_minutes", &self.time_minutes),
@@ -129,7 +129,7 @@ impl Limits {
 ///
 /// `None` is "no limit", which is the loosest thing there is — so any cap is
 /// tighter than none, and none is never tighter than a cap.
-fn is_tighter(current: Option<i64>, next: Option<i64>) -> bool {
+pub fn is_tighter(current: Option<i64>, next: Option<i64>) -> bool {
     match (current, next) {
         (_, None) => false,
         (None, Some(_)) => true,
@@ -325,5 +325,4 @@ impl LimitState {
     }
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

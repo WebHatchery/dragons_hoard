@@ -225,5 +225,4 @@ impl SessionLog {
     }
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

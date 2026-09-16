@@ -36,22 +36,22 @@ use macroquad_toolkit::ui::{
 };
 
 /// Sized per frame, now that the screen can change shape (§5.46).
-fn panel() -> Rect {
+pub fn panel() -> Rect {
     // Wider than it was: the panel is two fixed columns and §5.57 added a
     // sentence that pushed Frost Wyrm into a third. Every other overlay in the
     // game is already this wide, and the extra 140px is the cheapest room
     // available — shrinking the type instead runs into the readability floor.
     frame::centred_at(1180.0, frame::BELOW_HEADER, 620.0)
 }
-const COLUMN_GAP: f32 = 28.0;
-const PADDING: f32 = 22.0;
-const HEADER: f32 = 62.0;
+pub const COLUMN_GAP: f32 = 28.0;
+pub const PADDING: f32 = 22.0;
+pub const HEADER: f32 = 62.0;
 /// Largest body type we would ever want, and the smallest still worth reading.
-const MAX_BODY: f32 = 16.0;
-const MIN_BODY: f32 = 11.0;
+pub const MAX_BODY: f32 = 16.0;
+pub const MIN_BODY: f32 = 11.0;
 
 /// How many lines a body of text wraps to at a given width and size.
-type Measure<'a> = &'a dyn Fn(&str, f32, f32) -> usize;
+pub type Measure<'a> = &'a dyn Fn(&str, f32, f32) -> usize;
 
 pub fn draw(ctx: &UiContext<'_>, pointer: Pointer, actions: &mut Vec<UiAction>, nav: &mut Nav) {
     draw_rectangle(
@@ -133,10 +133,10 @@ pub fn draw(ctx: &UiContext<'_>, pointer: Pointer, actions: &mut Vec<UiAction>, 
 /// The count is what gives, not the readability floor. `MIN_BODY` is 11px
 /// because that is where the type stops being worth reading, and a panel that
 /// bought its layout by going below it would be a panel nobody reads.
-const COLUMNS: usize = 4;
+pub const COLUMNS: usize = 4;
 
 /// Column width and the vertical room a column has.
-fn geometry() -> (f32, f32) {
+pub fn geometry() -> (f32, f32) {
     let column_width =
         (panel().w - PADDING * 2.0 - COLUMN_GAP * (COLUMNS as f32 - 1.0)) / COLUMNS as f32;
     let available = panel().bottom() - (panel().y + HEADER) - PADDING;
@@ -145,15 +145,15 @@ fn geometry() -> (f32, f32) {
 
 /// Where one rule ends up.
 #[derive(Debug, Clone, Copy, PartialEq)]
-struct Slot {
-    column: usize,
-    y: f32,
+pub struct Slot {
+    pub column: usize,
+    pub y: f32,
 }
 
 /// Flow the rules down the first column and into the next when one will not
 /// fit. A rule is never split across columns — a short column reads better than
 /// a sentence that restarts somewhere else.
-fn plan(rules: &[Rule], body: f32, measure: Measure<'_>) -> Vec<Slot> {
+pub fn plan(rules: &[Rule], body: f32, measure: Measure<'_>) -> Vec<Slot> {
     let (column_width, available) = geometry();
     let top = panel().y + HEADER;
 
@@ -173,7 +173,7 @@ fn plan(rules: &[Rule], body: f32, measure: Measure<'_>) -> Vec<Slot> {
 }
 
 /// Height one rule takes: its heading, its wrapped body, and the gap after it.
-fn block_height(rule: &Rule, width: f32, body: f32, measure: Measure<'_>) -> f32 {
+pub fn block_height(rule: &Rule, width: f32, body: f32, measure: Measure<'_>) -> f32 {
     let lines = measure(&rule.text, width, body) as f32;
     body + 12.0 + lines * (body + 4.0) + 10.0
 }
@@ -184,7 +184,12 @@ fn block_height(rule: &Rule, width: f32, body: f32, measure: Measure<'_>) -> f32
 /// cabinet that grows a mechanic shrinks the type instead of running off the
 /// bottom of the panel — which is how the old paytable prose ended up drawing
 /// over the footer.
-fn fitting_size(rules: &[Rule], _column_width: f32, _available: f32, measure: Measure<'_>) -> f32 {
+pub fn fitting_size(
+    rules: &[Rule],
+    _column_width: f32,
+    _available: f32,
+    measure: Measure<'_>,
+) -> f32 {
     let mut size = MAX_BODY;
     while size > MIN_BODY {
         if columns_used(rules, size, measure) <= COLUMNS {
@@ -196,11 +201,10 @@ fn fitting_size(rules: &[Rule], _column_width: f32, _available: f32, measure: Me
 }
 
 /// How many columns this set takes at `body`. Up to `COLUMNS` is a fit.
-fn columns_used(rules: &[Rule], body: f32, measure: Measure<'_>) -> usize {
+pub fn columns_used(rules: &[Rule], body: f32, measure: Measure<'_>) -> usize {
     plan(rules, body, measure)
         .last()
         .map_or(1, |slot| slot.column + 1)
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

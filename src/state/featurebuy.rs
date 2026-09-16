@@ -90,5 +90,4 @@ pub fn tier_at(data: &GameData, index: usize) -> Option<&FeatureBuyTier> {
     data.featurebuy.tiers.get(index)
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

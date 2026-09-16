@@ -95,7 +95,6 @@ impl Grid {
 /// Pick one stop index per reel. `strip[stop]` becomes the top visible cell.
 /// Stops against a cabinet's raw strips. Only the tests reach this now — the
 /// engine draws against whichever set is actually spinning (§5.21).
-#[cfg(test)]
 pub fn pick_stops(data: &GameData, rng: &mut SeededRng) -> Vec<usize> {
     pick_stops_on(&data.reels, rng)
 }
@@ -153,5 +152,4 @@ pub fn resting_grid(data: &GameData) -> Grid {
     grid_from_stops(data, &vec![0; data.reels.len()])
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

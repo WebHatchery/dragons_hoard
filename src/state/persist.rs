@@ -44,5 +44,4 @@ pub fn may_write() -> bool {
     !READ_ONLY.load(Ordering::Relaxed)
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

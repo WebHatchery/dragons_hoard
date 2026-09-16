@@ -141,5 +141,4 @@ pub fn burned(data: &GameData, order: &[String], count: usize) -> String {
         .join(", ")
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

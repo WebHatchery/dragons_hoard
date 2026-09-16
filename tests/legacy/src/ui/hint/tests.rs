@@ -4,7 +4,10 @@ use crate::state::hints::{self, HintDef};
 fn shipped() -> Vec<HintDef> {
     macroquad_toolkit::data_loader::parse_json_labeled(
         "assets/data/hints.json",
-        macroquad_toolkit::include_json_str!("../../../assets/data/hints.json"),
+        macroquad_toolkit::include_json_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/assets/data/hints.json"
+        )),
     )
     .unwrap()
 }

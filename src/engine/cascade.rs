@@ -121,7 +121,7 @@ fn cleared_cells(grid: &Grid, outcome: &SpinOutcome) -> Vec<usize> {
 }
 
 /// Drop survivors down and refill from above.
-fn collapse(
+pub fn collapse(
     data: &GameData,
     grid: &Grid,
     cleared: &[usize],
@@ -165,5 +165,4 @@ pub fn total_credits(steps: &[CascadeStep]) -> i64 {
     steps.iter().map(|step| step.credits).sum()
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

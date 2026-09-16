@@ -63,7 +63,7 @@ pub struct HoldSpinRound {
     respins_left: usize,
     respins_max: usize,
     respins_used: usize,
-    full_board_credits: i64,
+    pub full_board_credits: i64,
     finished: bool,
     /// Cells that locked on the most recent respin, so the UI can flash them
     /// rather than having to diff two frames.
@@ -225,7 +225,7 @@ pub fn auto_play(
 }
 
 /// Draw one coin value, weighted.
-fn roll_coin(config: &HoldSpinConfig, total_bet: i64, rng: &mut SeededRng) -> i64 {
+pub fn roll_coin(config: &HoldSpinConfig, total_bet: i64, rng: &mut SeededRng) -> i64 {
     let total: u32 = config.coin_values.iter().map(|value| value.weight).sum();
     if total == 0 {
         return total_bet;
@@ -258,5 +258,4 @@ pub fn mean_coin_multiple(config: &HoldSpinConfig) -> f64 {
         / total as f64
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

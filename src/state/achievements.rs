@@ -20,7 +20,7 @@ use macroquad_toolkit::persistence::{json_key_exists, load_json_key, save_json_k
 use serde::{Deserialize, Serialize};
 
 const ACHIEVEMENTS_KEY: &str = "achievements";
-const ACHIEVEMENTS_JSON: &str =
+pub const ACHIEVEMENTS_JSON: &str =
     macroquad_toolkit::include_json_str!("../../assets/data/achievements.json");
 
 /// What a definition measures. Adding a kind means adding a counter, which is
@@ -93,7 +93,7 @@ pub struct AchievementProgress {
 }
 
 impl AchievementProgress {
-    fn value(&self, kind: ConditionKind) -> i64 {
+    pub fn value(&self, kind: ConditionKind) -> i64 {
         match kind {
             ConditionKind::Spins => self.spins,
             ConditionKind::FreeSpins => self.free_spins,
@@ -116,7 +116,7 @@ impl AchievementProgress {
     /// figure is zero at the moment this reads it. Counting hatches from
     /// `hatch_credits` is what it used to do, and the two achievements resting
     /// on that counter could not be unlocked by playing the game.
-    fn observe(&mut self, machine_id: &str, resolution: &SpinResolution, balance: i64) {
+    pub fn observe(&mut self, machine_id: &str, resolution: &SpinResolution, balance: i64) {
         if resolution.was_free_spin {
             self.free_spins += 1;
         } else {
@@ -130,7 +130,7 @@ impl AchievementProgress {
         self.note_machine(machine_id);
     }
 
-    fn note_machine(&mut self, machine_id: &str) {
+    pub fn note_machine(&mut self, machine_id: &str) {
         if !self.machines_played.iter().any(|id| id == machine_id) {
             self.machines_played.push(machine_id.to_owned());
         }
@@ -140,18 +140,18 @@ impl AchievementProgress {
 /// The definitions, the unlock state, and the counters behind them.
 #[derive(Debug, Clone)]
 pub struct AchievementBook {
-    defs: Vec<AchievementDef>,
-    unlocked: Achievements,
-    progress: AchievementProgress,
+    pub defs: Vec<AchievementDef>,
+    pub unlocked: Achievements,
+    pub progress: AchievementProgress,
 }
 
 /// What gets written to disk. Kept separate from the book so the definitions —
 /// which live in JSON and may change — are never persisted alongside state.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
-struct AchievementSave {
-    unlocked_ids: Vec<String>,
-    progress: AchievementProgress,
+pub struct AchievementSave {
+    pub unlocked_ids: Vec<String>,
+    pub progress: AchievementProgress,
 }
 
 impl AchievementBook {
@@ -285,7 +285,7 @@ impl AchievementBook {
     }
 }
 
-fn validate(defs: &[AchievementDef]) -> Result<(), String> {
+pub fn validate(defs: &[AchievementDef]) -> Result<(), String> {
     if defs.is_empty() {
         return Err("achievements.json declared no achievements".to_owned());
     }
@@ -308,5 +308,4 @@ fn validate(defs: &[AchievementDef]) -> Result<(), String> {
     Ok(())
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

@@ -87,5 +87,4 @@ pub fn draw(hint: &HintDef, pointer: Pointer, actions: &mut Vec<UiAction>, nav: 
     let _ = nav::focus_ring;
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

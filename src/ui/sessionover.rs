@@ -151,7 +151,7 @@ pub fn draw(
     }
 }
 
-fn reason(breach: Breach) -> String {
+pub fn reason(breach: Breach) -> String {
     match breach {
         Breach::Time(minutes) => format!(
             "You set a {}-minute limit on this session, and it is up.",
@@ -169,7 +169,7 @@ fn reason(breach: Breach) -> String {
 }
 
 /// What the session actually did, from the clock the cap was measured against.
-fn figures(clock: &SessionClock, session: &GameSession) -> Vec<(String, String)> {
+pub fn figures(clock: &SessionClock, session: &GameSession) -> Vec<(String, String)> {
     let mut rows = vec![
         ("Played for".to_owned(), minutes(clock)),
         ("Spins".to_owned(), naming::count(clock.spins as u64)),
@@ -202,5 +202,4 @@ fn minutes(clock: &SessionClock) -> String {
     }
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

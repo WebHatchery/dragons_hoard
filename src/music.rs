@@ -44,7 +44,7 @@ use macroquad_toolkit::synth::{wav_bytes, SynthConfig, Wave};
 mod player;
 pub use player::Music;
 
-const MASTER: f32 = 0.20;
+pub const MASTER: f32 = 0.20;
 
 /// Four bars at a walking tempo. Long enough not to feel like a jingle, short
 /// enough that all four tracks fit in memory without thought.
@@ -268,7 +268,7 @@ fn timbre(track: Track) -> Timbre {
 /// Four bars of i — VI — III — VII, which is the progression every minor-key
 /// game loop has been for thirty years, because it never resolves and so never
 /// asks to end.
-fn notes(track: Track) -> Vec<Note> {
+pub fn notes(track: Track) -> Vec<Note> {
     // Root of each bar, as a scale degree.
     const ROOTS: [i32; 4] = [0, 5, 2, 6];
 
@@ -383,5 +383,4 @@ pub fn config() -> SynthConfig {
     }
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

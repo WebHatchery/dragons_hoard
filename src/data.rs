@@ -8,10 +8,10 @@ use macroquad_toolkit::assets::TextureConfig;
 use macroquad_toolkit::data_loader::{load_embedded_json, load_embedded_json_labeled};
 use serde::{Deserialize, Serialize};
 
-mod features;
-mod load;
-mod machines;
-mod presentation;
+pub mod features;
+pub mod load;
+pub mod machines;
+pub mod presentation;
 
 pub use features::{
     validate_feature_buy, BonusConfig, CascadeConfig, FeatureAward, FeatureBuyConfig,
@@ -688,8 +688,4 @@ impl GameData {
             .unwrap_or_else(|| self.config.line_bets[0])
     }
 }
-#[cfg(test)]
-mod tests;
-
-#[cfg(test)]
-mod ante_tests;
+// Tests live in the crate-level integration harness.

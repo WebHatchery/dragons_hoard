@@ -49,7 +49,7 @@ const SLOT: &str = "floor";
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Floor {
     #[serde(default)]
-    accrued_milli: HashMap<String, i64>,
+    pub accrued_milli: HashMap<String, i64>,
 }
 
 impl Floor {
@@ -101,5 +101,4 @@ impl Floor {
     }
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

@@ -157,7 +157,7 @@ fn fill(
 /// So the top rung is scaled by how far past it the cluster went — the growth is
 /// deliberately steep, because a fifteen-cell cluster should feel like a
 /// different event from a five-cell one rather than three times one.
-fn pay(data: &GameData, symbol: usize, size: usize) -> i64 {
+pub fn pay(data: &GameData, symbol: usize, size: usize) -> i64 {
     const TOP: usize = 5;
     let base = data.symbols.pay(symbol, size.min(TOP));
     if size <= TOP {
@@ -169,5 +169,4 @@ fn pay(data: &GameData, symbol: usize, size: usize) -> i64 {
     base * (4 + over * 3) / 4
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

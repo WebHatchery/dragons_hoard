@@ -1,10 +1,10 @@
 //! High-level game loop: owns the session, routes intents, drives feedback.
 
-mod bootstrap;
-mod capture_scenes;
+pub mod bootstrap;
+pub mod capture_scenes;
 pub mod drift;
 mod feedback;
-mod motion;
+pub mod motion;
 mod outcomes;
 mod persistence;
 mod present;

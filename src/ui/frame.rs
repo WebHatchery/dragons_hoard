@@ -44,7 +44,7 @@ pub const DESIGN_WIDTH: f32 = 1280.0;
 /// 4:3 is where the wager panel and the reels stop fitting beside each other;
 /// 21:9 is where they are far enough apart to read as two screens.
 const MIN_ASPECT: f32 = 4.0 / 3.0;
-const MAX_ASPECT: f32 = 21.0 / 9.0;
+pub const MAX_ASPECT: f32 = 21.0 / 9.0;
 
 /// The short side of the layout when the window is taller than it is wide.
 ///
@@ -134,7 +134,7 @@ pub struct Frame {
 }
 
 /// Gap between the panels and the screen edge, and between panels.
-const MARGIN: f32 = 18.0;
+pub const MARGIN: f32 = 18.0;
 /// The highest row an overlay panel may occupy.
 ///
 /// The header is drawn behind every overlay and is never covered by one, so a
@@ -148,8 +148,7 @@ const WAGER_WIDTH: f32 = 410.0;
 
 impl Frame {
     /// A wide frame at this width, for the tests that describe landscape.
-    #[cfg(test)]
-    fn sized_wide(width: f32) -> Self {
+    pub fn sized_wide(width: f32) -> Self {
         Self::sized(width, HEIGHT)
     }
 
@@ -260,5 +259,4 @@ impl Frame {
     }
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

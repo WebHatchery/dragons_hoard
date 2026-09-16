@@ -9,20 +9,15 @@
 
 // Only the batch drivers need these; the report shape and its accumulation are
 // pure arithmetic and compile into the game for the live profiler (§5.17).
-#[cfg(test)]
 use crate::data::GameData;
-#[cfg(test)]
 use crate::state::gamble::Scale;
-#[cfg(test)]
 use crate::state::GameSession;
 use serde::{Deserialize, Serialize};
 
 /// Balance the sim tops up to before each paid spin, so a losing streak can
 /// never stall it.
-#[cfg(test)]
 const SIM_BANKROLL: i64 = 1_000_000_000;
 
-#[cfg(test)]
 #[derive(Debug, Clone, Copy)]
 pub struct SimConfig {
     pub spins: u64,
@@ -32,7 +27,6 @@ pub struct SimConfig {
     pub seed: u64,
 }
 
-#[cfg(test)]
 impl Default for SimConfig {
     fn default() -> Self {
         Self {
@@ -44,7 +38,6 @@ impl Default for SimConfig {
     }
 }
 
-#[cfg(test)]
 #[derive(Debug, Clone, Default)]
 pub struct SimReport {
     pub paid_spins: u64,
@@ -166,7 +159,6 @@ pub const BAND_LABELS: [&str; BAND_COUNT] = [
     "nothing", "under 1x", "1-2x", "2-5x", "5-20x", "20-100x", "100x+",
 ];
 
-#[cfg(test)]
 impl SimReport {
     pub fn rtp(&self) -> f64 {
         if self.total_wagered == 0 {
@@ -227,7 +219,6 @@ impl SimReport {
     }
 }
 
-#[cfg(test)]
 pub fn run(data: &GameData, config: SimConfig) -> SimReport {
     let mut session = GameSession::new(data, config.seed);
     session.line_bet_index = config.line_bet_index.min(data.config.line_bets.len() - 1);
@@ -277,7 +268,6 @@ pub fn run(data: &GameData, config: SimConfig) -> SimReport {
 }
 
 /// What buying one tier over and over returns per credit spent (§5.13).
-#[cfg(test)]
 #[derive(Debug, Clone, Default)]
 pub struct BuyReport {
     pub buys: u64,
@@ -285,7 +275,6 @@ pub struct BuyReport {
     pub won: i64,
 }
 
-#[cfg(test)]
 impl BuyReport {
     pub fn rtp(&self) -> f64 {
         if self.spent == 0 {
@@ -306,7 +295,6 @@ impl BuyReport {
 ///
 /// The balance is topped up between rounds so a bad run cannot end the sample
 /// early; the *stake* is still counted honestly, which is all the ratio needs.
-#[cfg(test)]
 pub fn simulate_buys(data: &GameData, tier: usize, rounds: u64, seed: u64) -> BuyReport {
     let mut session = GameSession::new(data, seed);
     let mut report = BuyReport::default();
@@ -347,7 +335,6 @@ pub fn simulate_buys(data: &GameData, tier: usize, rounds: u64, seed: u64) -> Bu
 /// as one who gambles nothing. Anything else means the coin is not fair or the
 /// stake accounting is wrong, and neither would show up in a total-RTP band on
 /// its own.
-#[cfg(test)]
 pub fn simulate_gambling_everything(data: &GameData, spins: u64, seed: u64) -> SimReport {
     let mut session = GameSession::new(data, seed);
     let mut report = SimReport::default();
@@ -396,7 +383,6 @@ pub fn simulate_gambling_everything(data: &GameData, spins: u64, seed: u64) -> S
     report
 }
 
-#[cfg(test)]
 fn accumulate(report: &mut SimReport, resolution: &crate::state::SpinResolution, free: bool) {
     let credits = resolution.total_credits();
     report.total_won += credits;
@@ -424,5 +410,4 @@ fn accumulate(report: &mut SimReport, resolution: &crate::state::SpinResolution,
     }
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

@@ -36,7 +36,7 @@ use macroquad_toolkit::ui::{
 const PANEL: Color = Color::new(0.09, 0.085, 0.10, 1.0);
 /// Diagrams per row. Five across leaves each one wide enough that a five-reel
 /// grid is still readable at a glance.
-const COLUMNS: usize = 5;
+pub const COLUMNS: usize = 5;
 
 pub fn draw(data: &GameData, pointer: Pointer, actions: &mut Vec<UiAction>, nav: &mut Nav) {
     draw_rectangle(
@@ -105,14 +105,14 @@ pub fn draw(data: &GameData, pointer: Pointer, actions: &mut Vec<UiAction>, nav:
     }
 }
 
-fn title(data: &GameData) -> String {
+pub fn title(data: &GameData) -> String {
     match data.paylines.len() {
         0 => "Lines".to_owned(),
         count => format!("The {} lines", count),
     }
 }
 
-fn empty_note(data: &GameData) -> String {
+pub fn empty_note(data: &GameData) -> String {
     format!(
         "{} has no paylines. Wins are read straight off the grid instead — press R for how this \
          cabinet pays.",
@@ -196,5 +196,4 @@ fn draw_diagram(data: &GameData, index: usize, slot: Rect) {
     );
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

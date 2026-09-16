@@ -40,7 +40,7 @@ use macroquad_toolkit::ui::{
 
 const PANEL: Color = Color::new(0.10, 0.09, 0.11, 1.0);
 /// Rows across. Two columns of a ten-row list beats one column of twenty.
-const COLUMNS: usize = 2;
+pub const COLUMNS: usize = 2;
 
 pub fn draw(pointer: Pointer, actions: &mut Vec<UiAction>, nav: &mut Nav) {
     draw_rectangle(
@@ -113,5 +113,4 @@ pub fn draw(pointer: Pointer, actions: &mut Vec<UiAction>, nav: &mut Nav) {
     );
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

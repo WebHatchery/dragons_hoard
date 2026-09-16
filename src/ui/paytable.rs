@@ -184,7 +184,7 @@ fn symbol_note(ctx: &UiContext<'_>, index: usize) -> String {
 /// below can call **this** function. A test that rebuilt the sentence itself
 /// would agree with the panel by coincidence and go on agreeing after someone
 /// changed one of them.
-fn seam_note(data: &GameData, index: usize) -> String {
+pub fn seam_note(data: &GameData, index: usize) -> String {
     use crate::engine::seam;
 
     if !seam::seamable(data, index) || data.seam.rites.is_empty() {
@@ -206,5 +206,4 @@ fn seam_note(data: &GameData, index: usize) -> String {
     }
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

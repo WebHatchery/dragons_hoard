@@ -13,10 +13,10 @@
 //! An unrecognised value falls back to the three-letter code, so adding a symbol
 //! can never render nothing.
 
-mod hoard;
-mod legible;
-mod peaks;
-mod tidepool;
+pub mod hoard;
+pub mod legible;
+pub mod peaks;
+pub mod tidepool;
 
 use crate::data::SymbolDef;
 use macroquad::prelude::*;
@@ -90,16 +90,16 @@ impl SymbolArt {
 /// Shades derived from the symbol's single configured colour, so one hex in the
 /// JSON drives the whole piece of art.
 #[derive(Debug, Clone, Copy)]
-pub(super) struct Shades {
-    base: Color,
-    dark: Color,
-    darker: Color,
-    light: Color,
-    lighter: Color,
+pub struct Shades {
+    pub base: Color,
+    pub dark: Color,
+    pub darker: Color,
+    pub light: Color,
+    pub lighter: Color,
 }
 
 impl Shades {
-    fn new(color: [f32; 3], lit: f32, alpha: f32) -> Self {
+    pub fn new(color: [f32; 3], lit: f32, alpha: f32) -> Self {
         // A winning cell lifts every shade rather than overlaying a tint, so the
         // art reads brighter without losing its own colour.
         let boost = 1.0 + 0.35 * lit;
@@ -144,14 +144,14 @@ pub(super) fn mix(a: Color, b: Color, t: f32) -> Color {
 ///
 /// Generic over the painter so the same art routines draw to the screen in the
 /// game and into a pixel buffer in a test. Nothing below this line knows which.
-pub(super) struct Canvas<'a, P: Painter> {
+pub struct Canvas<'a, P: Painter> {
     rect: Rect,
     unit: f32,
     painter: &'a mut P,
 }
 
 impl<'a, P: Painter> Canvas<'a, P> {
-    fn new(rect: Rect, painter: &'a mut P) -> Self {
+    pub fn new(rect: Rect, painter: &'a mut P) -> Self {
         let unit = rect.w.min(rect.h);
         Self {
             rect,
@@ -168,12 +168,12 @@ impl<'a, P: Painter> Canvas<'a, P> {
         self.rect.y + self.rect.h * y
     }
 
-    fn p(&self, x: f32, y: f32) -> Vec2 {
+    pub fn p(&self, x: f32, y: f32) -> Vec2 {
         vec2(self.x(x), self.y(y))
     }
 
     /// Normalised length → pixels, using the smaller axis so art stays round.
-    fn s(&self, size: f32) -> f32 {
+    pub fn s(&self, size: f32) -> f32 {
         self.unit * size
     }
 
@@ -282,5 +282,4 @@ pub fn paint<P: Painter>(
     true
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

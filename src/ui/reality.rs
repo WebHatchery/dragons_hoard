@@ -155,7 +155,7 @@ pub fn draw(clock: &SessionClock, pointer: Pointer, actions: &mut Vec<UiAction>,
 
 /// Elapsed time in the units a person would use. Seconds below a minute, so a
 /// check that fires early does not claim "0 minutes".
-fn duration(elapsed: f32, minutes: u32) -> String {
+pub fn duration(elapsed: f32, minutes: u32) -> String {
     match minutes {
         0 => format!("{} seconds", elapsed as u32),
         1 => "1 minute".to_owned(),
@@ -166,5 +166,4 @@ fn duration(elapsed: f32, minutes: u32) -> String {
     }
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

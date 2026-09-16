@@ -342,7 +342,7 @@ fn promise(text: &RuleText, rite: &crate::data::RiteDef) -> String {
 }
 
 /// The free-spin paragraph, which has to read an award table of arbitrary size.
-pub(super) fn free_spins_rule(data: &GameData) -> Option<Rule> {
+pub fn free_spins_rule(data: &GameData) -> Option<Rule> {
     let text = &data.presentation.rules;
     let mut awards: Vec<(usize, u32)> = data
         .freespins

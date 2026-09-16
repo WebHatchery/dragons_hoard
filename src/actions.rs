@@ -287,5 +287,4 @@ fn bet_outcome(data: &GameData, session: &GameSession, changed: bool) -> ActionO
     }
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

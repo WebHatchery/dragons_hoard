@@ -103,5 +103,4 @@ pub fn migrate_save_value(
     Ok(session.to_save(&data.config.version))
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

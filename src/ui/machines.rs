@@ -17,18 +17,18 @@ use macroquad_toolkit::ui::{
     ButtonTone, Region, SurfaceStyle, TextStyle,
 };
 
-const ROW_HEIGHT: f32 = 140.0;
-const COLUMNS: usize = 2;
-const COLUMN_GAP: f32 = 20.0;
+pub const ROW_HEIGHT: f32 = 140.0;
+pub const COLUMNS: usize = 2;
+pub const COLUMN_GAP: f32 = 20.0;
 /// Wide enough that a half-width row still leaves the blurb room beside the
 /// Play button.
-const PANEL_WIDTH: f32 = 1180.0;
+pub const PANEL_WIDTH: f32 = 1180.0;
 
 /// How many rows the grid needs for the cabinets that exist.
 ///
 /// Read by the layout and by the test that holds the panel inside the screen,
 /// so adding a seventh cabinet changes both together.
-fn panel_rows() -> usize {
+pub fn panel_rows() -> usize {
     MACHINES.len().div_ceil(COLUMNS)
 }
 
@@ -298,5 +298,4 @@ fn draw_measured(profile: &MachineProfile, rect: Rect) {
     );
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

@@ -90,7 +90,7 @@ impl Wallet {
     ///
     /// Adding rather than choosing: all of it was the player's, and the
     /// alternative is a migration that deletes money.
-    fn absorb(config: &GameConfig, per_cabinet: &dyn Fn(&str) -> Option<i64>) -> Self {
+    pub fn absorb(config: &GameConfig, per_cabinet: &dyn Fn(&str) -> Option<i64>) -> Self {
         let mut found = false;
         let mut balance = 0;
         for machine in MACHINES {
@@ -113,5 +113,4 @@ impl Wallet {
     }
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

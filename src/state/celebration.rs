@@ -12,11 +12,11 @@ use std::collections::VecDeque;
 
 /// Cards waiting behind the current one. Bounded because the headless sim
 /// settles a million spins and never drains the queue.
-const MAX_QUEUED: usize = 3;
+pub const MAX_QUEUED: usize = 3;
 /// Seconds a card spends fading in, and again fading out. A fixed time rather
 /// than a fraction of the duration: the long cards were reaching the eye still
 /// half-transparent, with the reels legible straight through them.
-const FADE_TIME: f32 = 0.2;
+pub const FADE_TIME: f32 = 0.2;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CelebrationKind {
@@ -74,7 +74,7 @@ pub enum CelebrationKind {
 }
 
 impl CelebrationKind {
-    fn duration(&self) -> f32 {
+    pub fn duration(&self) -> f32 {
         match self {
             CelebrationKind::FreeSpinsEntry { .. } => 2.4,
             CelebrationKind::FreeSpinsRetrigger { .. } => 1.5,
@@ -273,8 +273,8 @@ impl Celebration {
 /// One showing card plus a short backlog.
 #[derive(Debug, Clone, Default)]
 pub struct CelebrationQueue {
-    active: Option<Celebration>,
-    pending: VecDeque<CelebrationKind>,
+    pub active: Option<Celebration>,
+    pub pending: VecDeque<CelebrationKind>,
 }
 
 impl CelebrationQueue {
@@ -335,5 +335,4 @@ impl CelebrationQueue {
     }
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

@@ -14,7 +14,6 @@
 /// The audit is a gate rather than a feature: nothing in the running game asks
 /// what its own sound looks like, the same way `state::compat` is only ever a
 /// test. Compiling it into the binary would be dead weight in the WASM build.
-#[cfg(test)]
 pub mod audit;
 
 use macroquad::audio::{load_sound_from_bytes, play_sound, PlaySoundParams, Sound};
@@ -237,5 +236,4 @@ impl SoundBank {
     }
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

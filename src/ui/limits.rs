@@ -15,7 +15,7 @@ use macroquad_toolkit::ui::{
     draw_surface, draw_text_block, draw_ui_text_ex, ButtonTone, Region, SurfaceStyle, TextStyle,
 };
 
-const ROW_HEIGHT: f32 = 62.0;
+pub const ROW_HEIGHT: f32 = 62.0;
 
 pub fn draw(
     state: &LimitState,
@@ -182,7 +182,7 @@ fn row(
     }
 }
 
-fn minutes_label(minutes: u32) -> String {
+pub fn minutes_label(minutes: u32) -> String {
     if minutes == 0 {
         "Off".to_owned()
     } else {
@@ -215,5 +215,4 @@ pub fn next_choice(choices: &[i64], current: Option<i64>) -> Option<i64> {
     (next != 0).then_some(next)
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

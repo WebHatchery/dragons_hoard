@@ -47,7 +47,7 @@ pub struct JackpotWin {
 /// loads — [`resize_to`] tops it up rather than failing.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct JackpotState {
-    accrued_milli: Vec<i64>,
+    pub accrued_milli: Vec<i64>,
 }
 
 impl JackpotState {
@@ -164,5 +164,4 @@ pub fn ladder(jackpots: &Jackpots, state: &JackpotState) -> Vec<(String, i64)> {
         .collect()
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

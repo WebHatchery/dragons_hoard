@@ -228,7 +228,4 @@ impl Preferences {
     }
 }
 
-#[cfg(test)]
-mod tests;
-#[cfg(test)]
-mod text_scale_tests;
+// Tests live in the crate-level integration harness.

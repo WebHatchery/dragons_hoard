@@ -10,12 +10,10 @@ pub mod sim;
 /// The interactive path, driven headless (§5.33). Test-only, like the parts of
 /// `sim` it is checked against: it exists to prove the shipped game pays what
 /// the published figures say, not to be part of the shipped game.
-#[cfg(test)]
 pub mod soak;
 
 pub use cascade::CascadeStep;
 pub use evaluate::{evaluate, expand_wilds, EvalContext, SpinOutcome};
-#[cfg(test)]
 pub use reels::grid_from_stops;
 pub use reels::{resting_grid, Grid};
 
@@ -132,5 +130,4 @@ pub fn spin(data: &GameData, rng: &mut SeededRng, line_bet: i64, mode: SpinMode)
     }
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

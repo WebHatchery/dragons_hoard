@@ -163,5 +163,4 @@ pub fn current() -> Theme {
     CURRENT.with(|slot| *slot.borrow())
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

@@ -54,12 +54,12 @@ pub struct BonusOutcome {
 pub struct BonusRound {
     /// The hatch prize this board is dividing up.
     base: i64,
-    board: Vec<BonusCell>,
+    pub board: Vec<BonusCell>,
     revealed: Vec<bool>,
     blanks_needed: usize,
     blanks_found: usize,
     collected_permille: i64,
-    prizes_taken: usize,
+    pub prizes_taken: usize,
 }
 
 impl BonusRound {
@@ -217,5 +217,4 @@ pub fn expected_permille(config: &BonusConfig) -> f64 {
     prizes * blanks / (blanks + 1.0) * mean
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

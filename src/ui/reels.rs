@@ -8,7 +8,7 @@
 use crate::data::GameData;
 use crate::state::GameSession;
 
-mod ladder;
+pub mod ladder;
 use crate::ui::{naming, palette, symbols};
 use macroquad::prelude::*;
 use macroquad_toolkit::strip::blur_offsets;
@@ -434,7 +434,7 @@ fn draw_anticipation_frame(data: &GameData, reel: usize, shake: Vec2, bounds: Re
 }
 
 /// Intersection of a cell with the reel window, or `None` when fully outside.
-fn clip(cell: Rect, bounds: Rect) -> Option<Rect> {
+pub fn clip(cell: Rect, bounds: Rect) -> Option<Rect> {
     let top = cell.y.max(bounds.y);
     let bottom = cell.bottom().min(bounds.bottom());
     (bottom - top > 1.0).then(|| Rect::new(cell.x, top, cell.w, bottom - top))
@@ -555,7 +555,7 @@ fn draw_win_summary(data: &GameData, session: &GameSession, rect: Rect) {
 ///
 /// Split out so the rule below can be checked without a window: the geometry is
 /// the thing that was wrong, and the drawing is not.
-fn cascade_badge_rect() -> Rect {
+pub fn cascade_badge_rect() -> Rect {
     let panel = panel_rect();
     Rect::new(panel.right() - 140.0, panel.y + 9.0, 118.0, 34.0)
 }
@@ -589,7 +589,7 @@ fn draw_cascade_badge(session: &GameSession, shake: Vec2) {
 }
 
 /// Flat `reel * rows + row` mask of cells that took part in a win.
-fn winning_cells(data: &GameData, session: &GameSession) -> Vec<bool> {
+pub fn winning_cells(data: &GameData, session: &GameSession) -> Vec<bool> {
     let grid = &session.grid;
     let mut mask = vec![false; grid.cell_count()];
 
@@ -620,8 +620,4 @@ fn winning_cells(data: &GameData, session: &GameSession) -> Vec<bool> {
     mask
 }
 
-#[cfg(test)]
-mod chrome;
-
-#[cfg(test)]
-mod tests;
+// Reel tests live in the crate-level integration harness.

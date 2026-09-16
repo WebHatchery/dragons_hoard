@@ -36,7 +36,7 @@ use macroquad_toolkit::series::Series;
 ///
 /// Wider than any plot will draw, so decimation is driven by memory rather than
 /// by pixels and the graph stays honest if the panel ever grows.
-const CAPACITY: usize = 512;
+pub const CAPACITY: usize = 512;
 
 /// The most marks kept.
 ///
@@ -49,7 +49,7 @@ const CAPACITY: usize = 512;
 /// were all from the last few minutes, so the graph drew a wall of marks against
 /// the right-hand edge and nothing at all across the session it was supposed to
 /// be describing.
-const MAX_MARKS: usize = 64;
+pub const MAX_MARKS: usize = 64;
 
 /// Something worth pointing at on the line.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -220,5 +220,4 @@ impl History {
     }
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

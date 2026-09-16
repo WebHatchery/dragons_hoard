@@ -169,7 +169,7 @@ fn line_wins(data: &GameData, grid: &Grid, ctx: &EvalContext) -> Vec<Win> {
 /// A wild-led run can be read as several different symbols (`W W W C C` is both
 /// a 3-of-a-kind wild and a 5-of-a-kind chest); every payable symbol is tried
 /// and the highest payout wins. Returns `(symbol, run length, multiplier)`.
-fn best_line_result(data: &GameData, cells: &[usize]) -> Option<(usize, usize, i64)> {
+pub fn best_line_result(data: &GameData, cells: &[usize]) -> Option<(usize, usize, i64)> {
     let mut best: Option<(usize, usize, i64)> = None;
 
     for (candidate, _) in data.symbols.iter() {
@@ -207,5 +207,4 @@ fn leading_run(data: &GameData, cells: &[usize], candidate: usize) -> usize {
         .count()
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.

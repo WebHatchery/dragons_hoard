@@ -37,7 +37,7 @@ use crate::ui::reels;
 use macroquad::prelude::*;
 
 /// How long each win holds the screen before the next takes over.
-const BEAT: f32 = 1.6;
+pub const BEAT: f32 = 1.6;
 
 /// Line thickness, and the halo behind it that keeps it legible over art.
 const WIDTH: f32 = 3.0;
@@ -158,5 +158,4 @@ pub fn line_colour(line: usize) -> Color {
     WHEEL[line % WHEEL.len()]
 }
 
-#[cfg(test)]
-mod tests;
+// Tests live in the crate-level integration harness.
