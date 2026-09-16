@@ -1,5 +1,6 @@
 //! Full-screen celebration card rendering.
 
+use crate::data::PresentationConfig;
 use crate::state::celebration::{Celebration, CelebrationKind};
 use crate::ui::{logical_width, palette, LOGICAL_HEIGHT};
 use macroquad::prelude::*;
@@ -8,7 +9,7 @@ use macroquad_toolkit::ui::{draw_surface, draw_text_centered_in_box_ex, SurfaceS
 const CARD_WIDTH: f32 = 720.0;
 const CARD_HEIGHT: f32 = 300.0;
 
-pub fn draw(celebration: &Celebration) {
+pub fn draw(celebration: &Celebration, text: &PresentationConfig) {
     let alpha = celebration.alpha().clamp(0.0, 1.0);
     let scale = celebration.scale();
     let kind = celebration.kind();
@@ -39,7 +40,7 @@ pub fn draw(celebration: &Celebration) {
     );
 
     draw_text_centered_in_box_ex(
-        kind.heading(),
+        kind.heading(text),
         card.x,
         card.y + 30.0 * scale,
         card.w,
@@ -47,7 +48,7 @@ pub fn draw(celebration: &Celebration) {
         TextStyle::new(26.0 * scale, fade(accent, alpha)),
     );
     draw_text_centered_in_box_ex(
-        &kind.title(),
+        &kind.title(text),
         card.x,
         card.y + 88.0 * scale,
         card.w,
@@ -55,7 +56,7 @@ pub fn draw(celebration: &Celebration) {
         TextStyle::new(64.0 * scale, fade(palette::gold_bright(), alpha)),
     );
     draw_text_centered_in_box_ex(
-        &kind.subtitle(),
+        &kind.subtitle(text),
         card.x,
         card.y + 190.0 * scale,
         card.w,
@@ -63,7 +64,7 @@ pub fn draw(celebration: &Celebration) {
         TextStyle::new(19.0 * scale, fade(palette::text(), alpha)),
     );
     draw_text_centered_in_box_ex(
-        "press space to continue",
+        &text.celebration.continue_prompt,
         card.x,
         card.bottom() - 44.0 * scale,
         card.w,

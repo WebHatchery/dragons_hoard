@@ -1,4 +1,9 @@
 use super::*;
+use crate::data::GameData;
+
+fn text() -> crate::data::ShortcutText {
+    GameData::load().unwrap().presentation.shortcuts
+}
 
 /// The bug this table exists to make impossible.
 #[test]
@@ -47,20 +52,22 @@ fn no_action_is_bound_twice() {
 fn every_advertised_shortcut_is_really_bound() {
     // The footer used to be a hand-written string; this is what stops it
     // going stale again.
-    let line = footer_line();
+    let text = text();
+    let line = footer_line(&text);
     for shortcut in SHORTCUTS {
-        if let Some(label) = shortcut.label {
+        if let Some(key) = shortcut.label_key {
+            let label = text.labels.get(key).unwrap();
             assert!(line.contains(label), "{} missing from the footer", label);
         }
     }
-    assert!(line.starts_with("Space spins"));
+    assert!(line.starts_with(&text.spin));
 }
 
 #[test]
 fn the_footer_line_advertises_the_panels_a_player_needs() {
     // Every overlay a player would want and could not otherwise find. The
     // development panels are deliberately absent.
-    let line = footer_line();
+    let line = footer_line(&text());
     for expected in [
         "rules", "paytable", "ledger", "machines", "buy", "gamble", "limits",
     ] {

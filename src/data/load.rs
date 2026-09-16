@@ -77,6 +77,9 @@ impl GameData {
             .map(|raw| load_embedded_json_labeled(&label("cascade"), raw))
             .transpose()?;
         let texture_manifest = load_embedded_json(TEXTURE_MANIFEST_JSON)?;
+        let presentation: PresentationConfig =
+            load_embedded_json_labeled("presentation", PRESENTATION_JSON)?;
+        presentation.validate()?;
 
         let reels = resolve_strips(&symbols, &strips)?;
         let data = Self {
@@ -94,6 +97,7 @@ impl GameData {
             gamble,
             cascade,
             texture_manifest,
+            presentation,
         };
         data.validate()?;
         Ok(data)

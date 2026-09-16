@@ -27,8 +27,9 @@ pub struct Shortcut {
     /// Every key that fires it. More than one where the same intent has an
     /// obvious second home — `+`/`-` alongside the arrows.
     pub keys: &'static [KeyCode],
-    /// How the footer names it, or `None` for a binding not worth advertising.
-    pub label: Option<&'static str>,
+    /// Key into `presentation.json`, or `None` for a binding not worth
+    /// advertising.
+    pub label_key: Option<&'static str>,
     pub action: UiAction,
 }
 
@@ -39,72 +40,72 @@ pub struct Shortcut {
 pub static SHORTCUTS: &[Shortcut] = &[
     Shortcut {
         keys: &[KeyCode::Up, KeyCode::Equal],
-        label: Some("Up/Down bet"),
+        label_key: Some("bet"),
         action: UiAction::BetUp,
     },
     Shortcut {
         keys: &[KeyCode::Down, KeyCode::Minus],
-        label: None, // Advertised by the line above; two halves of one control.
+        label_key: None, // Advertised by the line above; two halves of one control.
         action: UiAction::BetDown,
     },
     Shortcut {
         keys: &[KeyCode::M],
-        label: Some("M max"),
+        label_key: Some("max_bet"),
         action: UiAction::MaxBet,
     },
     Shortcut {
         keys: &[KeyCode::A],
-        label: Some("A autospin"),
+        label_key: Some("autospin"),
         action: UiAction::ToggleAutospin,
     },
     Shortcut {
         keys: &[KeyCode::G],
-        label: Some("G gamble"),
+        label_key: Some("gamble"),
         action: UiAction::OfferGamble,
     },
     Shortcut {
         keys: &[KeyCode::B],
-        label: Some("B buy"),
+        label_key: Some("buy"),
         action: UiAction::ToggleFeatureBuy,
     },
     Shortcut {
         keys: &[KeyCode::R],
-        label: Some("R rules"),
+        label_key: Some("rules"),
         action: UiAction::ToggleRules,
     },
     Shortcut {
         keys: &[KeyCode::P],
-        label: Some("P paytable"),
+        label_key: Some("paytable"),
         action: UiAction::TogglePaytable,
     },
     Shortcut {
         keys: &[KeyCode::L],
-        label: Some("L ledger"),
+        label_key: Some("ledger"),
         action: UiAction::ToggleLedger,
     },
     Shortcut {
         keys: &[KeyCode::C],
-        label: Some("C machines"),
+        label_key: Some("machines"),
         action: UiAction::ToggleMachines,
     },
     Shortcut {
         keys: &[KeyCode::V],
-        label: Some("V awards"),
+        label_key: Some("awards"),
         action: UiAction::ToggleAchievements,
     },
     Shortcut {
         keys: &[KeyCode::O],
-        label: Some("O settings"),
+        label_key: Some("settings"),
         action: UiAction::ToggleSettings,
     },
     Shortcut {
         keys: &[KeyCode::H],
-        label: Some("H session"),
+        label_key: Some("session"),
         action: UiAction::ToggleHistory,
     },
     Shortcut {
         keys: &[KeyCode::T],
-        label: Some("T limits"),
+        label_key: Some("limits"),
         action: UiAction::ToggleLimits,
     },
     Shortcut {
@@ -112,37 +113,41 @@ pub static SHORTCUTS: &[Shortcut] = &[
         // (§5.72), so it carries no label — the key is a convenience, not the
         // way in.
         keys: &[KeyCode::J],
-        label: None,
+        label_key: None,
         action: UiAction::ToggleProofs,
     },
     Shortcut {
         keys: &[KeyCode::S],
-        label: None,
+        label_key: None,
         action: UiAction::Save,
     },
     Shortcut {
         // Was `L`, which also opened the ledger — pressing it to read the
         // statistics discarded the bankroll they described.
         keys: &[KeyCode::K],
-        label: None,
+        label_key: None,
         action: UiAction::Load,
     },
     Shortcut {
         keys: &[KeyCode::W],
-        label: None,
+        label_key: None,
         action: UiAction::ToggleWaveforms,
     },
     Shortcut {
         keys: &[KeyCode::N],
-        label: None,
+        label_key: None,
         action: UiAction::ToggleVision,
     },
 ];
 
 /// The footer's shortcut line, built from the bindings that actually exist.
-pub fn footer_line() -> String {
-    std::iter::once("Space spins".to_owned())
-        .chain(SHORTCUTS.iter().filter_map(|s| s.label.map(str::to_owned)))
+pub fn footer_line(text: &crate::data::ShortcutText) -> String {
+    std::iter::once(text.spin.clone())
+        .chain(SHORTCUTS.iter().filter_map(|shortcut| {
+            shortcut
+                .label_key
+                .and_then(|key| text.labels.get(key).cloned())
+        }))
         .collect::<Vec<_>>()
         .join(" · ")
 }

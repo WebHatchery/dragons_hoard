@@ -485,7 +485,7 @@ pub fn draw_game_ui(ctx: UiContext<'_>, nav: &mut Nav) -> Vec<UiAction> {
 
     // The card sits over everything, including the paytable.
     if let Some(card) = ctx.session.celebrations.active() {
-        celebration::draw(card);
+        celebration::draw(card, &ctx.data.presentation);
         if is_mouse_button_released(MouseButton::Left) {
             actions.push(UiAction::DismissCelebration);
         }

@@ -1,92 +1,74 @@
-//! The sentences themselves.
-//!
-//! # Why this is not in `rules`
-//!
-//! Next door is the *machinery*: which mechanics a cabinet has, the check that
-//! every one of them is described, and the coverage table that makes a new
-//! setting fail the build until someone declares it (§5.66, §5.67). This is the
-//! prose those checks are run against — three hundred lines of it, and growing
-//! by a paragraph every time the game learns to do something.
-//!
-//! Splitting them keeps the file under the limit (§5.69) and puts the two halves
-//! where they belong: the rules about rules on one side, the writing on the
-//! other. Every figure here is still read from the same data the engine pays out
-//! of, which is the point §5.29 was built on — a rule cannot quote a trigger of
-//! three scatters at a cabinet that wants four.
+//! The sentences themselves, rendered from the shared presentation data.
 
 use super::{Rule, Topic};
-use crate::data::{Evaluation, GameData, RiteKind};
+use crate::data::{render_text, Evaluation, GameData, RiteKind, RuleText};
 use crate::state::{bonus, holdspin, jackpot};
 
 /// Everything this cabinet does, in the order a player meets it.
-///
-/// How a win is read first, because nothing else means anything without it;
-/// then what is on the reels, then what the reels can open, then the two things
-/// the player chooses to do rather than has done to them.
 pub fn rules(data: &GameData) -> Vec<Rule> {
+    let text = &data.presentation.rules;
     let mut rules = Vec::new();
-    let mut add = |topic: Topic, title: &str, text: String| {
+    let mut add = |topic: Topic, title_key: &str, body: String| {
         rules.push(Rule {
             topic,
-            title: title.to_owned(),
-            text,
-        })
+            title: text.template(title_key).to_owned(),
+            text: body,
+        });
     };
 
     match data.config.evaluation {
         Evaluation::Lines => add(
             Topic::Lines,
-            "Paylines",
-            format!(
-                "Wins pay left to right from reel 1 along {} fixed lines. Each line pays its best \
-                 reading once, and every line is bet on every spin — the total stake is {} times \
-                 the line bet.",
-                data.paylines.len(),
-                data.config.bet_units.unwrap_or(data.paylines.len()),
+            "title_paylines",
+            render_text(
+                text.template("paylines"),
+                &[
+                    ("lines", data.paylines.len().to_string()),
+                    (
+                        "units",
+                        data.config
+                            .bet_units
+                            .unwrap_or(data.paylines.len())
+                            .to_string(),
+                    ),
+                ],
             ),
         ),
         Evaluation::Cluster => add(
             Topic::Clusters,
-            "Clusters",
-            format!(
-                concat!(
-                    "There are no lines, and no reading across the reels. {} or more of the ",
-                    "same symbol touching each other — up, down, left or right, never ",
-                    "diagonally — pay as one group, anywhere on the grid. One big ",
-                    "group is worth far more than two small ones."
-                ),
-                crate::engine::cluster::MIN_CLUSTER,
+            "title_clusters",
+            render_text(
+                text.template("clusters"),
+                &[("minimum", crate::engine::cluster::MIN_CLUSTER.to_string())],
             ),
         ),
-        Evaluation::Ways => add(
-            Topic::Ways,
-            "Ways",
-            match data.ways_count() {
-                Some(ways) => format!(
-                    "There are no lines. A symbol pays if it lands anywhere on each reel starting \
-                     from reel 1, and every path through those positions is paid — {} of them on a \
-                     full grid. Several symbols can pay at once.",
-                    ways
-                ),
-                // A shifting cabinet has no fixed count to quote, which is the
-                // whole point of it; §5.20 says why.
-                None => "There are no lines. A symbol pays if it lands anywhere on each reel \
-                         starting from reel 1, and every path through those positions is paid, so \
-                         a taller grid is worth more. Several symbols can pay at once."
-                    .to_owned(),
-            },
-        ),
+        Evaluation::Ways => {
+            let key = if data.ways_count().is_some() {
+                "ways"
+            } else {
+                "ways_shifting"
+            };
+            let ways = data
+                .ways_count()
+                .map_or(String::new(), |ways| ways.to_string());
+            add(
+                Topic::Ways,
+                "title_ways",
+                render_text(text.template(key), &[("ways", ways)]),
+            );
+        }
     }
 
     if let Some(heights) = data.config.reel_heights {
         add(
             Topic::ShiftingReels,
-            "Shifting reels",
-            format!(
-                "Every reel is dealt a fresh height of {} to {} rows each spin. Taller reels carry \
-                 more symbols and multiply the paths through them, so the size of the win is \
-                 settled before the reels stop.",
-                heights.min, heights.max,
+            "title_shifting_reels",
+            render_text(
+                text.template("shifting_reels"),
+                &[
+                    ("min", heights.min.to_string()),
+                    ("max", heights.max.to_string()),
+                ],
             ),
         );
     }
@@ -95,39 +77,41 @@ pub fn rules(data: &GameData) -> Vec<Rule> {
         let ladder = cascade
             .multipliers
             .iter()
-            .map(|step| format!("x{}", step))
+            .map(|step| format!("x{step}"))
             .collect::<Vec<_>>()
             .join(", ");
         add(
             Topic::Cascades,
-            "Cascades",
-            format!(
-                "Winning symbols are removed and the ones above fall into the gaps, refilling from \
-                 the top. If the new grid wins, it happens again — up to {} times in one spin. The \
-                 chain multiplies as it runs: {}. Everything the chain pays belongs to the one \
-                 spin that started it.",
-                cascade.max_steps, ladder,
+            "title_cascades",
+            render_text(
+                text.template("cascades"),
+                &[("steps", cascade.max_steps.to_string()), ("ladder", ladder)],
             ),
         );
     }
 
     if let Some(wild) = data.symbols.wild() {
+        let expansion_key = if data.freespins.expanding_wilds {
+            "wilds_expanded"
+        } else {
+            "wilds_plain"
+        };
         add(
             Topic::Wild,
-            "Wilds",
-            format!(
-                "The {} substitutes for any paying symbol{}. It never stands in for the {}, which \
-                 has to land on its own.",
-                data.symbols.get(wild).name,
-                if data.freespins.expanding_wilds {
-                    " and fills its whole reel during free spins"
-                } else {
-                    ""
-                },
-                data.symbols
-                    .scatter()
-                    .map(|index| data.symbols.get(index).name.clone())
-                    .unwrap_or_else(|| "scatter".to_owned()),
+            "title_wilds",
+            render_text(
+                text.template("wilds"),
+                &[
+                    ("wild", data.symbols.get(wild).name.clone()),
+                    ("expansion", text.template(expansion_key).to_owned()),
+                    (
+                        "scatter",
+                        data.symbols
+                            .scatter()
+                            .map(|index| data.symbols.get(index).name.clone())
+                            .unwrap_or_else(|| "scatter".to_owned()),
+                    ),
+                ],
             ),
         );
     }
@@ -135,17 +119,16 @@ pub fn rules(data: &GameData) -> Vec<Rule> {
     if let Some(scatter) = data.symbols.scatter() {
         add(
             Topic::Scatter,
-            "Scatters",
-            format!(
-                "The {} pays from anywhere on the grid — it does not have to line up, and it is \
-                 what opens the free spins.",
-                data.symbols.get(scatter).name,
+            "title_scatters",
+            render_text(
+                text.template("scatters"),
+                &[("scatter", data.symbols.get(scatter).name.clone())],
             ),
         );
     }
 
     if let Some(rule) = free_spins_rule(data) {
-        add(rule.topic, &rule.title, rule.text);
+        add(rule.topic, "title_free_spins", rule.text);
     }
 
     if let Some(refine) = &data.freespins.refine {
@@ -158,87 +141,85 @@ pub fn rules(data: &GameData) -> Vec<Rule> {
             .join(", then the ");
         add(
             Topic::Refining,
-            "Refining",
-            format!(
-                "The free spins get better as they run. Each one burns the next symbol off every \
-                 reel for good — the {} — so by the last spin the strips hold only what pays well.",
-                burned,
-            ),
+            "title_refining",
+            render_text(text.template("refining"), &[("burned", burned)]),
         );
     }
 
     if data.freespins.shapes.len() > 1 {
-        let named: Vec<String> = data
+        let named = data
             .freespins
             .shapes
             .iter()
             .map(|shape| {
-                format!(
-                    "{}% of them at x{}",
-                    shape.spin_permille / 10,
-                    shape.multiplier
+                render_text(
+                    text.template("shape_name"),
+                    &[
+                        ("share", (shape.spin_permille / 10).to_string()),
+                        ("multiplier", shape.multiplier.to_string()),
+                    ],
                 )
             })
-            .collect();
+            .collect::<Vec<_>>()
+            .join(", or ");
         add(
             Topic::FreeSpinShapes,
-            "Long or short",
-            format!(
-                "You choose how the run goes before the first free spin: {}. Both are worth the \
-                 same to the credit, so the choice is how the return arrives rather than how much \
-                 of it there is — the short one pays nothing more often, and far more when it does.",
-                named.join(", or "),
-            ),
+            "title_shapes",
+            render_text(text.template("shapes"), &[("shapes", named)]),
         );
     }
 
     if data.config.hoard_capacity > 0 {
         add(
             Topic::Hoard,
-            "The Hoard",
-            format!(
-                "Hoard symbols fill the meter beside the reels. At {} it hatches and deals a board \
-                 of {} chests: keep picking until {} come up empty, and every prize is a share of \
-                 the hoard. A full board is worth about {:.0}% of what the meter holds.",
-                data.config.hoard_capacity,
-                data.bonus.board_size,
-                data.bonus.blanks,
-                bonus::expected_permille(&data.bonus) / 10.0,
+            "title_hoard",
+            render_text(
+                text.template("hoard"),
+                &[
+                    ("capacity", data.config.hoard_capacity.to_string()),
+                    ("board", data.bonus.board_size.to_string()),
+                    ("blanks", data.bonus.blanks.to_string()),
+                    (
+                        "value",
+                        format!("{:.0}", bonus::expected_permille(&data.bonus) / 10.0),
+                    ),
+                ],
             ),
         );
     }
 
     if data.jackpots.contribution_permille > 0 {
-        // A pot fed by machines the player is not sitting at is a genuinely
-        // surprising rule, so it is said outright (§5.57) — but as a sentence
-        // rather than a heading of its own. The panel is two columns of a fixed
-        // height and a fifth topic pushed Frost Wyrm into a third, which is a
-        // gate §5.29 put there for exactly this.
-        let shared: Vec<&str> = data
+        let shared = data
             .jackpots
             .tiers
             .iter()
             .filter(|tier| tier.shared)
             .map(|tier| tier.name.as_str())
-            .collect();
-        let floor = if shared.is_empty() {
+            .collect::<Vec<_>>();
+        let shared_text = if shared.is_empty() {
             String::new()
         } else {
-            format!(
-                " The {} is shared by every cabinet.",
-                shared.join(" and the ")
+            render_text(
+                text.template("jackpots_shared"),
+                &[("names", shared.join(" and the "))],
             )
         };
         add(
             Topic::Jackpots,
-            "Progressives",
-            format!(
-                "{}% of every stake feeds the four pots, which can pay at random on any paid spin. \
-                 A bigger stake wins them proportionally more often, so the return per credit is \
-                 the same at every bet — worth {:.1}% of all play.{}",
-                data.jackpots.contribution_permille as f32 / 10.0,
-                jackpot::expected_rtp(&data.jackpots) * 100.0,
-                floor,
+            "title_jackpots",
+            render_text(
+                text.template("jackpots"),
+                &[
+                    (
+                        "contribution",
+                        (data.jackpots.contribution_permille as f32 / 10.0).to_string(),
+                    ),
+                    (
+                        "rtp",
+                        format!("{:.1}", jackpot::expected_rtp(&data.jackpots) * 100.0),
+                    ),
+                    ("shared", shared_text),
+                ],
             ),
         );
     }
@@ -246,62 +227,65 @@ pub fn rules(data: &GameData) -> Vec<Rule> {
     if data.holdspin.trigger_eggs > 0 {
         add(
             Topic::Wrath,
-            "The Dragon's Wrath",
-            format!(
-                "{} dragon eggs on one grid wake the dragon. The eggs lock as coins worth {:.1}x \
-                 the total bet on average and you get {} respins; every coin that lands restores \
-                 them in full, so the round only ends when nothing does. Fill all {} cells for {}x \
-                 the total bet on top.",
-                data.holdspin.trigger_eggs,
-                holdspin::mean_coin_multiple(&data.holdspin),
-                data.holdspin.respins,
-                data.config.reel_count * data.config.row_count,
-                data.holdspin.full_board_multiple,
+            "title_wrath",
+            render_text(
+                text.template("wrath"),
+                &[
+                    ("trigger", data.holdspin.trigger_eggs.to_string()),
+                    (
+                        "mean",
+                        format!("{:.1}", holdspin::mean_coin_multiple(&data.holdspin)),
+                    ),
+                    ("respins", data.holdspin.respins.to_string()),
+                    (
+                        "cells",
+                        (data.config.reel_count * data.config.row_count).to_string(),
+                    ),
+                    ("multiple", data.holdspin.full_board_multiple.to_string()),
+                ],
             ),
         );
     }
 
     if data.seam.trigger_count > 0 && !data.seam.rites.is_empty() {
-        let named: Vec<String> = data
+        let named = data
             .seam
             .rites
             .iter()
-            .map(|rite| format!("{} {}", rite.name.to_lowercase(), promise(rite)))
-            .collect();
+            .map(|rite| format!("{} {}", rite.name.to_lowercase(), promise(text, rite)))
+            .collect::<Vec<_>>()
+            .join("; ");
         add(
             Topic::Seam,
-            "The Seam",
-            format!(
-                concat!(
-                    "{} of one paying symbol opens a seam and the reels stop. You pick what it ",
-                    "does over the next {} moves — {} — and it never touches wilds, scatters or ",
-                    "eggs. The board is then read again and you keep what the seam added, up ",
-                    "to {}x the bet."
-                ),
-                data.seam.trigger_count,
-                data.seam.steps,
-                named.join("; "),
-                data.seam.max_multiple,
+            "title_seam",
+            render_text(
+                text.template("seam"),
+                &[
+                    ("trigger", data.seam.trigger_count.to_string()),
+                    ("steps", data.seam.steps.to_string()),
+                    ("rites", named),
+                    ("multiple", data.seam.max_multiple.to_string()),
+                ],
             ),
         );
     }
 
     if data.gamble.max_steps > 0 {
+        let half = if data.gamble.allow_half {
+            text.template("gamble_half").to_owned()
+        } else {
+            String::new()
+        };
         add(
             Topic::Gamble,
-            "The Gamble",
-            format!(
-                "Any win can be staked on a coin: double it or lose it, up to {} times in a row{}. \
-                 The odds are exactly even, so gambling changes nothing about what the machine \
-                 returns over time — only how far it swings. Wins above {}x the total bet cannot \
-                 be gambled.",
-                data.gamble.max_steps,
-                if data.gamble.allow_half {
-                    ", or risk half and keep the rest"
-                } else {
-                    ""
-                },
-                data.gamble.ceiling_multiple,
+            "title_gamble",
+            render_text(
+                text.template("gamble"),
+                &[
+                    ("steps", data.gamble.max_steps.to_string()),
+                    ("half", half),
+                    ("ceiling", data.gamble.ceiling_multiple.to_string()),
+                ],
             ),
         );
     }
@@ -309,13 +293,10 @@ pub fn rules(data: &GameData) -> Vec<Rule> {
     if let Some(ante) = data.ante() {
         add(
             Topic::Ante,
-            "The Ante",
-            format!(
-                "The ante stakes {:.2}x the usual bet and weaves extra scatters into the \
-                 first reel, so the free spins arrive about twice as often. Its price was \
-                 measured from what those features are worth, so the return is unchanged. \
-                 It buys a shorter wait, not an edge.",
-                ante.cost_permille as f64 / 1000.0,
+            "title_ante",
+            render_text(
+                text.template("ante"),
+                &[("cost", format!("{:.2}", ante.cost_permille as f64 / 1000.0))],
             ),
         );
     }
@@ -330,15 +311,17 @@ pub fn rules(data: &GameData) -> Vec<Rule> {
             .unwrap_or(0);
         add(
             Topic::FeatureBuy,
-            "Feature Buy",
-            format!(
-                "You can pay for a feature outright rather than wait for it — {} of them, from {}x \
-                 the total bet. Each price is set from what the feature is actually worth, at the \
-                 same {:.1}% return the cabinet pays anyway, so buying is neither a shortcut nor a \
-                 tax. It only trades waiting for volatility.",
-                data.featurebuy.tiers.len(),
-                cheapest,
-                data.featurebuy.target_rtp_permille as f64 / 10.0,
+            "title_feature_buy",
+            render_text(
+                text.template("feature_buy"),
+                &[
+                    ("tiers", data.featurebuy.tiers.len().to_string()),
+                    ("cheapest", cheapest.to_string()),
+                    (
+                        "rtp",
+                        format!("{:.1}", data.featurebuy.target_rtp_permille as f64 / 10.0),
+                    ),
+                ],
             ),
         );
     }
@@ -346,29 +329,21 @@ pub fn rules(data: &GameData) -> Vec<Rule> {
     rules
 }
 
-/// What a rite does, in the fewest words that are still true.
-///
-/// Shared with the choice panel's own captions in `ui::seam` only by being the
-/// same sentence twice — deliberately. The panel has 374 pixels and this has a
-/// column of a rules page, and a shared string would end up the wrong length
-/// for one of them.
-fn promise(rite: &crate::data::RiteDef) -> String {
+fn promise(text: &RuleText, rite: &crate::data::RiteDef) -> String {
     match rite.kind {
-        RiteKind::Widen { .. } => "takes the cells beside it".to_owned(),
-        RiteKind::Enrich { rungs } => format!(
-            "climbs {} up the paytable",
-            if rungs > 1 {
-                format!("{} places", rungs)
-            } else {
-                "a place".to_owned()
-            }
+        RiteKind::Widen { .. } => text.template("rite_widen").to_owned(),
+        RiteKind::Enrich { rungs } if rungs > 1 => render_text(
+            text.template("rite_enrich_many"),
+            &[("rungs", rungs.to_string())],
         ),
-        RiteKind::Gild { .. } => "multiplies what the board already pays".to_owned(),
+        RiteKind::Enrich { .. } => text.template("rite_enrich_one").to_owned(),
+        RiteKind::Gild { .. } => text.template("rite_gild").to_owned(),
     }
 }
 
-/// The free spins paragraph, which has to read an award table of arbitrary size.
+/// The free-spin paragraph, which has to read an award table of arbitrary size.
 pub(super) fn free_spins_rule(data: &GameData) -> Option<Rule> {
+    let text = &data.presentation.rules;
     let mut awards: Vec<(usize, u32)> = data
         .freespins
         .awards
@@ -383,33 +358,36 @@ pub(super) fn free_spins_rule(data: &GameData) -> Option<Rule> {
 
     let table = awards
         .iter()
-        // Which number is which has to be unmistakable: "5 for 6, 6 for 10"
-        // reads as either, and both readings are plausible.
-        .map(|(count, spins)| format!("{} scatters award {}", count, spins))
+        .map(|(count, spins)| {
+            render_text(
+                text.template("free_spin_award_item"),
+                &[("count", count.to_string()), ("spins", spins.to_string())],
+            )
+        })
         .collect::<Vec<_>>()
         .join(", ");
-
     let multiplier = if data.freespins.multiplier > 1 {
-        format!(
-            " Everything they pay is multiplied by {}.",
-            data.freespins.multiplier
+        render_text(
+            text.template("free_spin_multiplier"),
+            &[("multiplier", data.freespins.multiplier.to_string())],
         )
     } else {
         String::new()
     };
     let retrigger = if data.freespins.retrigger {
-        " Landing the scatters again during the feature adds more."
+        text.template("free_spin_retrigger").to_owned()
     } else {
-        " They cannot be retriggered."
+        text.template("free_spin_no_retrigger").to_owned()
     };
-
     Some(Rule {
         topic: Topic::FreeSpins,
-        title: "Free Spins".to_owned(),
+        title: text.template("title_free_spins").to_owned(),
         text: format!(
-            "Free spins are awarded by the scatters: {}.{}{} A free spin costs \
-             nothing and is part of the round that bought it, at the same bet.",
-            table, multiplier, retrigger,
+            "{}{}{}{}",
+            render_text(text.template("free_spin_awards"), &[("table", table)]),
+            multiplier,
+            retrigger,
+            text.template("free_spin_close"),
         ),
     })
 }

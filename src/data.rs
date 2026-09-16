@@ -11,12 +11,16 @@ use serde::{Deserialize, Serialize};
 mod features;
 mod load;
 mod machines;
+mod presentation;
 
 pub use features::{
     validate_feature_buy, BonusConfig, CascadeConfig, FeatureAward, FeatureBuyConfig,
     FeatureBuyTier, GambleConfig, HoldSpinConfig, RiteDef, RiteKind, SeamConfig,
 };
 pub use machines::{machine_by_id, symbol_set, MachineDef, MACHINES};
+pub use presentation::{
+    render as render_text, PresentationConfig, RuleText, ShortcutText, TimingConfig,
+};
 use std::collections::HashMap;
 
 const TEXTURE_MANIFEST_JSON: &str =
@@ -26,6 +30,8 @@ const TEXTURE_MANIFEST_JSON: &str =
 /// cabinet's own `hatch_pot_multiplier` is what scales it (§5.10).
 const BONUS_JSON: &str = macroquad_toolkit::include_json_str!("../assets/data/bonus.json");
 const GAMBLE_JSON: &str = macroquad_toolkit::include_json_str!("../assets/data/gamble.json");
+const PRESENTATION_JSON: &str =
+    macroquad_toolkit::include_json_str!("../assets/data/presentation.json");
 
 /// Longest run a paytable entry can describe. Index 0..=5, so a 5-reel game
 /// indexes `pay_table[symbol][count]` directly.
@@ -511,6 +517,7 @@ pub struct GameData {
     /// `Some` only on a cascading cabinet (§5.15).
     pub cascade: Option<CascadeConfig>,
     pub texture_manifest: Vec<TextureConfig>,
+    pub presentation: PresentationConfig,
 }
 
 impl GameData {

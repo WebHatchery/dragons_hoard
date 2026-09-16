@@ -6,6 +6,7 @@
 //! free-spin trigger and the Hatch are the two moments the whole game is built
 //! around, and letting the auto-chain run underneath a banner would bury them.
 
+use crate::data::{render_text, PresentationConfig};
 use macroquad_toolkit::timing::Timer;
 use std::collections::VecDeque;
 
@@ -96,85 +97,126 @@ impl CelebrationKind {
         }
     }
 
-    pub fn title(&self) -> String {
+    pub fn title(&self, text: &PresentationConfig) -> String {
         match self {
-            CelebrationKind::FreeSpinsEntry { spins, .. } => format!("{} FREE SPINS", spins),
-            CelebrationKind::FreeSpinsRetrigger { spins } => format!("+{} FREE SPINS", spins),
-            CelebrationKind::FreeSpinsSummary { won, .. } => {
-                format!("{} CREDITS", crate::ui::naming::credits(*won))
+            CelebrationKind::FreeSpinsEntry { spins, .. } => render_text(
+                &text.celebration.titles["free_spins_entry"],
+                &[("spins", spins.to_string())],
+            ),
+            CelebrationKind::FreeSpinsRetrigger { spins } => render_text(
+                &text.celebration.titles["free_spins_retrigger"],
+                &[("spins", spins.to_string())],
+            ),
+            CelebrationKind::FreeSpinsSummary { won, .. } => render_text(
+                &text.celebration.titles["credits"],
+                &[("credits", crate::ui::naming::credits(*won))],
+            ),
+            CelebrationKind::Hatch { credits, .. } => render_text(
+                &text.celebration.titles["credits"],
+                &[("credits", crate::ui::naming::credits(*credits))],
+            ),
+            CelebrationKind::Jackpot { credits, .. } => render_text(
+                &text.celebration.titles["credits"],
+                &[("credits", crate::ui::naming::credits(*credits))],
+            ),
+            CelebrationKind::BigWin { credits } => render_text(
+                &text.celebration.titles["credits"],
+                &[("credits", crate::ui::naming::credits(*credits))],
+            ),
+            CelebrationKind::GambleLost { .. } => text.celebration.titles["nothing"].clone(),
+            CelebrationKind::Seam { dry: Some(_), .. } => {
+                text.celebration.titles["nothing"].clone()
             }
-            CelebrationKind::Hatch { credits, .. } => {
-                format!("{} CREDITS", crate::ui::naming::credits(*credits))
-            }
-            CelebrationKind::Jackpot { credits, .. } => {
-                format!("{} CREDITS", crate::ui::naming::credits(*credits))
-            }
-            CelebrationKind::BigWin { credits } => {
-                format!("{} CREDITS", crate::ui::naming::credits(*credits))
-            }
-            CelebrationKind::GambleLost { .. } => "NOTHING".to_owned(),
-            CelebrationKind::Seam { dry: Some(_), .. } => "NOTHING".to_owned(),
-            CelebrationKind::Seam { credits, .. } => {
-                format!("{} CREDITS", crate::ui::naming::credits(*credits))
-            }
-            CelebrationKind::Wrath { credits, .. } => {
-                format!("{} CREDITS", crate::ui::naming::credits(*credits))
-            }
+            CelebrationKind::Seam { credits, .. } => render_text(
+                &text.celebration.titles["credits"],
+                &[("credits", crate::ui::naming::credits(*credits))],
+            ),
+            CelebrationKind::Wrath { credits, .. } => render_text(
+                &text.celebration.titles["credits"],
+                &[("credits", crate::ui::naming::credits(*credits))],
+            ),
         }
     }
 
-    pub fn heading(&self) -> &'static str {
-        match self {
-            CelebrationKind::FreeSpinsEntry { .. } => "THE DRAGON STIRS",
-            CelebrationKind::FreeSpinsRetrigger { .. } => "RETRIGGER",
-            CelebrationKind::FreeSpinsSummary { .. } => "FREE SPINS COMPLETE",
-            CelebrationKind::Hatch { .. } => "THE HOARD HATCHES",
-            CelebrationKind::Jackpot { .. } => "JACKPOT",
-            CelebrationKind::BigWin { .. } => "BIG WIN",
-            CelebrationKind::GambleLost { .. } => "THE SCALE TURNS",
-            CelebrationKind::Seam { dry: Some(_), .. } => "THE SEAM RUNS DRY",
-            CelebrationKind::Seam { .. } => "THE SEAM RUNS",
-            CelebrationKind::Wrath { full_board, .. } => {
-                if *full_board {
-                    "THE HOARD IS YOURS"
-                } else {
-                    "THE DRAGON'S WRATH"
-                }
-            }
-        }
+    pub fn heading<'a>(&self, text: &'a PresentationConfig) -> &'a str {
+        let key = match self {
+            CelebrationKind::FreeSpinsEntry { .. } => "free_spins_entry",
+            CelebrationKind::FreeSpinsRetrigger { .. } => "free_spins_retrigger",
+            CelebrationKind::FreeSpinsSummary { .. } => "free_spins_summary",
+            CelebrationKind::Hatch { .. } => "hatch",
+            CelebrationKind::Jackpot { .. } => "jackpot",
+            CelebrationKind::BigWin { .. } => "big_win",
+            CelebrationKind::GambleLost { .. } => "gamble_lost",
+            CelebrationKind::Seam { dry: Some(_), .. } => "seam_dry",
+            CelebrationKind::Seam { .. } => "seam",
+            CelebrationKind::Wrath {
+                full_board: true, ..
+            } => "wrath_full_board",
+            CelebrationKind::Wrath { .. } => "wrath",
+        };
+        &text.celebration.headings[key]
     }
 
-    pub fn subtitle(&self) -> String {
+    pub fn subtitle(&self, text: &PresentationConfig) -> String {
+        let key = match self {
+            CelebrationKind::FreeSpinsEntry { .. } => "free_spins_entry",
+            CelebrationKind::FreeSpinsRetrigger { .. } => "free_spins_retrigger",
+            CelebrationKind::FreeSpinsSummary { .. } => "free_spins_summary",
+            CelebrationKind::Hatch { .. } => "hatch",
+            CelebrationKind::Jackpot { .. } => "jackpot",
+            CelebrationKind::BigWin { .. } => "big_win",
+            CelebrationKind::GambleLost { .. } => "gamble_lost",
+            CelebrationKind::Seam { dry: Some(_), .. } => "seam_dry",
+            CelebrationKind::Seam { .. } => "seam",
+            CelebrationKind::Wrath {
+                full_board: true, ..
+            } => "wrath_full_board",
+            CelebrationKind::Wrath { .. } => "wrath",
+        };
+        let template = &text.celebration.subtitles[key];
         match self {
             CelebrationKind::FreeSpinsEntry { scatters, .. } => {
-                format!("{} scatters — wilds expand, line wins doubled", scatters)
+                render_text(template, &[("scatters", scatters.to_string())])
             }
-            CelebrationKind::FreeSpinsRetrigger { .. } => "More scatters, more spins".to_owned(),
+            CelebrationKind::FreeSpinsRetrigger { .. } => template.clone(),
             CelebrationKind::FreeSpinsSummary { spins, .. } => {
-                format!("won over {} free spins", spins)
+                render_text(template, &[("spins", spins.to_string())])
             }
-            CelebrationKind::Hatch { eggs, .. } => format!("{} dragon eggs cashed in", eggs),
-            CelebrationKind::Jackpot { name, .. } => format!("the {} progressive falls", name),
-            CelebrationKind::BigWin { .. } => "The vault gives up its gold".to_owned(),
-            CelebrationKind::GambleLost { lost, landed } => {
-                format!("{} landed — {} credits gone", landed, lost)
+            CelebrationKind::Hatch { eggs, .. } => {
+                render_text(template, &[("eggs", eggs.to_string())])
             }
+            CelebrationKind::Jackpot { name, .. } => {
+                render_text(template, &[("name", name.clone())])
+            }
+            CelebrationKind::BigWin { .. } => template.clone(),
+            CelebrationKind::GambleLost { lost, landed } => render_text(
+                template,
+                &[("landed", (*landed).to_owned()), ("lost", lost.to_string())],
+            ),
             CelebrationKind::Seam {
                 rite,
                 cells,
                 dry: Some(why),
                 ..
-            } => format!("{} — {}, and {} cells came to nothing", rite, why, cells),
-            CelebrationKind::Seam { rite, cells, .. } => {
-                format!("{} — {} cells of one treasure", rite, cells)
-            }
+            } => render_text(
+                template,
+                &[
+                    ("rite", rite.clone()),
+                    ("why", (*why).to_owned()),
+                    ("cells", cells.to_string()),
+                ],
+            ),
+            CelebrationKind::Seam { rite, cells, .. } => render_text(
+                template,
+                &[("rite", rite.clone()), ("cells", cells.to_string())],
+            ),
             CelebrationKind::Wrath {
                 coins, full_board, ..
             } => {
                 if *full_board {
-                    "every cell filled — the full board bonus".to_owned()
+                    template.clone()
                 } else {
-                    format!("{} coins locked from the dragon's hoard", coins)
+                    render_text(template, &[("coins", coins.to_string())])
                 }
             }
         }

@@ -229,7 +229,7 @@ pub(super) fn draw_footer(ctx: &UiContext<'_>) {
         // fixed size would quietly clip the last one off the right edge.
         let left = rect.x + SHORTCUT_LINE_X;
         draw_text_block(
-            &shortcuts::footer_line(),
+            &shortcuts::footer_line(&ctx.data.presentation.shortcuts),
             left,
             rect.y + 42.0,
             rect.right() - left - 8.0,

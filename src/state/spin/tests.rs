@@ -1,4 +1,5 @@
 use super::*;
+use crate::data::GameData;
 
 /// The mechanics moved to `macroquad_toolkit::strip` (§5.23) and are tested
 /// there against a default feel. What matters *here* is that this game's own
@@ -7,7 +8,8 @@ use super::*;
 /// noticing.
 #[test]
 fn this_cabinets_feel_still_lands_every_reel_on_its_stop() {
-    let feel = reel_feel();
+    let data = GameData::load().unwrap();
+    let feel = reel_feel(&data.presentation.timing);
     for index in 0..5 {
         for target in [0usize, 1, 17, 39] {
             let mut spinner = ReelSpinner::new(&[40], &[7], &[target], 1.0, &[false], &feel);
@@ -66,7 +68,8 @@ fn the_payout_counter_starts_at_zero_and_ends_on_target() {
     // The mechanism is the toolkit's (§5.63); what is checked here is that
     // *this game's* pacing produces a counter that actually completes
     // within the time a spin allows it.
-    let mut counter = payout_counter(1234, 1.0);
+    let data = GameData::load().unwrap();
+    let mut counter = payout_counter(&data.presentation.timing, 1234, 1.0);
     assert_eq!(counter.value(), 0);
 
     let mut finished = false;
@@ -80,7 +83,8 @@ fn the_payout_counter_starts_at_zero_and_ends_on_target() {
 
 #[test]
 fn the_payout_counter_finishes_exactly_once() {
-    let mut counter = payout_counter(10, 1.0);
+    let data = GameData::load().unwrap();
+    let mut counter = payout_counter(&data.presentation.timing, 10, 1.0);
     let mut finishes = 0;
     for _ in 0..200 {
         if counter.tick(1.0 / 60.0) {

@@ -6,6 +6,7 @@
 //! reels are told where to land before they start moving. That is what keeps the
 //! maths (and the Monte-Carlo sim, which skips this module entirely) honest.
 
+use crate::data::TimingConfig;
 use macroquad_toolkit::strip::{StripFeel, StripSpinner};
 use macroquad_toolkit::timing::Timer;
 
@@ -15,11 +16,11 @@ use macroquad_toolkit::timing::Timer;
 ///
 /// Reels were slowed from 0.62s after a player reported the symbols were
 /// unreadable in flight, and the blur cap came down with them.
-pub fn reel_feel() -> StripFeel {
+pub fn reel_feel(timing: &TimingConfig) -> StripFeel {
     StripFeel {
-        base_time: 0.95,
-        stagger: 0.30,
-        blur_cap: 0.85,
+        base_time: timing.reel_base_seconds,
+        stagger: timing.reel_stagger_seconds,
+        blur_cap: timing.reel_blur_cap,
         ..StripFeel::default()
     }
 }
@@ -31,14 +32,14 @@ pub fn reel_feel() -> StripFeel {
 /// game's beat baked in. It holds no symbols of its own — the chain lives on
 /// the pending spin and this is only a cursor into it, so nothing here can
 /// change what was decided (§8.2).
-pub fn cascade_reveal(steps: usize, scale: f32) -> CascadeReveal {
-    CascadeReveal::new(steps, CASCADE_BEAT, scale)
+pub fn cascade_reveal(timing: &TimingConfig, steps: usize, scale: f32) -> CascadeReveal {
+    CascadeReveal::new(steps, timing.cascade_beat_seconds, scale)
 }
 
 /// Counts a win up rather than snapping it on. The toolkit's
 /// [`Countup`](macroquad_toolkit::reveal::Countup) at this game's pace.
-pub fn payout_counter(target: i64, scale: f32) -> PayoutCounter {
-    PayoutCounter::new(target, PAYOUT_TIME, scale)
+pub fn payout_counter(timing: &TimingConfig, target: i64, scale: f32) -> PayoutCounter {
+    PayoutCounter::new(target, timing.payout_seconds, scale)
 }
 
 pub type CascadeReveal = macroquad_toolkit::reveal::Stepper;
@@ -47,12 +48,6 @@ pub type PayoutCounter = macroquad_toolkit::reveal::Countup;
 /// Reels mid-flight. The slot's name for the toolkit's spinner.
 pub type ReelSpinner = StripSpinner;
 
-/// Seconds the win count-up takes.
-const PAYOUT_TIME: f32 = 0.75;
-/// Beat between cascade collapses. Slower than a reel stop on purpose — each
-/// collapse is its own small reveal, and running them faster turns a chain into
-/// a flicker.
-const CASCADE_BEAT: f32 = 0.55;
 pub fn anticipating_reels(
     scatters_per_reel: &[usize],
     trigger_count: usize,

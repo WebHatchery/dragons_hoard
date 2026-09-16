@@ -45,7 +45,7 @@ impl GameSession {
             &pending.result.stops,
             self.preferences.time_scale(),
             &anticipating,
-            &spin::reel_feel(),
+            &spin::reel_feel(&data.presentation.timing),
         ));
         self.pending = Some(pending);
         Ok(())
@@ -122,6 +122,7 @@ impl GameSession {
                 .map_or(1, |pending| pending.result.cascades.len());
             if chain > 1 {
                 self.phase = SpinPhase::Cascading(super::spin::cascade_reveal(
+                    &data.presentation.timing,
                     chain,
                     self.preferences.time_scale(),
                 ));
@@ -166,6 +167,7 @@ impl GameSession {
         events.push(SpinEvent::Settled(Box::new(resolution)));
         self.phase = if credits > 0 {
             SpinPhase::Payout(super::spin::payout_counter(
+                &data.presentation.timing,
                 credits,
                 self.preferences.time_scale(),
             ))
