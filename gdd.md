@@ -5148,13 +5148,16 @@ not have caught them either. **§5.52 closed this**: every cabinet's spin is now
 watched frame by frame, and reverting the fix makes the audit name the bug at the
 exact frame the board used to snap.
 
-**Measured, though still unheard: how the sound actually sounds.** §5.19 built a
-waveform panel and the mix was *looked* at. §5.51 went further and measured it —
-the timbre question this section used to call unanswerable turned out to be
-arithmetic, and three effects were carrying inharmonic partials, the button blip
-only 21dB under its own note. The oscillators are band-limited now and the set is
-balanced against a stated order. **Nobody has still heard it**, and audio playback
-under WASM in a browser remains untested.
+**Measured and exercised in the published browser.** §5.19 built a waveform
+panel and the mix was *looked* at. §5.51 went further and measured it — the timbre
+question this section used to call unanswerable turned out to be arithmetic, and
+three effects were carrying inharmonic partials, the button blip only 21dB under
+its own note. The oscillators are band-limited now and the set is balanced against
+a stated order. A fresh published WASM session accepted a user gesture, rendered
+and settled a spin, and changed Sound/Music through their visible volume and
+`Muted` states without browser console warnings. The automation cannot listen to
+speaker output, so that is playback-path evidence rather than a human-audibility
+claim; the exact evidence is in `docs/verification/browser_wasm.md`.
 
 ### Remaining work
 
@@ -5166,16 +5169,12 @@ This list had grown two contradictory bullets about the promotion queue, the
 audio item twice, and a note about commit style that was never work at all.
 Cleared out in §5.61 down to what is actually outstanding:
 
-- **Nobody has heard the sound, and the browser build's audio is untested.**
-  §5.51 measured the mix, rebalanced it against a stated order and removed the
-  aliasing that made the bright effects harsh, so it is no longer unexamined —
-  but measurement is not listening, and whether it plays at all under WASM has
-  never been checked.
-- **Nobody has opened the web build in a browser.** §5.62 now checks that the
-  deployed page provides every function the wasm imports — which found six
-  missing and traced them to the runtime being downloaded from a samples site
-  rather than taken from the crate — but that is a contract check, not a person
-  watching the reels turn. Touch input on a real device is in the same position.
+- **The published WASM has now been opened in a browser.** §5.62's import
+  contract check passes against the deployed shared runtime, and a fresh preview
+  tab watched the reels turn, opened the paytable, feature-buy and settings
+  panels, exercised Save/Load, and verified the visible mute controls. The
+  automated 1080x810 portrait/touch capture also passes. Speaker output remains
+  a limitation of the verification environment, documented with the evidence.
 - **The gamble has no confirmation on a losing decision.** Deliberate — a cabinet
   that asked "are you sure?" on every flip would be unusable — but a misclick on
   Ember still costs the whole win, and that is the only place in the game where
