@@ -34,7 +34,7 @@
 use crate::data::GameConfig;
 use crate::state::achievements::AchievementProgress;
 use crate::state::ledger::Ledger;
-use macroquad_toolkit::persistence::{load_json_key, save_json_key};
+use macroquad_toolkit::persistence::{json_key_exists, load_json_key, save_json_key};
 use serde::{Deserialize, Serialize};
 
 const HINTS_KEY: &str = "hints";
@@ -152,7 +152,15 @@ impl HintBook {
         )?;
         validate(&defs)?;
 
-        let saved: HintSave = load_json_key(&config.game_name, HINTS_KEY).unwrap_or_default();
+        let saved: HintSave = match load_json_key(&config.game_name, HINTS_KEY) {
+            Ok(saved) => saved,
+            Err(error) => {
+                if json_key_exists(&config.game_name, HINTS_KEY) {
+                    eprintln!("Dragon's Hoard hints could not be loaded: {error}");
+                }
+                HintSave::default()
+            }
+        };
         Ok(Self {
             defs,
             seen: saved.seen,

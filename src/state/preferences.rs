@@ -11,7 +11,7 @@
 //! under their own key.
 
 use crate::data::GameConfig;
-use macroquad_toolkit::persistence::{load_json_key, save_json_key};
+use macroquad_toolkit::persistence::{json_key_exists, load_json_key, save_json_key};
 use macroquad_toolkit::settings::GameSettings;
 use serde::{Deserialize, Serialize};
 
@@ -133,7 +133,15 @@ impl Preferences {
 
     /// Load, falling back to defaults, then clamp against the current config.
     pub fn load(config: &GameConfig) -> Self {
-        let mut prefs: Self = load_json_key(&config.game_name, PREFERENCES_KEY).unwrap_or_default();
+        let mut prefs: Self = match load_json_key(&config.game_name, PREFERENCES_KEY) {
+            Ok(prefs) => prefs,
+            Err(error) => {
+                if json_key_exists(&config.game_name, PREFERENCES_KEY) {
+                    eprintln!("Dragon's Hoard preferences could not be loaded: {error}");
+                }
+                Self::default()
+            }
+        };
         prefs.sanitize(config);
         prefs
     }

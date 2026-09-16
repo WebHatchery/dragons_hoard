@@ -16,6 +16,16 @@ use crate::state::{migrate_save_value, GameSession, SaveData};
 use macroquad_toolkit::rng::random_u64;
 
 impl Game {
+    pub(crate) fn report_persistence_error(
+        &mut self,
+        operation: &str,
+        error: impl std::fmt::Display,
+    ) {
+        let message = format!("{} failed: {}", operation, error);
+        eprintln!("Dragon's Hoard persistence {}", message);
+        self.notifications.danger(message);
+    }
+
     /// Whether this process is allowed to write to the player's saves.
     ///
     /// False under the screenshot harness, and it should have been false since
@@ -47,16 +57,19 @@ impl Game {
             return;
         }
         self.hold_session();
-        self.store_wallet();
+        if let Err(error) = self.store_wallet() {
+            self.report_persistence_error("wallet autosave", error);
+            return;
+        }
         let save = self.session.to_save(&self.data.config.version);
-        if save_to_slot_with_version(
+        if let Err(error) = save_to_slot_with_version(
             &self.data.config.game_name,
             &self.data.save_slot(),
             &save,
             &self.data.config.version,
-        )
-        .is_ok()
-        {
+        ) {
+            self.report_persistence_error("automatic save", error);
+        } else {
             self.save_exists = true;
         }
     }
@@ -65,7 +78,10 @@ impl Game {
         if !self.may_persist() {
             return;
         }
-        self.store_wallet();
+        if let Err(error) = self.store_wallet() {
+            self.report_persistence_error("wallet save", error);
+            return;
+        }
         let save = self.session.to_save(&self.data.config.version);
         match save_to_slot_with_version(
             &self.data.config.game_name,
@@ -119,20 +135,24 @@ impl Game {
 
     /// Write the balance where it belongs: to the player, not the cabinet
     /// (§5.55).
-    pub(crate) fn store_wallet(&mut self) {
+    pub(crate) fn store_wallet(&mut self) -> Result<(), String> {
         if !self.may_persist() {
-            return;
+            return Ok(());
         }
         // The Grand belongs to the floor, so banking a session banks it for
         // every other cabinet too (§5.57).
         let mut floor = Floor::load(&self.data.config);
         floor.take_from(&self.data.jackpots, &self.session.jackpots);
-        let _ = floor.save(&self.data.config);
+        floor
+            .save(&self.data.config)
+            .map_err(|error| format!("floor save: {error}"))?;
         let wallet = Wallet {
             balance: self.session.balance,
             staked: self.session.stats.staked,
         };
-        let _ = wallet.save(&self.data.config);
+        wallet
+            .save(&self.data.config)
+            .map_err(|error| format!("wallet save: {error}"))
     }
 
     /// Read it back, absorbing the old per-cabinet balances the first time.
@@ -147,11 +167,20 @@ impl Game {
             if !slot_exists(&game_name, &slot) {
                 return None;
             }
-            load_from_slot_with_migration::<SaveData, _>(&game_name, &slot, &version, |v, value| {
-                migrate_save_value(v, value, &self.data)
-            })
-            .ok()
-            .map(|save| save.balance)
+            match load_from_slot_with_migration::<SaveData, _>(
+                &game_name,
+                &slot,
+                &version,
+                |v, value| migrate_save_value(v, value, &self.data),
+            ) {
+                Ok(save) => Some(save.balance),
+                Err(error) => {
+                    eprintln!(
+                        "Dragon's Hoard cabinet balance could not be migrated from {slot}: {error}"
+                    );
+                    None
+                }
+            }
         });
         self.session.balance = wallet.balance;
         self.session.stats.staked = wallet.staked;
@@ -175,7 +204,10 @@ impl Game {
             self.session.stats.staked,
             self.limits.breach(),
         ) {
-            let _ = self.sessions.save(&self.data.config);
+            let result = self.sessions.save(&self.data.config);
+            if let Err(error) = result {
+                self.report_persistence_error("session save", error);
+            }
         }
     }
 
@@ -187,7 +219,10 @@ impl Game {
             self.limits.breach(),
         );
         if kept {
-            let _ = self.sessions.save(&self.data.config);
+            let result = self.sessions.save(&self.data.config);
+            if let Err(error) = result {
+                self.report_persistence_error("session save", error);
+            }
         }
     }
 

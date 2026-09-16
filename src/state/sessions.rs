@@ -107,11 +107,14 @@ pub struct SessionLog {
 impl SessionLog {
     pub fn load(config: &GameConfig) -> Self {
         if slot_exists(&config.game_name, SLOT) {
-            if let Ok(mut log) = load_from_slot::<Self>(&config.game_name, SLOT) {
-                // Anything still open was open when the game was last closed,
-                // which means it ended there (§5.71).
-                log.seal();
-                return log;
+            match load_from_slot::<Self>(&config.game_name, SLOT) {
+                Ok(mut log) => {
+                    // Anything still open was open when the game was last closed,
+                    // which means it ended there (§5.71).
+                    log.seal();
+                    return log;
+                }
+                Err(error) => eprintln!("Dragon's Hoard session log could not be loaded: {error}"),
             }
         }
         Self::default()

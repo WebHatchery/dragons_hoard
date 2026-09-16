@@ -105,7 +105,10 @@ impl Game {
                     .map(|hint| hint.id.clone())
                 {
                     self.hints.dismiss(&id);
-                    let _ = self.hints.save(&self.data.config);
+                    let result = self.hints.save(&self.data.config);
+                    if let Err(error) = result {
+                        self.report_persistence_error("hint save", error);
+                    }
                 }
                 self.sound.play(Sfx::Click);
             }
@@ -175,7 +178,10 @@ impl Game {
             }
             ActionOutcome::AnteToggled => {
                 self.session.preferences.ante = !self.session.preferences.ante;
-                let _ = self.session.preferences.save(&self.data.config);
+                let result = self.session.preferences.save(&self.data.config);
+                if let Err(error) = result {
+                    self.report_persistence_error("ante preference save", error);
+                }
                 self.sound.play(Sfx::Click);
             }
             ActionOutcome::ProofsToggled => {
@@ -253,7 +259,10 @@ impl Game {
                 if !self.session.preferences.shared.screen_shake {
                     self.shake.clear();
                 }
-                let _ = self.session.preferences.save(&self.data.config);
+                let result = self.session.preferences.save(&self.data.config);
+                if let Err(error) = result {
+                    self.report_persistence_error("preference save", error);
+                }
             }
             ActionOutcome::SpinStarted => {
                 self.sound.play(Sfx::SpinStart);
@@ -331,7 +340,9 @@ impl Game {
                 // A new game is a new stack, and the stack is the wallet now —
                 // otherwise the reset would be undone by the next cabinet
                 // switch, which reads the old balance straight back (§5.55).
-                self.store_wallet();
+                if let Err(error) = self.store_wallet() {
+                    self.report_persistence_error("new game wallet save", error);
+                }
                 self.particles.clear();
                 self.floating.clear();
                 self.session.celebrations.clear();

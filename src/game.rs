@@ -480,7 +480,10 @@ impl Game {
     /// game, any more than an achievement would.
     fn note_hint_progress(&mut self, note: impl Fn(&mut crate::state::hints::HintProgress)) {
         note(self.hints.progress_mut());
-        let _ = self.hints.save(&self.data.config);
+        let result = self.hints.save(&self.data.config);
+        if let Err(error) = result {
+            self.report_persistence_error("hint progress save", error);
+        }
     }
 
     /// Re-run every recorded spin through the engine (§5.74).
@@ -503,7 +506,10 @@ impl Game {
         // spins, and it is the spins a player wants to check.
         if let Some(commitment) = self.session.committed.take() {
             self.proofs.push(commitment);
-            self.proofs.save(&self.data.config);
+            let result = self.proofs.save(&self.data.config);
+            if let Err(error) = result {
+                self.report_persistence_error("proof log save", error);
+            }
         }
 
         let Some(round) = self.session.closed_round.take() else {
@@ -515,7 +521,10 @@ impl Game {
             round.credits,
             round.feature,
         );
-        let _ = self.ledger.save(&self.data.config);
+        let result = self.ledger.save(&self.data.config);
+        if let Err(error) = result {
+            self.report_persistence_error("ledger save", error);
+        }
 
         // The same round the ledger just took, against the session clock
         // (§5.30). Gamble winnings are excluded from both for the same reason.
@@ -609,7 +618,10 @@ impl Game {
     fn save_limits(&mut self) {
         self.session.preferences.limits = self.limits.pending;
         self.session.preferences.reality_check_minutes = Some(self.limits.reality_check_minutes);
-        let _ = self.session.preferences.save(&self.data.config);
+        let result = self.session.preferences.save(&self.data.config);
+        if let Err(error) = result {
+            self.report_persistence_error("limit preferences save", error);
+        }
     }
 
     /// Step a cap and say what happened to it.
@@ -696,20 +708,28 @@ impl Game {
             .set_arrangement(crate::music::arrangement(self.data.theme_name()));
         self.session = self.load_machine_session();
         self.session.preferences = preferences;
-        self.store_wallet();
+        if let Err(error) = self.store_wallet() {
+            self.report_persistence_error("wallet save", error);
+        }
 
         self.particles.clear();
         self.floating.clear();
         self.shake.clear();
         self.show_machines = false;
         self.refresh_save_state();
-        let _ = self.session.preferences.save(&self.data.config);
+        let result = self.session.preferences.save(&self.data.config);
+        if let Err(error) = result {
+            self.report_persistence_error("machine preferences save", error);
+        }
 
         for def in self.achievements.note_machine(self.data.machine_id()) {
             self.notifications
                 .success(format!("Achievement — {}", def.name));
         }
-        let _ = self.achievements.save(&self.data.config);
+        let result = self.achievements.save(&self.data.config);
+        if let Err(error) = result {
+            self.report_persistence_error("achievement save", error);
+        }
 
         self.notifications
             .success(format!("Now playing {}", self.data.config.display_name));
@@ -751,6 +771,9 @@ impl Game {
             );
         }
         self.sound.play(Sfx::WinSmall);
-        let _ = self.achievements.save(&self.data.config);
+        let result = self.achievements.save(&self.data.config);
+        if let Err(error) = result {
+            self.report_persistence_error("achievement save", error);
+        }
     }
 }

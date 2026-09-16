@@ -36,7 +36,7 @@
 
 use crate::data::GameConfig;
 use crate::engine::sim::{RoundStats, BAND_COUNT};
-use macroquad_toolkit::persistence::{load_json_key, save_json_key};
+use macroquad_toolkit::persistence::{json_key_exists, load_json_key, save_json_key};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -104,7 +104,15 @@ pub struct Ledger {
 
 impl Ledger {
     pub fn load(config: &GameConfig) -> Self {
-        load_json_key(&config.game_name, LEDGER_KEY).unwrap_or_default()
+        match load_json_key(&config.game_name, LEDGER_KEY) {
+            Ok(ledger) => ledger,
+            Err(error) => {
+                if json_key_exists(&config.game_name, LEDGER_KEY) {
+                    eprintln!("Dragon's Hoard ledger could not be loaded: {error}");
+                }
+                Self::default()
+            }
+        }
     }
 
     pub fn save(&self, config: &GameConfig) -> Result<(), String> {

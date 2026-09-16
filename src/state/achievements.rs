@@ -16,7 +16,7 @@
 use crate::data::GameConfig;
 use crate::state::SpinResolution;
 use macroquad_toolkit::achievements::{Achievement, Achievements};
-use macroquad_toolkit::persistence::{load_json_key, save_json_key};
+use macroquad_toolkit::persistence::{json_key_exists, load_json_key, save_json_key};
 use serde::{Deserialize, Serialize};
 
 const ACHIEVEMENTS_KEY: &str = "achievements";
@@ -162,8 +162,15 @@ impl AchievementBook {
         )?;
         validate(&defs)?;
 
-        let saved: AchievementSave =
-            load_json_key(&config.game_name, ACHIEVEMENTS_KEY).unwrap_or_default();
+        let saved: AchievementSave = match load_json_key(&config.game_name, ACHIEVEMENTS_KEY) {
+            Ok(saved) => saved,
+            Err(error) => {
+                if json_key_exists(&config.game_name, ACHIEVEMENTS_KEY) {
+                    eprintln!("Dragon's Hoard achievements could not be loaded: {error}");
+                }
+                AchievementSave::default()
+            }
+        };
 
         // Definitions come from JSON every time; only the unlock flags and the
         // counters are restored. Renaming an achievement therefore takes effect

@@ -46,7 +46,7 @@
 use crate::data::{GameConfig, GameData};
 use crate::engine::{SpinMode, SpinResult};
 use crate::state::persist;
-use macroquad_toolkit::persistence::{load_json_key, save_json_key};
+use macroquad_toolkit::persistence::{json_key_exists, load_json_key, save_json_key};
 use macroquad_toolkit::rng::SeededRng;
 use serde::{Deserialize, Serialize};
 
@@ -282,7 +282,15 @@ pub struct ProofLog {
 
 impl ProofLog {
     pub fn load(config: &GameConfig) -> Self {
-        let mut log: Self = load_json_key(&config.game_name, PROOF_KEY).unwrap_or_default();
+        let mut log: Self = match load_json_key(&config.game_name, PROOF_KEY) {
+            Ok(log) => log,
+            Err(error) => {
+                if json_key_exists(&config.game_name, PROOF_KEY) {
+                    eprintln!("Dragon's Hoard proof log could not be loaded: {error}");
+                }
+                Self::default()
+            }
+        };
         log.entries.truncate(KEPT);
         // A log that has been edited to claim more spins than it holds would
         // otherwise number the next one wrongly. Cheap to repair, and the
@@ -291,11 +299,11 @@ impl ProofLog {
         log
     }
 
-    pub fn save(&self, config: &GameConfig) {
+    pub fn save(&self, config: &GameConfig) -> Result<(), String> {
         if !persist::may_write() {
-            return;
+            return Ok(());
         }
-        let _ = save_json_key(&config.game_name, PROOF_KEY, self);
+        save_json_key(&config.game_name, PROOF_KEY, self)
     }
 
     /// The entries, writable. Used by the capture harness to alter a record

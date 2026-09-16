@@ -78,8 +78,9 @@ impl Wallet {
     /// the first time it is asked for.
     pub fn load(config: &GameConfig, per_cabinet: &dyn Fn(&str) -> Option<i64>) -> Self {
         if slot_exists(&config.game_name, SLOT) {
-            if let Ok(wallet) = load_from_slot::<Self>(&config.game_name, SLOT) {
-                return wallet;
+            match load_from_slot::<Self>(&config.game_name, SLOT) {
+                Ok(wallet) => return wallet,
+                Err(error) => eprintln!("Dragon's Hoard wallet could not be loaded: {error}"),
             }
         }
         Self::absorb(config, per_cabinet)

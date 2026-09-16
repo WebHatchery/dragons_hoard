@@ -55,8 +55,9 @@ pub struct Floor {
 impl Floor {
     pub fn load(config: &GameConfig) -> Self {
         if slot_exists(&config.game_name, SLOT) {
-            if let Ok(floor) = load_from_slot::<Self>(&config.game_name, SLOT) {
-                return floor;
+            match load_from_slot::<Self>(&config.game_name, SLOT) {
+                Ok(floor) => return floor,
+                Err(error) => eprintln!("Dragon's Hoard floor could not be loaded: {error}"),
             }
         }
         Self::default()
