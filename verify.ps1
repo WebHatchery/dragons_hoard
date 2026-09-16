@@ -35,7 +35,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $ProjectRoot = $PSScriptRoot
 $ToolkitRoot = Join-Path (Split-Path $ProjectRoot -Parent) 'macroquad-toolkit'
-$Exe = Join-Path (Split-Path (Split-Path $ProjectRoot -Parent) -Parent) '.cargo-target\release\dragons_hoard.exe'
+$Exe = Join-Path (Split-Path $ProjectRoot -Parent) 'target\release\dragons_hoard.exe'
 $VerificationDir = Join-Path $ProjectRoot 'docs\verification'
 if (-not (Test-Path $VerificationDir)) {
     New-Item -ItemType Directory -Path $VerificationDir -Force | Out-Null
@@ -86,6 +86,84 @@ function Cargo {
     }
 }
 
+# The toolkit capture protocol uses a manifest, even for one scene. Keeping
+# every native harness launch on that path is important: it arms the headless
+# window guard and guarantees a capture process exits instead of falling into
+# the interactive game loop.
+function InvokeHiddenGame {
+    param([string]$What = 'game harness')
+
+    $stdoutPath = Join-Path $VerificationDir ('.verify_stdout_{0}.log' -f $PID)
+    $stderrPath = Join-Path $VerificationDir ('.verify_stderr_{0}.log' -f $PID)
+    $proc = $null
+    try {
+        $proc = Start-Process -FilePath $Exe -PassThru -WindowStyle Hidden `
+            -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
+        $deadline = [DateTime]::UtcNow.AddSeconds(300)
+        while (-not $proc.HasExited) {
+            if ([DateTime]::UtcNow -ge $deadline) {
+                $proc.Kill()
+                throw "$What did not exit within 300 seconds."
+            }
+            Start-Sleep -Milliseconds 25
+            $proc.Refresh()
+        }
+        $proc.WaitForExit()
+        $output = @(
+            if (Test-Path -LiteralPath $stdoutPath) { Get-Content -LiteralPath $stdoutPath }
+            if (Test-Path -LiteralPath $stderrPath) { Get-Content -LiteralPath $stderrPath }
+        )
+        if ($proc.ExitCode -ne 0) {
+            throw "$What exited with code $($proc.ExitCode).`n$($output | Out-String)"
+        }
+        return $output
+    } finally {
+        if ($proc -and -not $proc.HasExited) {
+            try { $proc.Kill(); $proc.WaitForExit() } catch { }
+        }
+        Remove-Item -LiteralPath $stdoutPath, $stderrPath -Force -ErrorAction SilentlyContinue
+    }
+}
+
+function InvokeCapture {
+    param(
+        [string]$Scene,
+        [string]$Path,
+        [int]$Frames = 3,
+        [hashtable]$Vars = @{}
+    )
+
+    if ($null -eq $Vars) { $Vars = @{} }
+    if ($Vars.ContainsKey('DRAGONS_HOARD_CAPTURE_FRAMES')) {
+        $Frames = [int]$Vars['DRAGONS_HOARD_CAPTURE_FRAMES']
+    }
+    $manifestPath = Join-Path $VerificationDir ('.verify_manifest_{0}.tsv' -f $PID)
+    Set-Content -LiteralPath $manifestPath -Value ("{0}`t{1}" -f $Scene, $Path) -Encoding utf8
+    $keys = @(
+        'DRAGONS_HOARD_CAPTURE_MANIFEST', 'DRAGONS_HOARD_CAPTURE_FRAMES',
+        'DRAGONS_HOARD_CAPTURE_MIN_FRAME_MS', 'DRAGONS_HOARD_HEADLESS'
+    ) + @($Vars.Keys)
+    $saved = @{}
+    foreach ($key in $keys | Select-Object -Unique) {
+        $saved[$key] = [Environment]::GetEnvironmentVariable($key)
+    }
+    try {
+        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_MANIFEST', $manifestPath)
+        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_FRAMES', "$Frames")
+        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_MIN_FRAME_MS', '0')
+        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_HEADLESS', '1')
+        foreach ($key in $Vars.Keys) {
+            [Environment]::SetEnvironmentVariable($key, $Vars[$key])
+        }
+        return InvokeHiddenGame -What "capture '$Scene'"
+    } finally {
+        foreach ($key in $saved.Keys) {
+            [Environment]::SetEnvironmentVariable($key, $saved[$key])
+        }
+        Remove-Item -LiteralPath $manifestPath -Force -ErrorAction SilentlyContinue
+    }
+}
+
 # The audits print their findings and exit non-zero when something is wrong, so
 # the exit code is the verdict and the output is the explanation.
 function Audit {
@@ -102,34 +180,12 @@ function Audit {
         }
     }
 
-    $saved = @{}
-    foreach ($key in $Vars.Keys) {
-        $saved[$key] = [Environment]::GetEnvironmentVariable($key)
-        [Environment]::SetEnvironmentVariable($key, $Vars[$key])
-    }
-    [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_SCENE', $Scene)
     # `audit:<screen>` carries a colon, which Windows will not take in a path.
     $file = 'verify_' + ($Scene -replace '[^A-Za-z0-9_]', '_') + '.png'
-    [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_PATH', (Join-Path $VerificationDir $file))
-    if (-not ($Vars -and $Vars.ContainsKey('DRAGONS_HOARD_CAPTURE_FRAMES'))) {
-        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_FRAMES', '3')
-    }
-    $previous = $ErrorActionPreference
-    $ErrorActionPreference = 'Continue'
-    try {
-        $output = & $Exe 2>&1
-        $findings = $output | Where-Object { $_ -match 'audit: \d+ findings|overlap by' }
-        if ($LASTEXITCODE -ne 0 -or $findings) {
-            throw "$What`n$($output | Out-String)"
-        }
-    } finally {
-        $ErrorActionPreference = $previous
-        foreach ($key in $Vars.Keys) {
-            [Environment]::SetEnvironmentVariable($key, $saved[$key])
-        }
-        foreach ($key in 'DRAGONS_HOARD_CAPTURE_SCENE', 'DRAGONS_HOARD_CAPTURE_PATH', 'DRAGONS_HOARD_CAPTURE_FRAMES') {
-            [Environment]::SetEnvironmentVariable($key, $null)
-        }
+    $output = InvokeCapture -Scene $Scene -Path (Join-Path $VerificationDir $file) -Vars $Vars
+    $findings = $output | Where-Object { $_ -match 'audit: \d+ findings|overlap by' }
+    if ($findings) {
+        throw "$What`n$($output | Out-String)"
     }
 }
 
@@ -217,11 +273,8 @@ Step 'the game remembers' {
         $save.data.hoard.count = 11
         $save.data.hoard.pot = 2468
         ($save | ConvertTo-Json -Depth 12) | Set-Content $slot -NoNewline
-        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_PATH', (Join-Path $VerificationDir 'verify_boot.png'))
-        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_SCENE', 'boot_report')
-        $report = & $Exe 2>&1 | Where-Object { $_ -match '^boot ' }
-        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_PATH', $null)
-        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_SCENE', $null)
+        $report = InvokeCapture -Scene 'boot_report' -Path (Join-Path $VerificationDir 'verify_boot.png') -Frames 1 |
+            Where-Object { $_ -match '^boot ' }
         if ($report -notmatch 'eggs 11' -or $report -notmatch 'pot 2468') {
             throw "the game started without reading its own save`n$report"
         }
@@ -254,11 +307,8 @@ Write-Host 'One screen at a time' -ForegroundColor Cyan
 # the ruin screen (§5.53) was registered, tested and reachable, the sweep still
 # did not know it existed — which is the exact drift §5.50 built the registry to
 # stop, reintroduced one file over.
-[Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_PATH', (Join-Path $VerificationDir 'verify_screens.png'))
-[Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_SCENE', 'screens')
-$Screens = @(& $Exe 2>&1 | Where-Object { $_ -match '^screen ' } | ForEach-Object { ($_ -split ' ')[1] })
-[Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_PATH', $null)
-[Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_SCENE', $null)
+$Screens = @(InvokeCapture -Scene 'screens' -Path (Join-Path $VerificationDir 'verify_screens.png') -Frames 1 |
+    Where-Object { $_ -match '^screen ' } | ForEach-Object { ($_ -split ' ')[1] })
 if ($Screens.Count -lt 10) { throw "the game listed $($Screens.Count) screens; the registry is not being read" }
 Step 'every screen' {
     foreach ($screen in $Screens) {
@@ -306,15 +356,10 @@ Step 'a tablet can actually press it' {
     # at the tablet figure it used to allow.
     $needed = 960
     foreach ($scene in 'touch_audit', 'touch_audit_settings', 'touch_audit_buy') {
-        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_WINDOW_WIDTH', '1080')
-        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_WINDOW_HEIGHT', '810')
-        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_SCENE', $scene)
-        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_PATH', (Join-Path $VerificationDir 'verify_touch.png'))
-        $out = & $Exe 2>&1
-        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_WINDOW_WIDTH', $null)
-        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_WINDOW_HEIGHT', $null)
-        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_SCENE', $null)
-        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_PATH', $null)
+        $out = InvokeCapture -Scene $scene -Path (Join-Path $VerificationDir 'verify_touch.png') -Vars @{
+            DRAGONS_HOARD_WINDOW_WIDTH = '1080'
+            DRAGONS_HOARD_WINDOW_HEIGHT = '810'
+        }
 
         $lines = @($out | Where-Object { $_ -match 'need a (\d+)px-wide window' })
         if (-not $lines) {
@@ -340,22 +385,17 @@ Step 'a tablet can actually press it' {
     # able to say so. This sweeps the whole registry, because the target audit
     # used to be armed in three hand-written scenes while the layout audit swept
     # all twenty-one.
-    [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_PATH', (Join-Path $VerificationDir 'verify_screens.png'))
-    [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_SCENE', 'screens')
-    $all = @(& $Exe 2>&1 | Where-Object { $_ -match '^screen ' } | ForEach-Object { ($_ -split ' ')[1] })
+    $all = @(InvokeCapture -Scene 'screens' -Path (Join-Path $VerificationDir 'verify_screens.png') -Frames 1 |
+        Where-Object { $_ -match '^screen ' } | ForEach-Object { ($_ -split ' ')[1] })
     foreach ($screen in $all) {
-        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_SCENE', "audit:$screen")
-        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_WINDOW_WIDTH', '1080')
-        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_WINDOW_HEIGHT', '810')
-        $small = @(& $Exe 2>&1 | Where-Object { $_ -match 'drawn (\d+)px' } | Select-Object -Unique)
-        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_WINDOW_WIDTH', $null)
-        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_WINDOW_HEIGHT', $null)
+        $small = @(InvokeCapture -Scene "audit:$screen" -Path (Join-Path $VerificationDir 'verify_screens.png') -Vars @{
+            DRAGONS_HOARD_WINDOW_WIDTH = '1080'
+            DRAGONS_HOARD_WINDOW_HEIGHT = '810'
+        } | Where-Object { $_ -match 'drawn (\d+)px' } | Select-Object -Unique)
         if ($small) {
             throw ("the $screen screen draws controls under 44 logical pixels`n  " + ($small -join "`n  "))
         }
     }
-    [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_SCENE', $null)
-    [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_CAPTURE_PATH', $null)
 }
 Step 'collisions and touch targets' {
     foreach ($scene in 'touch_audit', 'touch_audit_settings', 'touch_audit_buy') {
@@ -374,11 +414,13 @@ Step 'ten thousand presses' {
     foreach ($seed in '946309677721361986', '11', '22') {
         [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_DRIFT', '10000')
         [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_DRIFT_SEED', $seed)
-        $out = & $Exe 2>&1 | Where-Object { $_ -notmatch '^warn' }
-        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_DRIFT', $null)
-        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_DRIFT_SEED', $null)
-        if ($LASTEXITCODE -ne 0) {
-            throw ("the game broke under random play (seed $seed)`n  " + ($out -join "`n  "))
+        [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_HEADLESS', '1')
+        try {
+            $out = InvokeHiddenGame -What "random play (seed $seed)" | Where-Object { $_ -notmatch '^warn' }
+        } finally {
+            [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_DRIFT', $null)
+            [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_DRIFT_SEED', $null)
+            [Environment]::SetEnvironmentVariable('DRAGONS_HOARD_HEADLESS', $null)
         }
     }
 }

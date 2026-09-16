@@ -106,7 +106,11 @@ def main(root):
     scripts = []
     missing_files = []
     for src in re.findall(r'<script[^>]+src="([^"]+)"', html):
-        path = (root / src).resolve()
+        # The publisher fingerprints shared assets with a query string. The
+        # browser ignores that string when resolving the local file, so the
+        # contract checker must do the same.
+        file_src = src.split("?", 1)[0].split("#", 1)[0]
+        path = (root / file_src).resolve()
         (scripts if path.is_file() else missing_files).append(path)
     if missing_files:
         for path in missing_files:

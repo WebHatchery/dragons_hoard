@@ -9,13 +9,11 @@
 
 use super::{
     cheapest_feature, frame, naming, palette, shortcuts, virtual_button, ButtonTone, Color,
-    Pointer, Rect, Region, TextStyle, UiAction, UiContext,
+    Pointer, Rect, Region, UiAction, UiContext,
 };
 use crate::ui::nav::Nav;
 use macroquad::prelude::*;
-use macroquad_toolkit::ui::{
-    draw_badge, draw_surface, draw_text_block, draw_ui_text_ex, meter, SurfaceStyle,
-};
+use macroquad_toolkit::ui::{draw_badge, draw_surface, draw_text_block, meter, SurfaceStyle};
 
 pub(super) fn draw_header(
     ctx: &UiContext<'_>,
@@ -208,7 +206,7 @@ pub(super) fn draw_footer(ctx: &UiContext<'_>) {
     } else {
         String::new()
     };
-    draw_ui_text_ex(
+    draw_text_block(
         &format!(
             "Spins {}   Best win {}   Free spins played {}   Hatches {}{}",
             stats.total_spins,
@@ -218,8 +216,12 @@ pub(super) fn draw_footer(ctx: &UiContext<'_>) {
             staked
         ),
         rect.x + 470.0,
-        rect.y + 30.0,
-        TextStyle::new(16.0, palette::text()).params(),
+        rect.y + 18.0,
+        rect.right() - rect.x - 470.0 - 8.0,
+        22.0,
+        16.0,
+        0.0,
+        palette::text(),
     );
     // A hint (§5.28) takes this line while it is showing. The two say the same
     // sort of thing and only one of them gets read.
