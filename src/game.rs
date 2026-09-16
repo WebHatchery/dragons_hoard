@@ -1,5 +1,6 @@
 //! High-level game loop: owns the session, routes intents, drives feedback.
 
+mod bootstrap;
 mod capture_scenes;
 pub mod drift;
 mod feedback;
@@ -12,17 +13,15 @@ pub mod screens;
 use crate::audio::{Sfx, SoundBank};
 use crate::data::GameData;
 use crate::state::achievements::AchievementBook;
-use crate::state::preferences::Preferences;
 use crate::state::spin::SpinEvent;
 use crate::state::{GameSession, SpinResolution};
 use crate::ui::{self, palette, UiAction};
+use bootstrap::BootResources;
 use macroquad::prelude::*;
-use macroquad_toolkit::assets::AssetManager;
 use macroquad_toolkit::capture;
 use macroquad_toolkit::events::EventBus;
 use macroquad_toolkit::fx::{BurstConfig, FloatingTextLayer, ParticleSystem, ScreenShake};
 use macroquad_toolkit::notifications::NotificationManager;
-use macroquad_toolkit::rng::random_u64;
 
 pub struct Game {
     data: GameData,
@@ -92,115 +91,32 @@ pub struct Game {
 
 impl Game {
     pub async fn new() -> Self {
-        // Load the default machine first purely to find out where preferences
-        // live, then honour the cabinet the player last chose.
-        // Before anything reads or writes a save: a capture run must not
-        // overwrite the game it is verifying (§5.55).
-        // The drift harness counts too, and this line is the whole reason it has
-        // to (§5.76). Its ten thousand presses include Save, New Game and Delete
-        // Save; the first run of it through verify.ps1 overwrote the player's
-        // real save and the save-compatibility gate caught it one step later.
-        // That is §5.55's fault — a harness eating the save — arriving again by a
-        // door nobody had thought to lock.
         crate::state::persist::set_read_only(
             capture::capture_requested("DRAGONS_HOARD")
                 || crate::game::drift::DriftConfig::from_env().is_some(),
         );
+        let boot = BootResources::load().await;
+        let BootResources {
+            data,
+            session,
+            notifications,
+            sound,
+            music,
+            limits,
+            limit_choices,
+            hints,
+            achievements,
+            ledger,
+            proofs,
+        } = boot;
 
-        let bootstrap = GameData::load()
-            .unwrap_or_else(|err| panic!("Dragon's Hoard embedded data failed to load: {}", err));
-        let preferences = Preferences::load(&bootstrap.config);
-        let data = if preferences.machine_id.is_empty()
-            || preferences.machine_id == bootstrap.machine_id()
-        {
-            bootstrap
-        } else {
-            GameData::load_machine(crate::data::machine_by_id(&preferences.machine_id))
-                .unwrap_or(bootstrap)
-        };
-
-        // Fail fast: a limits file that could never bind would let a player set
-        // a cap that silently did nothing (§5.30).
-        let limit_choices = crate::state::limits::LimitChoices::load()
-            .unwrap_or_else(|err| panic!("Dragon's Hoard limits failed to load: {}", err));
-
-        // Symbols are drawn procedurally (see `ui::symbols`), so the manifest is
-        // empty by design. It is still loaded so registered loose textures will
-        // work without another runtime wiring change if the game gains any.
-        let mut assets = AssetManager::new();
-        let placeholder = Image::gen_image_color(16, 16, Color::new(0.5, 0.4, 0.2, 1.0));
-        assets.set_placeholder_texture_direct(Texture2D::from_image(&placeholder));
-        let loaded = assets.load_texture_configs(&data.texture_manifest).await;
-
-        // The screenshot harness runs headless; opening an audio device there
-        // buys nothing and can fail on a machine with no sound card.
-        let music = if capture::capture_requested("DRAGONS_HOARD") {
-            crate::music::Music::silent()
-        } else {
-            crate::music::Music::load(data.config.sfx_volume).await
-        };
-
-        let sound = if capture::capture_requested("DRAGONS_HOARD") {
-            SoundBank::muted()
-        } else {
-            SoundBank::load(data.config.sfx_volume).await
-        };
-
-        let mut notifications = NotificationManager::new();
-        notifications.info(format!(
-            "Dragon's Hoard ready — {} paylines, {} textures, {} sounds",
-            data.paylines.len(),
-            loaded,
-            sound.len()
-        ));
-
-        let mut achievements = AchievementBook::load(&data.config)
-            .unwrap_or_else(|err| panic!("achievements.json failed to load: {}", err));
-        // Booting into a cabinet counts as playing it.
-        achievements.note_machine(data.machine_id());
-
-        let mut session = GameSession::new(&data, random_u64());
-        session.preferences = preferences;
-
-        let mut sound = sound;
-        sound.set_volume(session.preferences.sfx_volume());
-        let mut music = music;
-        music.set_volume(session.preferences.music_volume());
-        music.set_arrangement(crate::music::arrangement(data.theme_name()));
-        // Text size (§5.38). Set once at boot and again whenever it changes;
-        // the toolkit applies it to drawing and measurement together, so the
-        // layout audit measures what the player actually sees.
-        // The cabinet's palette (§5.43). Set here and on every machine switch,
-        // which are the only two moments it changes.
+        // Text size (§5.38) and the cabinet's palette (§5.43) are applied once
+        // at boot and again whenever their settings change.
         ui::theme::set(ui::theme::by_name(data.theme_name()));
-
         macroquad_toolkit::ui::set_ui_text_scale(session.preferences.text_scale());
-
-        // DRAGONS_HOARD_PSEUDO stress-tests the layout for translation without
-        // there being any translation (§5.39). Set here rather than in the
-        // audit scene so any capture can be taken under it — the point is as
-        // much to *look* at a pseudolocalised panel as to measure one.
-        // An *empty* value means off, not on. A harness that clears the knob by
-        // setting it to "" turned the pseudolocale on for every later run, and
-        // the findings that produced looked like faults on innocent screens
-        // (§5.50).
         if std::env::var("DRAGONS_HOARD_PSEUDO").is_ok_and(|value| !value.is_empty()) {
             macroquad_toolkit::ui::pseudo_enable(macroquad_toolkit::ui::Pseudo::default());
         }
-
-        let ledger = crate::state::ledger::Ledger::load(&data.config);
-        let proofs = crate::state::proof::ProofLog::load(&data.config);
-        let hints = crate::state::hints::HintBook::load(&data.config)
-            .unwrap_or_else(|err| panic!("hints.json failed to load: {}", err));
-
-        // A fresh run is a fresh session, so the caps the player last chose are
-        // the caps in force (§5.30).
-        let mut limits = crate::state::limits::LimitState::with_defaults(&limit_choices);
-        limits.pending = session.preferences.limits;
-        if let Some(minutes) = session.preferences.reality_check_minutes {
-            limits.reality_check_minutes = minutes;
-        }
-        limits.new_session();
 
         let mut game = Self {
             data,
@@ -245,18 +161,12 @@ impl Game {
             motion: None,
         };
         game.refresh_save_state();
-        // Sit down at the cabinet as it was left (§5.58). The same call the
-        // machine picker makes, because booting and walking to a machine are
-        // the same act — and until now only the second one loaded anything, so
-        // every launch reset the hoard and three of the four pots.
+        // Sit down at the cabinet as it was left (§5.58), just as the machine
+        // picker does when the player walks to another cabinet.
         let preferences = game.session.preferences.clone();
         game.session = game.load_machine_session();
         game.session.preferences = preferences;
-        // The balance is the player's, not the cabinet's (§5.55). Read after the
-        // session is built, because a fresh session invents a starting stack and
-        // the wallet is what actually decides.
         game.restore_wallet();
-        // Sessions already played (§5.70).
         game.sessions = crate::state::sessions::SessionLog::load(&game.data.config);
         game
     }
