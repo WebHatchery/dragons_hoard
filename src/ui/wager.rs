@@ -290,7 +290,18 @@ fn draw_spin_button(
     // to grow with them or the block climbs into the bet controls above.
     let secondary_y = below - 10.0 - 44.0;
     let spin_y = secondary_y - 8.0 - 70.0;
+    draw_spin_choices(ctx, content, spin_y, pointer, actions, nav);
+    draw_spin_controls(ctx, content, secondary_y, spin_y, pointer, actions, nav);
+}
 
+fn draw_spin_choices(
+    ctx: &UiContext<'_>,
+    content: Rect,
+    spin_y: f32,
+    pointer: Pointer,
+    actions: &mut Vec<UiAction>,
+    nav: &mut Nav,
+) {
     // The free-spin choice takes the rules button's place while it is open
     // (§5.64). It is the only thing on screen worth pressing at that moment,
     // and it closes itself the instant the first spin goes — so it cannot sit
@@ -358,7 +369,17 @@ fn draw_spin_button(
     ) {
         actions.push(UiAction::ToggleRules);
     }
+}
 
+fn draw_spin_controls(
+    ctx: &UiContext<'_>,
+    content: Rect,
+    secondary_y: f32,
+    spin_y: f32,
+    pointer: Pointer,
+    actions: &mut Vec<UiAction>,
+    nav: &mut Nav,
+) {
     // A bound cap owns the button's label as well as its state (§5.30): a
     // greyed-out SPIN says the game is busy, which is the wrong answer.
     let label = if ctx.limits.breach().is_some() {

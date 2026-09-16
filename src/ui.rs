@@ -329,35 +329,52 @@ pub fn draw_game_ui(ctx: UiContext<'_>, nav: &mut Nav) -> Vec<UiAction> {
     wager::draw_control_panel(&ctx, pointer, &mut actions, nav);
     chrome::draw_footer(&ctx);
     nav.set_inert(ctx.session.celebrations.is_active());
+    draw_panels(&ctx, pointer, &mut actions, nav);
+    draw_feature_overlays(&ctx, pointer, &mut actions, nav);
+    draw_final_overlays(&ctx, pointer, &mut actions, nav);
 
+    // Every control has registered by now, so focus can be moved.
+    nav.finish();
+
+    actions
+}
+
+fn draw_panels(ctx: &UiContext<'_>, pointer: Pointer, actions: &mut Vec<UiAction>, nav: &mut Nav) {
     if ctx.show_paytable {
-        paytable::draw(&ctx, pointer, &mut actions, nav);
+        paytable::draw(ctx, pointer, actions, nav);
     }
     if ctx.show_rules {
-        rules::draw(&ctx, pointer, &mut actions, nav);
+        rules::draw(ctx, pointer, actions, nav);
     }
     if ctx.show_limits {
-        limits::draw(ctx.limits, ctx.limit_choices, pointer, &mut actions, nav);
+        limits::draw(ctx.limits, ctx.limit_choices, pointer, actions, nav);
     }
     if ctx.show_history {
-        history::draw(ctx.history, ctx.ledger, pointer, &mut actions, nav);
+        history::draw(ctx.history, ctx.ledger, pointer, actions, nav);
     }
     if ctx.show_achievements {
-        achievements::draw(ctx.achievements, pointer, &mut actions, nav);
+        achievements::draw(ctx.achievements, pointer, actions, nav);
     }
     if ctx.show_machines {
-        machines::draw(ctx.data, ctx.profiles, pointer, &mut actions, nav);
+        machines::draw(ctx.data, ctx.profiles, pointer, actions, nav);
     }
     if ctx.show_settings {
         settings::draw(
             &ctx.data.config,
             &ctx.session.preferences,
             pointer,
-            &mut actions,
+            actions,
             nav,
         );
     }
+}
 
+fn draw_feature_overlays(
+    ctx: &UiContext<'_>,
+    pointer: Pointer,
+    actions: &mut Vec<UiAction>,
+    nav: &mut Nav,
+) {
     // The respin board takes over the reel window while a round is open.
     if let Some(round) = ctx.session.holdspin.as_ref() {
         holdspin::draw(ctx.data, round, ctx.ui_time);
@@ -373,7 +390,7 @@ pub fn draw_game_ui(ctx: UiContext<'_>, nav: &mut Nav) -> Vec<UiAction> {
             ctx.frame.wager,
             pointer,
             ctx.ui_time,
-            &mut actions,
+            actions,
             nav,
         );
     }
@@ -381,59 +398,39 @@ pub fn draw_game_ui(ctx: UiContext<'_>, nav: &mut Nav) -> Vec<UiAction> {
     // The gamble owns the screen while it is up: it is a decision, and the
     // reels behind it are inert until it is made.
     if let Some(round) = ctx.session.gamble.as_ref() {
-        gamble::draw(ctx.data, ctx.session, round, pointer, &mut actions, nav);
+        gamble::draw(ctx.data, ctx.session, round, pointer, actions, nav);
     }
 
     if ctx.show_vision {
-        vision::draw(ctx.data, pointer, &mut actions, nav);
+        vision::draw(ctx.data, pointer, actions, nav);
     }
-
     if ctx.show_waveforms {
         waveform::draw(
             ctx.music_levels,
             ctx.music_mood,
             ctx.music_arrangement,
             pointer,
-            &mut actions,
+            actions,
             nav,
         );
     }
-
     if ctx.show_menu {
-        menu::draw(pointer, &mut actions, nav);
+        menu::draw(pointer, actions, nav);
     }
-
     if ctx.show_lines {
-        lines::draw(ctx.data, pointer, &mut actions, nav);
+        lines::draw(ctx.data, pointer, actions, nav);
     }
-
     if ctx.show_proofs {
-        proof::draw(ctx.proofs, ctx.checked, pointer, &mut actions, nav);
+        proof::draw(ctx.proofs, ctx.checked, pointer, actions, nav);
     }
     if ctx.show_sessions {
-        sessions::draw(ctx.sessions, pointer, &mut actions, nav);
+        sessions::draw(ctx.sessions, pointer, actions, nav);
     }
-
     if ctx.show_ledger {
-        ledger::draw(
-            ctx.data,
-            ctx.ledger,
-            ctx.profiles,
-            pointer,
-            &mut actions,
-            nav,
-        );
+        ledger::draw(ctx.data, ctx.ledger, ctx.profiles, pointer, actions, nav);
     }
-
     if ctx.show_featurebuy {
-        featurebuy::draw(
-            ctx.data,
-            ctx.session,
-            ctx.profiles,
-            pointer,
-            &mut actions,
-            nav,
-        );
+        featurebuy::draw(ctx.data, ctx.session, ctx.profiles, pointer, actions, nav);
     }
 
     // The bonus board sits over the game but under a card, so the Hatch card
@@ -448,11 +445,18 @@ pub fn draw_game_ui(ctx: UiContext<'_>, nav: &mut Nav) -> Vec<UiAction> {
                 .map(|(_, def)| def),
             pointer,
             ctx.ui_time,
-            &mut actions,
+            actions,
             nav,
         );
     }
+}
 
+fn draw_final_overlays(
+    ctx: &UiContext<'_>,
+    pointer: Pointer,
+    actions: &mut Vec<UiAction>,
+    nav: &mut Nav,
+) {
     // Over everything except the ruin panel: a cap the player set has stopped
     // play and the account of it is the last word (§5.68).
     if let Some(breach) = ctx.limits.breach() {
@@ -462,7 +466,7 @@ pub fn draw_game_ui(ctx: UiContext<'_>, nav: &mut Nav) -> Vec<UiAction> {
                 &ctx.limits.clock,
                 ctx.session,
                 pointer,
-                &mut actions,
+                actions,
                 nav,
             );
         }
@@ -478,7 +482,7 @@ pub fn draw_game_ui(ctx: UiContext<'_>, nav: &mut Nav) -> Vec<UiAction> {
             ctx.session.balance,
             ctx.session.cheapest_spin(ctx.data),
             pointer,
-            &mut actions,
+            actions,
             nav,
         );
     }
@@ -496,18 +500,13 @@ pub fn draw_game_ui(ctx: UiContext<'_>, nav: &mut Nav) -> Vec<UiAction> {
     // and a celebration raised on the spin that tripped it would otherwise sit
     // on top of the thing asking the player to stop and look.
     if ctx.reality_check {
-        reality::draw(&ctx.limits.clock, pointer, &mut actions, nav);
+        reality::draw(&ctx.limits.clock, pointer, actions, nav);
     }
 
     // Under the overlays but over the footer: an offer, not an interruption.
     if let Some(hint) = ctx.hint {
-        hint::draw(hint, pointer, &mut actions, nav);
+        hint::draw(hint, pointer, actions, nav);
     }
-
-    // Every control has registered by now, so focus can be moved.
-    nav.finish();
-
-    actions
 }
 
 /// Where a panel's Close button goes.
