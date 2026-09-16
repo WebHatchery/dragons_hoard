@@ -1,7 +1,6 @@
 {
   "title": "Dragon's Hoard",
   "wasm": "dragons_hoard",
-  "roost_slug": "rust_dragons_hoard",
   "status": { "text": "In Development", "class": "in-development" },
   "canvas_rendering": "pixelated",
   "about": [
