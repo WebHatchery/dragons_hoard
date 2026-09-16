@@ -31,7 +31,7 @@
 //! granted. Getting this backwards would let a player farm the pots by buying
 //! features rather than spinning.
 
-use crate::data::{FeatureAward, FeatureBuyConfig, FeatureBuyTier, GameData};
+use crate::data::{FeatureBuyConfig, FeatureBuyTier, GameData};
 use serde::{Deserialize, Serialize};
 
 /// Why a buy could not go through. Mirrors `SpinBlocked` deliberately: the two
@@ -69,44 +69,6 @@ pub fn price(tier: &FeatureBuyTier, total_bet: i64) -> i64 {
 /// The cheapest tier, for the button label on the main panel.
 pub fn cheapest(config: &FeatureBuyConfig, total_bet: i64) -> Option<i64> {
     config.tiers.iter().map(|tier| price(tier, total_bet)).min()
-}
-
-/// Validate the shipped menu. Called from `GameData::validate`, so a machine
-/// cannot ship a menu that is unbuyable or free.
-pub fn validate(config: &FeatureBuyConfig, data_cells: usize) -> Result<(), String> {
-    if config.tiers.is_empty() {
-        return Err("featurebuy.json declared no tiers".to_owned());
-    }
-    if config.target_rtp_permille == 0 {
-        return Err("a feature buy priced against a zero target RTP is free".to_owned());
-    }
-
-    let mut seen: Vec<&str> = Vec::new();
-    for tier in &config.tiers {
-        if tier.price_multiple <= 0 {
-            return Err(format!("tier '{}' must cost something", tier.id));
-        }
-        if seen.contains(&tier.id.as_str()) {
-            return Err(format!("duplicate feature buy tier '{}'", tier.id));
-        }
-        seen.push(&tier.id);
-
-        match tier.award {
-            FeatureAward::FreeSpins { spins: 0 } => {
-                return Err(format!("tier '{}' would award no free spins", tier.id));
-            }
-            // A Wrath opened with every cell already locked has nothing left to
-            // respin, and one opened with none is a different feature entirely.
-            FeatureAward::Wrath { coins } if coins == 0 || coins >= data_cells => {
-                return Err(format!(
-                    "tier '{}' opens {} of {} cells — leaves nothing to respin",
-                    tier.id, coins, data_cells
-                ));
-            }
-            _ => {}
-        }
-    }
-    Ok(())
 }
 
 /// The grid cells a bought Wrath round starts on.

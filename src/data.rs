@@ -13,8 +13,8 @@ mod load;
 mod machines;
 
 pub use features::{
-    BonusConfig, CascadeConfig, FeatureAward, FeatureBuyConfig, FeatureBuyTier, GambleConfig,
-    HoldSpinConfig, RiteDef, RiteKind, SeamConfig,
+    validate_feature_buy, BonusConfig, CascadeConfig, FeatureAward, FeatureBuyConfig,
+    FeatureBuyTier, GambleConfig, HoldSpinConfig, RiteDef, RiteKind, SeamConfig,
 };
 pub use machines::{machine_by_id, symbol_set, MachineDef, MACHINES};
 use std::collections::HashMap;
@@ -278,6 +278,47 @@ pub struct Jackpots {
     pub contribution_permille: i64,
     /// Ordered most frequent to least frequent.
     pub tiers: Vec<JackpotTier>,
+}
+
+/// Validate progressive jackpot data before it can become session state.
+///
+/// The state layer only accrues and rolls already-validated pots. Keeping these
+/// invariants beside the schema prevents the loader from depending on runtime
+/// behavior merely to decide whether a cabinet is well formed.
+pub fn validate_jackpots(jackpots: &Jackpots) -> Result<(), String> {
+    if jackpots.tiers.is_empty() {
+        return Err("jackpots.json declared no tiers".to_owned());
+    }
+    if jackpots.contribution_permille < 0 {
+        return Err("contribution_permille cannot be negative".to_owned());
+    }
+
+    let shares: i64 = jackpots.tiers.iter().map(|tier| tier.share_permille).sum();
+    if shares != 1000 {
+        return Err(format!(
+            "jackpot shares must total 1000 permille, got {}",
+            shares
+        ));
+    }
+
+    for tier in &jackpots.tiers {
+        if tier.odds_per_credit <= 0 {
+            return Err(format!("jackpot '{}' has non-positive odds", tier.id));
+        }
+        if tier.seed < 0 {
+            return Err(format!("jackpot '{}' has a negative seed", tier.id));
+        }
+    }
+
+    if jackpots
+        .tiers
+        .windows(2)
+        .any(|pair| pair[1].odds_per_credit <= pair[0].odds_per_credit)
+    {
+        return Err("jackpot tiers must be ordered from most to least frequent".to_owned());
+    }
+
+    Ok(())
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

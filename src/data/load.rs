@@ -184,7 +184,7 @@ impl GameData {
         if self.config.autospin_choices.contains(&0) {
             return Err("autospin choices must all be positive".to_owned());
         }
-        crate::state::jackpot::validate(&self.jackpots, &self.config)?;
+        validate_jackpots(&self.jackpots)?;
         if self.bonus.prizes_permille.is_empty() {
             return Err("bonus.json declared no prizes".to_owned());
         }
@@ -212,7 +212,7 @@ impl GameData {
         // nothing else would notice — the sim would simply measure a game
         // without it.
         let cells = self.config.reel_count * self.config.row_count;
-        crate::state::featurebuy::validate(&self.featurebuy, cells)?;
+        validate_feature_buy(&self.featurebuy, cells)?;
         if let Some(refine) = &self.freespins.refine {
             if refine.order.is_empty() {
                 return Err("freespins.refine declared no symbols to burn".to_owned());
@@ -318,12 +318,29 @@ impl GameData {
         // Two rungs is the minimum an enrichment can climb. A cabinet whose
         // paytable left only one payable symbol would make the rite a no-op,
         // and it would look exactly like a feature that never triggered.
-        if crate::engine::seam::ladder(self).len() < 2 {
+        if self.seam_ladder_len() < 2 {
             return Err(
                 "a seam needs at least two payable symbols to have a ladder to climb".to_owned(),
             );
         }
         Ok(())
+    }
+}
+
+impl GameData {
+    /// Count the payable, non-special symbols available to a seam. This is a
+    /// data invariant: the loader only needs to know that enrichment has at
+    /// least two rungs, not how the engine later works a seam.
+    fn seam_ladder_len(&self) -> usize {
+        self.symbols
+            .iter()
+            .filter(|(index, _)| {
+                !self.symbols.is_wild(*index)
+                    && !self.symbols.is_scatter(*index)
+                    && Some(*index) != self.symbols.hoard()
+                    && self.symbols.pay(*index, MAX_RUN) > 0
+            })
+            .count()
     }
 }
 

@@ -161,6 +161,45 @@ pub struct FeatureBuyTier {
     pub price_multiple: i64,
 }
 
+/// Validate the feature-buy menu as game data rather than state behavior.
+///
+/// A menu is part of a cabinet's immutable definition: accepting a free tier
+/// or a Wrath tier that fills its board would make the loaded cabinet
+/// semantically invalid before a session ever exists.
+pub fn validate_feature_buy(config: &FeatureBuyConfig, data_cells: usize) -> Result<(), String> {
+    if config.tiers.is_empty() {
+        return Err("featurebuy.json declared no tiers".to_owned());
+    }
+    if config.target_rtp_permille == 0 {
+        return Err("a feature buy priced against a zero target RTP is free".to_owned());
+    }
+
+    let mut seen: Vec<&str> = Vec::new();
+    for tier in &config.tiers {
+        if tier.price_multiple <= 0 {
+            return Err(format!("tier '{}' must cost something", tier.id));
+        }
+        if seen.contains(&tier.id.as_str()) {
+            return Err(format!("duplicate feature buy tier '{}'", tier.id));
+        }
+        seen.push(&tier.id);
+
+        match tier.award {
+            FeatureAward::FreeSpins { spins: 0 } => {
+                return Err(format!("tier '{}' would award no free spins", tier.id));
+            }
+            FeatureAward::Wrath { coins } if coins == 0 || coins >= data_cells => {
+                return Err(format!(
+                    "tier '{}' opens {} of {} cells — leaves nothing to respin",
+                    tier.id, coins, data_cells
+                ));
+            }
+            _ => {}
+        }
+    }
+    Ok(())
+}
+
 /// What a tier hands over once it is paid for.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]

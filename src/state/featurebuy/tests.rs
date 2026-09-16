@@ -1,4 +1,5 @@
 use super::*;
+use crate::data::FeatureAward;
 
 fn config() -> FeatureBuyConfig {
     GameData::load().unwrap().featurebuy
@@ -8,7 +9,7 @@ fn config() -> FeatureBuyConfig {
 fn the_shipped_menu_validates() {
     let data = GameData::load().unwrap();
     let cells = data.config.reel_count * data.config.row_count;
-    assert!(validate(&data.featurebuy, cells).is_ok());
+    assert!(crate::data::validate_feature_buy(&data.featurebuy, cells).is_ok());
 }
 
 #[test]
@@ -17,7 +18,7 @@ fn a_free_tier_is_rejected() {
     // costs nothing returns infinite RTP and the reels become pointless.
     let mut config = config();
     config.tiers[0].price_multiple = 0;
-    assert!(validate(&config, 15).is_err());
+    assert!(crate::data::validate_feature_buy(&config, 15).is_err());
 }
 
 #[test]
@@ -28,7 +29,7 @@ fn a_wrath_tier_that_fills_the_board_is_rejected() {
             *coins = 15;
         }
     }
-    assert!(validate(&config, 15).is_err());
+    assert!(crate::data::validate_feature_buy(&config, 15).is_err());
 }
 
 #[test]
@@ -36,7 +37,7 @@ fn duplicate_tier_ids_are_rejected() {
     let mut config = config();
     let first = config.tiers[0].clone();
     config.tiers.push(first);
-    assert!(validate(&config, 15).is_err());
+    assert!(crate::data::validate_feature_buy(&config, 15).is_err());
 }
 
 #[test]

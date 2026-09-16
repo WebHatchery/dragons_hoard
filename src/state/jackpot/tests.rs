@@ -9,7 +9,7 @@ fn data() -> GameData {
 #[test]
 fn the_shipped_config_is_valid() {
     let data = data();
-    validate(&data.jackpots, &data.config).unwrap();
+    crate::data::validate_jackpots(&data.jackpots).unwrap();
 }
 
 #[test]

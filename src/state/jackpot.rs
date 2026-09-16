@@ -27,7 +27,7 @@
 //! Pots accrue in **milli-credits** so a 20-credit spin still moves the smallest
 //! tier. Nothing here uses floating point (§12).
 
-use crate::data::{GameConfig, Jackpots};
+use crate::data::Jackpots;
 use serde::{Deserialize, Serialize};
 
 /// Milli-credits per credit.
@@ -162,44 +162,6 @@ pub fn ladder(jackpots: &Jackpots, state: &JackpotState) -> Vec<(String, i64)> {
         .enumerate()
         .map(|(index, tier)| (tier.name.clone(), state.value(jackpots, index)))
         .collect()
-}
-
-/// Jackpots are a play-money flourish; this keeps the config honest about it.
-pub fn validate(jackpots: &Jackpots, _config: &GameConfig) -> Result<(), String> {
-    if jackpots.tiers.is_empty() {
-        return Err("jackpots.json declared no tiers".to_owned());
-    }
-    if jackpots.contribution_permille < 0 {
-        return Err("contribution_permille cannot be negative".to_owned());
-    }
-
-    let shares: i64 = jackpots.tiers.iter().map(|tier| tier.share_permille).sum();
-    if shares != 1000 {
-        return Err(format!(
-            "jackpot shares must total 1000 permille, got {}",
-            shares
-        ));
-    }
-
-    for tier in &jackpots.tiers {
-        if tier.odds_per_credit <= 0 {
-            return Err(format!("jackpot '{}' has non-positive odds", tier.id));
-        }
-        if tier.seed < 0 {
-            return Err(format!("jackpot '{}' has a negative seed", tier.id));
-        }
-    }
-
-    // Richest tier last keeps `roll`'s "check the big one first" reversal honest.
-    if jackpots
-        .tiers
-        .windows(2)
-        .any(|pair| pair[1].odds_per_credit <= pair[0].odds_per_credit)
-    {
-        return Err("jackpot tiers must be ordered from most to least frequent".to_owned());
-    }
-
-    Ok(())
 }
 
 #[cfg(test)]
