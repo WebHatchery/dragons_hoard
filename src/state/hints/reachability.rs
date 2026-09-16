@@ -1,9 +1,10 @@
 use super::*;
 
 fn shipped() -> Vec<HintDef> {
-    serde_json::from_str(macroquad_toolkit::include_json_str!(
-        "../../../assets/data/hints.json"
-    ))
+    macroquad_toolkit::data_loader::parse_json_labeled(
+        "assets/data/hints.json",
+        macroquad_toolkit::include_json_str!("../../../assets/data/hints.json"),
+    )
     .unwrap()
 }
 

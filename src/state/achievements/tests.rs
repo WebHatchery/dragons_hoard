@@ -3,7 +3,11 @@ use crate::data::GameData;
 use crate::state::GameSession;
 
 fn book() -> AchievementBook {
-    let defs: Vec<AchievementDef> = serde_json::from_str(ACHIEVEMENTS_JSON).unwrap();
+    let defs: Vec<AchievementDef> = macroquad_toolkit::data_loader::parse_json_labeled(
+        "assets/data/achievements.json",
+        ACHIEVEMENTS_JSON,
+    )
+    .unwrap();
     validate(&defs).unwrap();
     let unlocked = Achievements::from_definitions(
         defs.iter()
@@ -25,7 +29,11 @@ fn a_spin(session: &mut GameSession, data: &GameData) -> SpinResolution {
 
 #[test]
 fn the_shipped_definitions_are_valid() {
-    let defs: Vec<AchievementDef> = serde_json::from_str(ACHIEVEMENTS_JSON).unwrap();
+    let defs: Vec<AchievementDef> = macroquad_toolkit::data_loader::parse_json_labeled(
+        "assets/data/achievements.json",
+        ACHIEVEMENTS_JSON,
+    )
+    .unwrap();
     validate(&defs).unwrap();
     assert!(
         defs.len() >= 8,

@@ -18,7 +18,8 @@ fn busy_player(spins: i64, hatches: i64) -> AchievementProgress {
 }
 
 fn defs() -> Vec<HintDef> {
-    serde_json::from_str(HINTS_JSON).unwrap()
+    macroquad_toolkit::data_loader::parse_json_labeled("assets/data/hints.json", HINTS_JSON)
+        .unwrap()
 }
 
 #[test]
