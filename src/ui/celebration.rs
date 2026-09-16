@@ -2,14 +2,22 @@
 
 use crate::data::PresentationConfig;
 use crate::state::celebration::{Celebration, CelebrationKind};
-use crate::ui::{logical_width, palette, LOGICAL_HEIGHT};
+use crate::ui::nav::Nav;
+use crate::ui::{logical_width, palette, virtual_button, ButtonTone, LOGICAL_HEIGHT};
 use macroquad::prelude::*;
-use macroquad_toolkit::ui::{draw_surface, draw_text_centered_in_box_ex, SurfaceStyle, TextStyle};
+use macroquad_toolkit::ui::{
+    draw_surface, draw_text_centered_in_box_ex, Pointer, SurfaceStyle, TextStyle,
+};
 
 const CARD_WIDTH: f32 = 720.0;
 const CARD_HEIGHT: f32 = 300.0;
 
-pub fn draw(celebration: &Celebration, text: &PresentationConfig) {
+pub fn draw(
+    celebration: &Celebration,
+    text: &PresentationConfig,
+    pointer: Pointer,
+    nav: &mut Nav,
+) -> bool {
     let alpha = celebration.alpha().clamp(0.0, 1.0);
     let scale = celebration.scale();
     let kind = celebration.kind();
@@ -63,14 +71,19 @@ pub fn draw(celebration: &Celebration, text: &PresentationConfig) {
         40.0 * scale,
         TextStyle::new(19.0 * scale, fade(palette::text(), alpha)),
     );
-    draw_text_centered_in_box_ex(
+    virtual_button(
+        Rect::new(
+            card.x + card.w * 0.25,
+            card.bottom() - 54.0 * scale,
+            card.w * 0.5,
+            40.0 * scale,
+        ),
         &text.celebration.continue_prompt,
-        card.x,
-        card.bottom() - 44.0 * scale,
-        card.w,
-        30.0 * scale,
-        TextStyle::new(14.0 * scale, fade(palette::text_dim(), alpha * 0.8)),
-    );
+        true,
+        ButtonTone::Secondary,
+        pointer,
+        nav,
+    )
 }
 
 /// Where a card's particles should burst from.

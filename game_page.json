@@ -10,11 +10,12 @@
     "This is a play-money arcade slot. Credits are a local score — there are no purchases, no real currency, and nothing of value is wagered."
   ],
   "controls": [
-    { "key": "Space / Enter", "desc": "Spin the reels" },
+    { "key": "Visible buttons", "desc": "Every action is available on-screen for mouse or touch" },
+    { "key": "Space", "desc": "Spin the reels; on a celebration card it dismisses the card" },
+    { "key": "Enter", "desc": "Activate the focused visible control inside a panel" },
     { "key": "Up / Down", "desc": "Raise or lower the line bet" },
-    { "key": "M", "desc": "Max bet" },
-    { "key": "P", "desc": "Show the paytable" },
-    { "key": "S / L", "desc": "Save / load your hoard" }
+    { "key": "M / P", "desc": "Max bet / show the paytable" },
+    { "key": "S / K", "desc": "Save / load your hoard; visible Save and Load buttons are also available" }
   ],
   "details": [
     { "label": "Genre", "value": "Casino / Slot (play money)" },

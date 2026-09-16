@@ -323,12 +323,12 @@ pub fn draw_game_ui(ctx: UiContext<'_>, nav: &mut Nav) -> Vec<UiAction> {
     // report that would have said it was suppressed for eight sections
     // (§5.77), and the moment it could speak it named 3,780 square pixels of
     // overlap between the session-limit rows and the rules button underneath.
-    nav.set_inert(ctx.overlay_open);
+    nav.set_inert(ctx.overlay_open || ctx.session.celebrations.is_active());
     chrome::draw_header(&ctx, pointer, &mut actions, nav);
     reels::draw_reels(ctx.data, ctx.session, ctx.shake, ctx.ui_time);
     wager::draw_control_panel(&ctx, pointer, &mut actions, nav);
     chrome::draw_footer(&ctx);
-    nav.set_inert(false);
+    nav.set_inert(ctx.session.celebrations.is_active());
 
     if ctx.show_paytable {
         paytable::draw(&ctx, pointer, &mut actions, nav);
@@ -485,10 +485,11 @@ pub fn draw_game_ui(ctx: UiContext<'_>, nav: &mut Nav) -> Vec<UiAction> {
 
     // The card sits over everything, including the paytable.
     if let Some(card) = ctx.session.celebrations.active() {
-        celebration::draw(card, &ctx.data.presentation);
-        if is_mouse_button_released(MouseButton::Left) {
+        nav.set_inert(false);
+        if celebration::draw(card, &ctx.data.presentation, pointer, nav) {
             actions.push(UiAction::DismissCelebration);
         }
+        nav.set_inert(true);
     }
 
     // Over everything, card included. This one is meant to interrupt (§5.30),
@@ -520,7 +521,7 @@ pub fn close_button(panel: Rect) -> Rect {
     Rect::new(panel.right() - 128.0, panel.y + 2.0, 108.0, 44.0)
 }
 
-fn virtual_button(
+pub(crate) fn virtual_button(
     rect: Rect,
     text: &str,
     enabled: bool,

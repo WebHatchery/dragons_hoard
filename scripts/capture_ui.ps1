@@ -6,8 +6,9 @@
     Thin wrapper around the shared macroquad-toolkit capture script. Builds the
     debug exe and drives it through the env-var capture hook
     (DRAGONS_HOARD_CAPTURE_*) provided by macroquad_toolkit::capture in
-    src/main.rs. The game boots straight into the idle reel screen, so the
-    scene name currently only picks the output filename.
+    src/main.rs. Each scene is passed to the game capture hook, which seeds the
+    requested deterministic state before rendering. The scene name also forms
+    the output filename.
 
 .EXAMPLE
     ./scripts/capture_ui.ps1
