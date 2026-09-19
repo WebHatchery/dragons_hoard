@@ -123,8 +123,9 @@ multiplier of that pot, not of the bet at hatch time.
   Symbol frequency on each strip *is* the math — Dragon/Treasure appear few
   times, coins many times.
 - **Hit frequency:** aim ~30–40% of spins return something (mostly small).
-- **Verification:** a `#[cfg(test)]` Monte-Carlo test spins the engine with a
-  fixed seed and asserts measured RTP lands within a tolerance band of target.
+- **Verification:** a Monte-Carlo integration test under `tests/` exercises
+  the public engine API with a fixed seed and asserts measured RTP lands within
+  a tolerance band of target.
   The sim must run the **full engine** — Free Spins sub-loops (multiplier,
   expanding wilds, retriggers), egg accrual, and Hatch payouts — because those
   features contribute real EV; a base-game-only sim would understate RTP.
@@ -622,8 +623,8 @@ answers printed: 46× and 92× rather than 54× and 108×, because tripled free 
 over 243 ways are worth less per unit of a larger stake. That is the system built
 last iteration doing exactly the job it was built for, on data it had never seen.
 
-**Testing a ways win in isolation is harder than a line.** §11 records that no
-filler symbol isolates a single payline; on ways it is worse, because any filler
+**Testing a ways win in isolation is harder than a line.** No filler symbol
+isolates a single payline; on ways it is worse, because any filler
 forms its own genuine run — that *is* the mechanic. The all-wild test walls its
 run off with a column of scatters, the only symbol that cannot be substituted for
 and cannot be run into.
@@ -1589,9 +1590,9 @@ scatter pays from anywhere, so a round that awards free spins has **always
 already paid something**. There is no such thing here as a round that pays only
 inside its feature.
 
-The module is `#[cfg(test)]`, like the parts of `sim` it is checked against. It
-exists to prove the shipped game pays what the published figures say, not to be
-part of the shipped game.
+The conservation harness belongs under `tests/` and exercises the public
+engine and session APIs. Test-only helpers stay with that harness; production
+`src/` must not declare test modules.
 
 ### 5.34 The game's own words and numbers (post-v1)
 
@@ -4521,7 +4522,7 @@ every `.rs` under the **800-line hard limit**; split by responsibility.
 | `src/ui/settings.rs` | The settings overlay. |
 | `src/ui/paytable.rs` | The paytable overlay (split out of `ui.rs` at the size limit). |
 | `src/ui/machines.rs` | The machine picker (§5.8). |
-| `src/state/tests.rs` | Session integration tests: spin lifecycle, features, autospin, cards. Split at the size limit into `tests/{jackpots,preferences,machines}.rs`. |
+| `tests/legacy.rs` and `tests/legacy/src/state/` | Public-API session regression suites for spin lifecycle, features, autospin, and cards; organize by responsibility while reviewing the feature target in §11. |
 | `src/ui/celebration.rs` | Full-screen card rendering. |
 | `src/ui/symbols.rs` | Procedural symbol art (§7.1). |
 | `src/audio.rs` | WAV synthesis + the sound bank (§7.1). |
@@ -4698,267 +4699,31 @@ and a Project Roost deployment record. Verified live — see §15.
 
 ## 11. Testing Strategy
 
-- **Unit (`evaluate.rs`, in `engine/evaluate/tests.rs`):** line rules are asserted
-  against `best_line_result` **directly, not through a grid**. With 20 weaving
-  paylines there is no filler symbol that isolates a single line — whatever you
-  pick forms its own runs on the zig-zags, so a grid fixture cannot assert
-  "exactly one win" without re-encoding the payline set. Covered: 3-of-a-kind
-  pays, 2 does not, runs must start on reel 1, longest-run wins, wild
-  substitution, wild-led lines pay the **best** interpretation (`W W W Chest
-  Chest` → 5× Chest, not 3× Wild), all-wild pays the wild value, and wilds never
-  reach through or stand in for the scatter. Grid-level tests cover
-  scatter-anywhere, egg counting, the free-spin multiplier and wild expansion.
-- **Unit (`reels.rs`):** fixed-seed RNG → deterministic stop indices → expected grid.
-- **Property/Monte-Carlo:** N-spin RTP within tolerance of target; hit-frequency sane;
-  balance is conservative (credited == evaluated).
-- **State machine (`state.rs`):** spin can't start with `balance < total_bet`;
-  a second Spin mid-spin is refused without taking another stake; nothing is
-  credited until the reels land; the reels come to rest on exactly the grid that
-  was evaluated; reels report stopping left-to-right *before* the outcome is
-  applied; Free Spins cost 0, chain themselves via `AutoSpinReady`, and stop
-  asking once the feature is spent; retrigger adds spins; Hoard resets at
-  capacity.
-- **Celebrations (`state/celebration.rs`):** the first card announces itself
-  (the bug that would otherwise cost most sequences their particles); cards
-  announce exactly once each and in order; skipping never leaves a frame with
-  no card showing; the backlog is bounded so a million-spin headless run cannot
-  grow it; a card fades in, holds solid, fades out, and even the longest card
-  reaches full opacity within `FADE_TIME`.
-- **Autospin (`state.rs`, `state/autospin.rs`):** a run counts down and cannot
-  go negative; it never survives a feature trigger, a hatch or a big win; it
-  cannot start on top of a committed stake; a free spin is not billed to it.
-- **Cards hold the game (`state/tests.rs`):** a showing card stops the reels
-  advancing and the spin being counted; a spin is refused while a card is up,
-  without taking a stake; ending the feature raises a summary card carrying
-  every spin it awarded.
-- **Symbol art (`ui/symbols.rs`):** every symbol in `symbols.json` names art the
-  renderer actually has; an unknown name reports rather than draws; shades stay
-  inside 0..1 even at full win-pulse brightness; a lit symbol is brighter than a
-  resting one; the canvas maps normalised coordinates onto the cell and sizes
-  from the shorter axis so circles do not become ellipses.
-- **Audio (`audio.rs`):** the WAV header is well-formed (PCM, mono, correct rate
-  and bit depth); the declared RIFF and data sizes match the real payload; every
-  effect renders audibly (peak > 1000); **nothing clips** — if the mix starts
-  hitting the limiter this test fails rather than shipping a crunchy sound;
-  synthesis is deterministic; envelopes open and decay to silence; pitch glides
-  are geometric, so the midpoint is the geometric mean.
-- **Jackpots (`state/jackpot.rs`, `state/tests.rs`):** the shipped config
-  validates (shares total 1000‰, tiers ordered, odds positive); a fresh pot shows
-  its seed; every stake feeds every pot and **a minimum stake still moves the
-  smallest tier** (the reason for milli-credits); winning a tier resets only that
-  tier; the trigger is bet-fair; **rolling consumes the same randomness whether
-  or not it hits**, so a near-miss cannot desync the RNG stream and break
-  save/reload determinism; an older save with fewer tiers is topped up rather
-  than rejected. End to end: a free spin neither feeds nor draws a pot, a win is
-  credited and raises its own card while suppressing the big-win one, autospin
-  stops, and the pots survive a reload.
-- **Machines (`engine/sim.rs`, `state/tests.rs`):** **every** machine in the
-  catalog loads, validates, and lands in the RTP band — at 20k spins in CI and
-  over a million per machine in the ignored long run. The machines must differ
-  in hit frequency (a reskin fails), must not share a save slot (sharing one
-  would silently overwrite a balance and hoard), must not share a symbol set,
-  and an unknown machine id falls back to the first rather than failing.
-- **Hints (`state/hints.rs`):** the shipped set validates, and a hint that could
-  never appear, one that retires before it appears, or a duplicate id is
-  rejected; **a fresh player is told nothing**, since every hint waits for them
-  to have done something; a hint appears once its condition is met and never
-  returns once dismissed; **acting on a hint retires it without dismissing**,
-  which is what stops a player being told about something they already found;
-  only one shows at a time and it is the first in file order; and dismissals
-  round-trip.
-- **Keyboard navigation (`ui/nav.rs`):** focus starts on the first control and
-  **exactly one is ever focused**; it wraps in both directions; activating fires
-  the focused control and nothing else; **a disabled control is skipped
-  entirely**; focus resets when a panel opens or closes; and a frame with no
-  controls at all leaves it somewhere valid rather than out of range.
-- **The rasteriser (`macroquad-toolkit/src/paint.rs`):** a filled rectangle
-  covers exactly its area, a triangle about half its bounding box, a circle
-  π/4 of one; **winding order does not matter**, since art is rarely consistent
-  about it and a rasteriser that cared would silently drop half the facets; alpha
-  blends rather than replaces; drawing outside the buffer is ignored rather than
-  panicking; **the same drawing fingerprints the same and a changed one does
-  not**; an empty buffer still has a fingerprint; and silhouette difference
-  ignores colour where monochrome difference does not.
-- **Art legibility (`ui/symbols/legible.rs`):** every symbol draws something at
-  the smallest cell the game produces and does not fill it edge to edge; **no
-  two symbols look alike in monochrome at that size**; the three gem cuts are
-  distinct in *silhouette*, which is the §5.24 claim stated as a property; and
-  art scales rather than shrinking into a corner, which would catch a routine
-  written in absolute units by mistake.
-- **Colour legibility (`ui/legibility.rs`):** **no two symbols sharing a shape
-  are too close under any vision** — the check that found Frost Wyrm's glacier
-  and amethyst 0.061 apart under deuteranopia; the simulation leaves greys
-  untouched, since a device that tinted them would skew every measurement it
-  made; and red and green visibly collapse for a deuteranope, which is the
-  sanity check on the instrument itself.
-- **Strip motion (`macroquad-toolkit/src/strip.rs`):** a strip lands exactly on
-  its target from every index and from a ragged frame rate; **every strip travels
-  a whole number of revolutions**; the bounce never changes where it stops; a
-  strip that does not move still turns a full revolution; a held strip takes
-  longer and still lands right; strips report stopping once each in order;
-  **no time scale drops a stop**; speed falls to nothing as a strip settles; and
-  the blur offsets straddle the position and sum to nothing.
-- **Buy-tier profiles (`state/profile.rs`):** every tier on every cabinet
-  profiles near its price, since the tier profiler and `simulate_buys` are two
-  loops over the same purchase; **a fairly priced buy still loses most of the
-  time**, which is the figure the panel exists to show; the bands account for
-  every buy; each tier is measured on its own stream; and profiling a tier does
-  not touch the player's session.
-- **Refining free spins (`state/tests/refine.rs`):** the burn deepens one symbol
-  per free spin and stops at the length of the order; **a refined strip really
-  loses the symbol**, or the feature would be N ordinary spins with a longer
-  banner; a strip never burns down to nothing; nothing is burned outside the
-  feature; **a retrigger does not take the reels back**; a cabinet without a
-  refine order is untouched, so the other four behave exactly as they did; and
-  refining never burns the wild, the scatter or the egg.
-- **Synthesis (`macroquad-toolkit/src/synth.rs`):** the container is a
-  well-formed WAV and its declared sizes match the real payload; synthesis is
-  deterministic; **a different seed changes only the noise**, so one effect can
-  be tuned without disturbing the rest; nothing clips; an envelope opens and
-  decays to silence; a glide is geometric; an effect is as long as its last
-  voice; and an empty effect still renders a file a player would accept.
-- **This game's sound set (`audio.rs`):** every effect's length and checksum is
-  **pinned against a baseline**, so a change to the mix has to be a decision
-  rather than a side effect — it is what proved the move into the toolkit altered
-  nothing, and what caught the three deliberate changes afterwards; the baseline
-  covers every effect, so a new one cannot slip past it; every effect is audible
-  and none clip; every effect decays to silence, since one ending mid-tone would
-  click on every play; and **`CoinLock` is short enough to repeat**.
-- **The Ledger (`state/ledger.rs`, `state/tests/ledger.rs`):** a fresh ledger
-  knows nothing; recording accumulates rounds, stake, return, hits, features and
-  the best round; each cabinet keeps its own record; **a round with no stake is
-  ignored**, so a stray free spin cannot be counted as a round the player never
-  paid for; the bands account for every round; the margin shrinks as the sample
-  grows and is meaningless at one round; and the whole thing round-trips through
-  its own key. In a live session: a round opens on a paid spin and closes on the
-  next; **a free spin never opens a round of its own**; a round's credits include
-  the free spins it bought; every closed round carries the stake that paid for
-  it; a ledger built from real play matches the rounds it saw; and a Feature Buy
-  does not leave a half-formed round behind.
-- **Machine profiles (`state/profile.rs`):** every cabinet profiles to a
-  plausible hit frequency and volatility; the bands account for every round; the
-  profiler and the batch sim agree, since they are two loops over the same
-  engine; **profiling does not touch the player's session** — two identical
-  sessions stay in lockstep across a running profiler; the same cabinet profiles
-  identically twice, because a figure that wobbled between viewings would read as
-  a fault; and the catalog spans more than one volatility, or the picker would be
-  advertising a choice that does not exist.
-- **The RNG's one dead seed (`macroquad-toolkit/src/rng.rs`):** the seed that
-  zeroes the xorshift state still generates; no seed in a swept range produces a
-  dead stream; and **every ordinary seed's first draw is unchanged** by the
-  guard, so no existing game's determinism moved.
-- **The Dragon's Gamble (`state/gamble.rs`, `engine/sim.rs`, `state/tests/gamble.rs`):**
-  a right guess doubles and a wrong one ends the round; **the scale is fair** over
-  200,000 flips and **a gamble returns what it risks** when every round is pushed
-  to the end of the ladder; half-gambling is fair too and banks half out of reach;
-  the odd credit goes to the player; the ladder stops at its cap and a stake over
-  the ceiling cannot be gambled again; a finished round cannot be gambled and
-  cannot be taken twice; half is refused where the machine forbids it; **a flip
-  consumes the same randomness whether it wins or loses**; and one seed replays
-  one round. In the sim: **gambling everything measures the same RTP as gambling
-  nothing** — the claim the whole feature rests on. End to end: staking takes the
-  win back out of the balance; taking without flipping returns exactly the win; a
-  won flip doubles what reaches the balance and a lost one leaves nothing and
-  closes the round; nothing is offered without a win, during free spins, or during
-  an autospin run; an open gamble holds the reels and refuses a spin without
-  taking a stake; and a gamble is never written to the save.
-- **Cascades (`engine/cascade.rs`, `state/tests/cascade.rs`):** a chain always
-  has at least the landing grid; it **ends on a grid that cleared nothing** (one
-  that stopped mid-collapse would leave holes on screen); every step but the last
-  actually paid; the multiplier follows the ladder and climbs; **a chain is a
-  function of the stops alone** — the invariant the design rests on; survivors
-  fall and keep their order; a refill comes from the strip above the stop; a
-  chain cannot run forever; and a step pays its wins times its multiplier. End to
-  end: a chain is revealed grid by grid and **nothing is credited until it
-  finishes**; the board comes to rest on the last grid; the animated and headless
-  paths agree on a cascading machine; the credit is the sum of the steps; a
-  non-cascading cabinet still produces exactly one step so consumers never
-  branch; and a spin mid-chain never reads as settled.
-- **Ways evaluation (`engine/evaluate/ways.rs`):** one of each across three reels
-  is a single way; ways multiply across reels and the payout multiplies with
-  them; a run must start on reel 1; **several symbols pay at once** (the mechanic
-  a payline machine cannot express); wilds substitute and the genuine symbol
-  still pays; **an all-wild run pays only as the wild** and nothing else; a
-  wild-led run with real symbols behind it pays both; wilds never substitute for
-  the scatter; a full grid of one symbol pays all 243; and every cell a win
-  reports really holds that symbol or a wild, since those cells drive the
-  highlight.
-- **Two win models in the catalog (`state/tests/machines.rs`):** the catalog
-  contains both a lines machine and a ways machine — otherwise "multiple
-  machines" is one game tuned twice — and each declares exactly what its model
-  needs: paylines and one bet unit per line, or no paylines and explicit
-  `bet_units`.
-- **The Feature Buy (`state/featurebuy.rs`, `engine/sim.rs`, `state/tests/featurebuy.rs`):**
-  the shipped menu validates and a **free tier is rejected** (it would return
-  infinite RTP and make the reels pointless), as are duplicate ids and a Wrath
-  tier that opens every cell; price scales with the stake; an opening board
-  spreads its coins and never repeats a cell. In the sim: **every tier returns
-  its machine's RTP** — the assertion the whole design rests on — at a coarse
-  band in CI and 200,000 buys per tier in the ignored run, which prints the fair
-  price for any tier that has drifted; a buy feeds every pot without rolling for
-  one; the price charged is the price the menu quoted. End to end: bought free
-  spins run at the stake that paid for them and **still cost nothing to play**;
-  a bought Wrath opens with its coins locked and room left to respin; a buy with
-  too little credit, during a feature, mid-spin, or for a tier that is not on the
-  menu takes nothing; the price counts as turnover; and `can_buy` agrees with
-  `buy_feature` across every tier at four balances.
-- **The Dragon's Wrath (`state/holdspin.rs`, `state/tests/holdspin.rs`):** the
-  triggering eggs open already locked; every locked coin holds a value from the
-  table; **a coin restores the full respin allowance** and a dry board runs out;
-  a full board pays its bonus on top; respinning a finished round is ignored;
-  auto-play terminates even on a hand-edited config that never runs dry; the same
-  seed replays the same round; a bigger stake pays proportionally more; the coin
-  table's weighted mean matches what rolling it produces; and a 20,000-round run
-  holds the feature to its designed 20–80× band. End to end: a clutch of eggs
-  opens a round covering the whole reel window, an open round holds the game and
-  refuses a spin without taking a stake, the round advances on its own beat and
-  credits exactly once, waking the dragon stops an autospin run, `spin()` resolves
-  its own round so the sim never stalls, and a round is deliberately not saved
-  while its counter is.
-- **The Vault Pick (`state/bonus.rs`, `state/tests/bonus.rs`):** the board holds
-  exactly the configured blanks; **nothing is visible before it is picked** (the
-  renderer only ever sees `revealed_cell`); a round ends on the last blank and
-  not before; re-picking a chest, or picking after the round is over, costs
-  nothing; auto-play always terminates; the same seed deals the same board; a
-  bigger pot pays proportionally more; a hand-edited config with more blanks than
-  cells still deals a playable board. End to end: filling the hoard deals a board
-  instead of paying, an open board holds the game and refuses a spin without
-  taking a stake, hand-picking and auto-play reach the same total, `spin()`
-  resolves its own board so the sim never stalls, and **boards pay the permille
-  the closed form predicts** — the assertion that the swap did not move the money.
-- **Achievements (`state/achievements.rs`):** the shipped definitions validate;
-  a zero threshold is rejected (it would unlock before the player did anything)
-  and so are duplicate ids; nothing is unlocked before playing; the first spin
-  earns the first achievement and **only ever earns it once** (otherwise the
-  toast repeats every spin); free spins count separately from paid ones; the
-  balance condition is a high-water mark; progress accumulates across machines;
-  a machine counts once however often it is played; the save shape round-trips
-  and a save predating an achievement still loads.
-- **Preferences (`state/preferences.rs`, `state/tests.rs`):** defaults are
-  playable; both cycles reach every option and wrap; volume steps in tenths,
-  clamps, and **can reach true silence**; the motion toggles are independent; a
-  choice that no longer exists in the JSON falls back to the configured default
-  rather than stranding; a partial file fills in the rest; a raw
-  `Preferences::default()` is *not* the resolved default (the regression that
-  made the panel and the Auto button both read 10 instead of 25). End to end:
-  Turbo lands on the same grid and balance as Normal in fewer frames, every
-  speed still reports all five reel stops in order, and a save round-trip does
-  not carry preferences.
-- **Spin animation (`state/spin.rs`):** a reel lands exactly on its target stop
-  from a fixed *and* a deliberately ragged frame sequence; a reel whose stop is
-  unchanged still spins a full revolution; reels announce their stop exactly
-  once each, in order; the payout counter starts at 0, ends on target, and
-  reports finishing exactly once.
-- **Save round-trip:** save → load → identical session; legacy migration test (reuse
-  template's pattern).
-- **Visual:** `.\scripts\capture_ui.ps1 -Scenes idle,spin,win,freespins,paytable,feature_card,hatch,autospin`
-  writes one PNG per scene into `docs/verification/`. `Game::begin_capture_scene`
-  reseeds from a fixed seed and fast-forwards headlessly, so each capture is
-  reproducible run to run. The card scenes spin until the *last* spin raised the
-  card being photographed, clearing earlier ones as they go.
-- **CI:** the shared `rust-ci.yml` (fmt + clippy -D warnings + test + wasm build) is
-  the gate; run `cargo clippy` + `cargo test` for tight iteration, full `publish.ps1`
-  for end-to-end validation.
+Follow `CODE_STANDARDS.md` §11. Keep all tests and test-only helpers in the
+crate's `tests/` directory, exercising the library's intentional public APIs.
+The migrated `tests/legacy.rs` harness loads suites under `tests/legacy/src/`;
+that directory is test infrastructure, not production `src/`.
+
+Prioritize simple rule-based tests for payout calculations, seeded outcomes,
+state transitions, JSON validation, and save compatibility. Strongly target no
+more than five cases per cohesive feature across every file and test target.
+Use table-driven assertions for related inputs, preserve useful regressions,
+and explain why distinct coverage needs more than five cases before committing.
+Existing suite size is not a blanket exception from this review.
+
+Keep setup small. A payline rule can be checked with the line evaluator;
+whole-engine simulations protect combined feature returns and conservation.
+Neither technique requires importing private source files into a test target.
+
+UI and rendering generally do not need unit tests. Use the capture workflow
+and browser interaction checks for layout, art, legibility, and touch controls.
+Retain existing focused regressions where they protect distinct behavior.
+Verification screenshots belong directly in `docs/verification/` and replace
+previous captures of the same screen or state.
+
+Run `cargo test` for the game suites and `cargo clippy` during iteration.
+After meaningful game changes, run `.\publish.ps1` without parameters as
+required by the shared standards.
 
 ---
 
@@ -4974,7 +4739,7 @@ and a Project Roost deployment record. Verified live — see §15.
 | A second Spin press mid-spin taking a second stake | `begin_spin` refuses with `SpinBlocked::Busy` before touching the balance; covered by a test that asserts the balance is untouched. |
 | A feature firing unseen underneath its own auto-chain | A showing celebration card holds the reels, the payout and the auto-chain (§8.2.1); tested. Autospin also stops on every notable outcome. |
 | Autospin quietly draining the balance | It stops on features, hatches, big wins and an empty balance, each with its own message; the bet ladder is locked for the run. |
-| Files growing past 800 lines | Five splits so far: `state.rs` into siblings, `ui.rs`'s paytable into `ui/paytable.rs`, `state/tests.rs` (793) into `tests/{jackpots,preferences,machines}.rs`, `game.rs` (779) into `game/capture_scenes.rs`, and `state.rs` (812) into `state/features.rs`. **`state.rs` (742) is still the one to watch.** |
+| Files growing past 800 lines | Split cohesive responsibilities before reaching the 800-total-physical-line limit. Keep tests and test-only helpers under the crate-level `tests/` directory; splitting suites does not change their feature target. |
 | A presentation bug hiding behind uniform test data | Reels 2 and 4 landed twenty symbols from their stop for five iterations because every landing test used an even reel index (§5.11). Tests over an indexed family must sweep the whole family, not a representative member. |
 | A feature the second machine can never see | The Dragon's Wrath fired 23 times per million spins on Frost Wyrm under a shared config, because the trigger reads strips that differ per cabinet (§5.12). Anything triggered off the reels must be per-machine data and must be measured on **every** machine, not just the one that boots. |
 | A bought feature priced away from its value | `feature_buy_prices_are_exact` buys every tier 200,000 times and asserts the return matches the machine (§5.13). Mispricing downward makes never spinning the optimal strategy, and nothing else in the suite would notice. |
