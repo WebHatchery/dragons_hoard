@@ -247,7 +247,7 @@ fn mark_cells(data: &GameData, round: &SeamRound, ui_time: f32) {
 
 /// What is happening, how much of it is left, and what it is worth so far.
 fn draw_banner(data: &GameData, round: &SeamRound) {
-    let grid = reels::grid_rect();
+    let grid = reels::grid_rect_for(data);
     // Sized off the jackpot ladder it covers rather than off the reel grid.
     //
     // Both because `grid_rect` squares its cells off — so it is narrower than

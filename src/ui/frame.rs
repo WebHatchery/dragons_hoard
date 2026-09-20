@@ -75,7 +75,15 @@ pub fn logical_size(window_width: f32, window_height: f32) -> (f32, f32) {
     if aspect >= MIN_ASPECT {
         return ((HEIGHT * aspect.min(MAX_ASPECT)).round(), HEIGHT);
     }
-    let tall = (PORTRAIT_WIDTH / aspect.max(1.0 / MAX_PORTRAIT)).round();
+    // A turned layout owns a real portrait canvas.  Near the breakpoint the
+    // natural aspect would produce a 720x640 canvas, which then got silently
+    // widened by `Frame::sized` and left the chrome drawing outside the
+    // virtual frame.  Keep the portrait canvas tall enough for its explicit
+    // header, board, action area and footer; the virtual toolkit scales this
+    // single frame to the available window.
+    let tall = (PORTRAIT_WIDTH / aspect.max(1.0 / MAX_PORTRAIT))
+        .round()
+        .clamp(PORTRAIT_WIDTH * 4.0 / 3.0, PORTRAIT_WIDTH * MAX_PORTRAIT);
     (PORTRAIT_WIDTH, tall)
 }
 
@@ -127,6 +135,7 @@ pub fn centred_at(w: f32, top: f32, h: f32) -> Rect {
 #[derive(Debug, Clone, Copy)]
 pub struct Frame {
     pub width: f32,
+    pub height: f32,
     pub header: Rect,
     pub reels: Rect,
     pub wager: Rect,
@@ -182,6 +191,7 @@ impl Frame {
 
         Self {
             width,
+            height: HEIGHT,
             header,
             reels,
             wager,
@@ -207,11 +217,13 @@ impl Frame {
 
         let body_top = header.bottom() + MARGIN;
         let body_bottom = footer.y - MARGIN;
-        // The controls keep the height they have in landscape when there is
-        // room, because they are a fixed set sized for a finger (§5.78) and
-        // gain nothing from more. The reels take the rest, down to a floor —
-        // below which a reel window stops being one.
-        let wager_height = 520.0_f32.min((body_bottom - body_top) - 300.0).max(430.0);
+        // The utility rows left the action area with room to spare.  Keep the
+        // decision controls touch-sized, but give the board the reclaimed
+        // height instead of preserving the old 430px utility-heavy column.
+        let wager_height = 360.0_f32
+            .min((body_bottom - body_top) - 260.0)
+            .max(300.0)
+            .min(body_bottom - body_top);
         let wager = Rect::new(
             MARGIN,
             body_bottom - wager_height,
@@ -227,6 +239,7 @@ impl Frame {
 
         Self {
             width,
+            height,
             header,
             reels,
             wager,
@@ -241,12 +254,12 @@ impl Frame {
     /// it survives the screen changing shape.
     pub fn panel(&self, width: f32, height: f32) -> Rect {
         let width = width.min(self.width - MARGIN * 2.0);
-        let height = height.min(HEIGHT - BELOW_HEADER - MARGIN);
-        // A tall panel centres above the header and slices the cabinet name in
-        // half. Three panels were doing it and a fourth only showed it under a
-        // 40% translation, so the rule belongs here rather than in each of them
-        // (§5.50).
-        let top = ((HEIGHT - height) * 0.5).round().max(BELOW_HEADER);
+        let clearance = self.header.bottom() + MARGIN;
+        let height = height.min((self.height - clearance - MARGIN).max(0.0));
+        // Centre in the usable space below the current frame's header.  A
+        // portrait header is taller than the old 84px baseline, so the
+        // clearance must come from the frame rather than a landscape constant.
+        let top = ((self.height - height) * 0.5).round().max(clearance);
         Rect::new(((self.width - width) * 0.5).round(), top, width, height)
     }
 
@@ -254,7 +267,9 @@ impl Frame {
     /// enough that centring would push them under the header.
     pub fn panel_at(&self, width: f32, top: f32, height: f32) -> Rect {
         let width = width.min(self.width - MARGIN * 2.0);
-        let height = height.min(HEIGHT - top - MARGIN);
+        let clearance = self.header.bottom() + MARGIN;
+        let top = top.max(clearance);
+        let height = height.min((self.height - top - MARGIN).max(0.0));
         Rect::new(((self.width - width) * 0.5).round(), top, width, height)
     }
 }

@@ -69,6 +69,7 @@ impl Game {
             "autospin" => self.capture_autospin_scene(),
             "paytable" => self.show_paytable = true,
             "menu" => self.show_menu = true,
+            "storage" => self.show_storage = true,
             "lines" => self.show_lines = true,
             "machines" => self.show_machines = true,
             "bonus" => self.capture_bonus_scene(),

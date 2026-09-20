@@ -41,6 +41,7 @@ impl Game {
                 show_ledger: self.show_ledger,
                 show_lines: self.show_lines,
                 show_menu: self.show_menu,
+                show_storage: self.show_storage,
                 show_sessions: self.show_sessions,
                 sessions: &self.sessions,
                 proofs: &self.proofs,

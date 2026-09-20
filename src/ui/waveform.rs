@@ -170,17 +170,23 @@ fn seconds_of(wave: &[f32], sample_rate: u32) -> f32 {
 /// music has its own span because an eleven-second loop drawn on the effects'
 /// sub-second scale would show its first bar and nothing else.
 fn draw_row(name: &str, detail: &str, wave: &[f32], row: Rect, span: f32) {
+    let compact = row.h < 32.0;
+    let (name_offset, detail_offset, name_size, detail_size) = if compact {
+        (11.0, 24.0, 13.0, 11.0)
+    } else {
+        (14.0, 30.0, 14.0, 12.0)
+    };
     draw_ui_text_ex(
         name,
         row.x,
-        row.y + 14.0,
-        TextStyle::new(14.0, palette::gold()).params(),
+        row.y + name_offset,
+        TextStyle::new(name_size, palette::gold()).params(),
     );
     draw_ui_text_ex(
         detail,
         row.x,
-        row.y + 30.0,
-        TextStyle::new(12.0, palette::text_dim()).params(),
+        row.y + detail_offset,
+        TextStyle::new(detail_size, palette::text_dim()).params(),
     );
 
     // Every plot is drawn on the same time and amplitude scale, so the effects

@@ -15,8 +15,13 @@ impl Game {
 
     pub(super) fn capture_freespins_scene(&mut self) {
         self.fast_forward_to(GameSession::in_free_spins);
+        // The bonus pick can be dealt on the same transition as the free-spin
+        // run. Resolve it here so this scene verifies the actual shape choice
+        // instead of hiding the decision beneath the Vault Pick overlay.
+        if self.session.bonus.is_some() {
+            self.session.auto_play_bonus(&self.data);
+        }
         self.session.celebrations.clear();
-        let _ = self.session.begin_spin(&self.data);
     }
 
     pub(super) fn capture_autospin_scene(&mut self) {

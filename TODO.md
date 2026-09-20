@@ -2,10 +2,30 @@
 
 ## UI_STYLE review — 2026-09-20
 
-Audit and planning only; no UI implementation was performed. The previous file
-said `None.` and contained no task or completion history to preserve. Keep the
-implementation history in `gdd.md`; the items below do not reopen already-fixed
-menu-screen access, seam captions, or duplicate big-win announcements.
+This file began as an audit and implementation plan. The 2026-09-20 pass now
+contains a substantial composition, responsive-layout, utility-menu and
+evidence refresh. Unchecked items below remain open because their acceptance
+matrix was not fully exercised or because the requested disclosure work is not
+implemented yet. Keep the implementation history in `gdd.md`; these items do
+not reopen already-fixed menu-screen access, seam captions, or duplicate
+big-win announcements.
+
+### Current implementation status — 2026-09-20
+
+- Implemented and captured: the compact reel/wager hierarchy, contextual
+  Gamble, separated Save & Recovery view, responsive portrait framing and
+  active-grid geometry, persistent-fact cleanup, responsive hints and free-spin
+  choices, categorized More menu, responsive rules/machine lists, and the
+  dense Sound inspection row fix.
+- Fresh evidence covers 1280x720, 960x720, 900x800, 810x1080 and 720x960
+  canvases, including idle, settled win, free-spin choice, Gamble, Buy,
+  Settings, storage, menu, hint, seam and machine states. The published build
+  was also exercised with touch-style clicks through bet, Auto start/stop,
+  spin, Gamble/Take, Buy, rules, Settings and Save/Load.
+- `cargo fmt`, Clippy, the 607-test suite, the parameterless publisher and the
+  direct waveform/960x720 touch audits passed. The complete verification gate
+  reached the aspect sweep but was interrupted by Windows error 1224 while
+  overwriting a verification PNG; no all-green gate is claimed.
 
 ### Evidence and scope
 
@@ -15,23 +35,19 @@ menu-screen access, seam captions, or duplicate big-win announcements.
   was found. Reviewed the UI composition, screen registry and dispatch, virtual
   viewport and pointer conversion, reels, wager, chrome, help, menus, feature
   choices and feedback code.
-- Visually inspected existing `docs/verification/` images: `ui_idle.png`,
-  `ui_win.png`, `ui_hint.png`, `ui_freespins.png`, `ui_gamble.png`,
-  `ui_featurebuy.png`, `ui_seam.png`, `ui_gameplay.png`, `verify_touch.png`, and
-  `verify_audit_{menu,rules,featurebuy,machines}.png`. These are stored evidence,
-  not fresh renders of this checkout. Several show the old Awards header and
-  shorter controls. The small audit images establish composition, not readable
-  text or physical touch size. `ui_freespins.png` actually shows Vault Pick over
-  the free-spin screen; it does not verify an unobscured free-spin decision.
-- Current source confirms the persistent chrome, mixed save/wager controls,
-  fixed rules columns and portrait geometry findings below. A read-only
-  calculation of the current layout formulas confirms the dimensions cited in
-  U2; this is code-derived geometry, not a runtime or screenshot result.
-- No game launch, fresh capture, browser interaction, touch test, test suite or
-  publish was run for this documentation-only audit. Historical claims in
-  `docs/verification/browser_wasm.md` were read, not re-certified. Its 1080x810
-  capture is 4:3 landscape, despite being described as portrait; it does not
-  establish the current 810x1080 portrait layout.
+- Visually inspected the original `docs/verification/` images and then refreshed
+  the relevant captures in this checkout: `ui_idle.png`, `ui_win.png`,
+  `ui_hint.png`, `ui_freespins.png`, `ui_gamble.png`, `ui_featurebuy.png`,
+  `ui_gameplay.png`, `ui_menu.png`, `ui_storage.png`, `ui_seam.png`, and the
+  responsive/audit references. The refreshed free-spin image now shows the
+  unobscured shape decision; historical files remain evidence of the prior
+  layout, not current acceptance proof.
+- The original audit confirmed the persistent chrome, mixed save/wager controls,
+  fixed rules columns and portrait geometry findings below. The implementation
+  pass has now launched the game, refreshed captures, exercised the published
+  browser and touch audits, run tests and published the build. The historical
+  1080x810 capture is still 4:3 landscape despite being described as portrait;
+  it does not establish the current 810x1080 portrait layout.
 - Preserve existing strengths: Spin is prominent; seam choices keep the board
   visible and give all three rites equal emphasis with concrete consequences;
   overlays dim the underlying game; the screen registry gives visible access
@@ -82,6 +98,10 @@ ownership; do not spend a separate pass polishing borders before these changes.
   Load and their disabled states using an isolated test save. From an eligible
   settled win, tap Gamble then Take; confirm the entry is unavailable when no
   win is eligible and does not overlap Spin or automatically risk credits.
+  **Current remaining:** The main composition and published touch path are
+  implemented and exercised. The four disabled storage states and the
+  no-win Gamble absence still need isolated touch captures at every contract
+  size before this item can be removed.
 
 - [ ] **U2 — Fix viewport mode selection and give portrait play a useful reel area.**
   **Depends on:** U1's composition and removed utility rows.
@@ -114,6 +134,10 @@ ownership; do not spend a separate pass polishing borders before these changes.
   Rotate/resize with an overlay open and verify taps still hit what is drawn.
   Add focused geometry regression cases under `tests/` for breakpoint agreement,
   bounded controls and useful grid dimensions; do not freeze the old layout.
+  **Current remaining:** Geometry tests and the four principal canvases plus
+  900x800/720x720 transition captures pass. A full six-cabinet runtime sweep,
+  resize/rotation with an overlay open, and the longest Wyrmspire/cascade
+  decisions remain unverified.
 
 - [ ] **U3 — Consolidate persistent facts and remove tutorial/statistics wallpaper.**
   **Depends on:** U1–U2.
@@ -144,6 +168,9 @@ ownership; do not spend a separate pass polishing borders before these changes.
   **Verify:** At the four base sizes, compare first-use and returning-player
   idle, no win, small/big win, hoard fill, Auto, free spins and seam completion.
   Wait for all transient feedback to finish, then retrieve the result by tap.
+  **Current remaining:** The duplicate chrome and free-spin base controls are
+  removed, but hoard-fill, Auto, seam completion and post-feedback retrieval
+  still need a complete four-size comparison.
 
 - [ ] **U4 — Anchor contextual hints to responsive layout and preserve legible touch controls.**
   **Depends on:** U2–U3's layout and help location.
@@ -168,6 +195,9 @@ ownership; do not spend a separate pass polishing borders before these changes.
   **Verify:** Four base sizes, largest text setting and long hint/shape labels.
   Tap Open and Got it, reopen help, choose either shape on separate runs and
   start the free spins. Measure actual canvas-to-CSS scaling and target spacing.
+  **Current remaining:** Responsive hint placement, readable shape choices and
+  the 960x720 touch audit pass. Largest-text, reopen/choose flows and actual
+  CSS-pixel target measurements remain open.
 
 - [ ] **U5 — Replace shrink-to-fit reference overlays with readable disclosure and responsive lists.**
   **Depends on:** U2's overlay geometry.
@@ -196,6 +226,10 @@ ownership; do not spend a separate pass polishing borders before these changes.
   **Verify:** Four base sizes, maximum text scale, 40% pseudolocalisation, longest
   cabinet names, large balances, profiler loading/completed and unaffordable
   tiers. Touch-scroll/page to last items, expand/collapse details and close.
+  **Current remaining:** Portrait rules and machine lists now reflow to readable
+  single columns. Feature Buy still needs a labelled Details disclosure for
+  distributions/methodology, and the maximum-text/pseudolocale/last-item touch
+  matrix remains open.
 
 - [ ] **U6 — Give the utility menu a player-facing hierarchy instead of an undifferentiated registry dump.**
   **Depends on:** U1's relocated utilities and U5's disclosure routes.
@@ -219,6 +253,9 @@ ownership; do not spend a separate pass polishing borders before these changes.
   **Verify:** At four base sizes, navigate from play to help, records, Save,
   volume, colour vision and advanced inspection using taps only, then return to
   the same game state. Check the full menu at maximum text size.
+  **Current remaining:** Categorized More and the renamed Sound inspection route
+  are implemented, and Settings/Save are reachable. Four-size taps through
+  volume, colour vision and advanced inspection still need to be recorded.
 
 ### Further inspection and acceptance work — not verified runtime defects
 
@@ -248,6 +285,11 @@ ownership; do not spend a separate pass polishing borders before these changes.
   ruin recovery and session-limit acknowledgement without keyboard or hover.
   Run parameterless `.\publish.ps1` after meaningful implementation, report its
   result, and use the published browser build for browser acceptance.
+  **Current remaining:** The published browser path was exercised at roughly
+  1265x720 and the declared 960x720/720x960/810x1080 canvases were captured.
+  Phone CSS sizes, rotation/resize in-browser and the remaining bonus, ruin,
+  limit and accessibility paths are not yet certified. The full gate is also
+  currently blocked by Windows error 1224 while overwriting a capture PNG.
 
 - [ ] **U8 — Verify dense feature decisions and feedback ordering before accepting the new composition.**
   **Depends on:** U2–U5.
@@ -275,6 +317,10 @@ ownership; do not spend a separate pass polishing borders before these changes.
   each rite on separate runs, pick a full bonus round, select free-spin shapes,
   Take a gamble and dismiss/acknowledge overlapping supported events. Inspect
   motion and settled states, not only a single final screenshot.
+  **Current remaining:** Genuine free-spin choices, Gamble/Take, machine and
+  seam captures are present, but the longest simultaneous seam captions still
+  need a full four-size maximum-text touch pass; the 810x1080 seam evidence
+  also shows the lowest payout line close to the footer boundary.
 
 - [ ] **U9 — Replace stale template/old-layout evidence with traceable review captures.**
   **Depends on:** Accepted implementation and U7–U8 verification.
@@ -297,3 +343,7 @@ ownership; do not spend a separate pass polishing borders before these changes.
   **Verify:** Reopen every replaced image and perform the `UI_STYLE.md` §9 review:
   dominant board, 2–3 attention regions, one home per fact, readable text,
   separated utilities, discoverable touch actions and understandable final state.
+  **Current remaining:** The stale template gameplay image, idle/win/free-spin/
+  hint captures and browser note were replaced or refreshed, and generated
+  review folders were removed from the project. The full traceability review
+  remains open until the final verification matrix is green.

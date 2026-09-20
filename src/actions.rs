@@ -37,6 +37,7 @@ pub enum ActionOutcome {
     LedgerToggled,
     LinesToggled,
     MenuToggled,
+    StorageToggled,
     /// A screen picked from the menu (§5.72).
     ScreenOpened(crate::game::screens::Screen),
     SessionsToggled,
@@ -100,6 +101,7 @@ pub fn apply(
         | UiAction::ToggleLedger
         | UiAction::ToggleLines
         | UiAction::ToggleMenu
+        | UiAction::ToggleStorage
         | UiAction::OpenScreen(_)
         | UiAction::ToggleSessions
         | UiAction::ToggleAnte
@@ -151,6 +153,7 @@ fn apply_navigation(show_paytable: &mut bool, action: UiAction) -> ActionOutcome
         UiAction::ToggleLedger => ActionOutcome::LedgerToggled,
         UiAction::ToggleLines => ActionOutcome::LinesToggled,
         UiAction::ToggleMenu => ActionOutcome::MenuToggled,
+        UiAction::ToggleStorage => ActionOutcome::StorageToggled,
         UiAction::OpenScreen(screen) => ActionOutcome::ScreenOpened(screen),
         UiAction::ToggleSessions => ActionOutcome::SessionsToggled,
         UiAction::ToggleAnte => ActionOutcome::AnteToggled,

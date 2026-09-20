@@ -10,7 +10,7 @@
   },
   {
     "id": "gamble",
-    "text": "Won something? The Gamble offers double or nothing on the turn of a scale, before the win is banked.",
+    "text": "Won something? The visible Gamble action offers double or nothing before the win is banked.",
     "when": "wins",
     "after": 8,
     "earns": "gambles",
@@ -36,7 +36,7 @@
   },
   {
     "id": "buy",
-    "text": "Buy a feature, in the header, sells one outright. The price is set from what that feature pays.",
+    "text": "Buy a feature, beside the rules action above Spin, sells one outright at the price shown.",
     "when": "free_spins",
     "after": 10,
     "earns": "buys",

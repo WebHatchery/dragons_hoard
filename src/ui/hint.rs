@@ -24,16 +24,17 @@
 use crate::game::screens::Screen;
 use crate::state::hints::HintDef;
 use crate::ui::nav::{self, Nav};
-use crate::ui::{logical_width, palette, virtual_button, UiAction};
+use crate::ui::{frame, palette, virtual_button, UiAction};
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::Pointer;
-use macroquad_toolkit::ui::{draw_surface, draw_text_block, ButtonTone, SurfaceStyle};
+use macroquad_toolkit::ui::{draw_surface, draw_text_block, ButtonTone, RectExt, SurfaceStyle};
 
 pub fn draw(hint: &HintDef, pointer: Pointer, actions: &mut Vec<UiAction>, nav: &mut Nav) {
-    // Sits on the footer's shortcut line — the small grey text that lists every
-    // key and that nobody reads, which is the whole reason this exists. While a
-    // hint is up it takes that space rather than fighting it for room.
-    let bar = Rect::new(478.0, 668.0, logical_width() - 496.0, 30.0);
+    // The hint owns the footer slot while it is open.  Deriving this from the
+    // current frame keeps it below the board and wager in both arrangements;
+    // the old fixed landscape coordinates landed on top of portrait controls.
+    let footer = frame::Frame::sized(frame::width(), frame::height()).footer;
+    let bar = footer.inset(4.0);
     draw_surface(
         bar,
         &SurfaceStyle::new(Color::new(0.16, 0.11, 0.03, 0.96))
@@ -41,7 +42,9 @@ pub fn draw(hint: &HintDef, pointer: Pointer, actions: &mut Vec<UiAction>, nav: 
             .with_left_accent(3.0, palette::ember()),
     );
 
-    let dismiss = Rect::new(bar.right() - 88.0, bar.y + 3.0, 80.0, 24.0);
+    let button_width = 84.0;
+    let button_y = bar.y + (bar.h - 44.0).max(0.0) * 0.5;
+    let dismiss = Rect::new(bar.right() - button_width, button_y, button_width, 44.0);
 
     // A hint that names a panel opens it. Looked up in the registry rather than
     // matched here, so the set of places a hint may send you is the set of
@@ -51,7 +54,7 @@ pub fn draw(hint: &HintDef, pointer: Pointer, actions: &mut Vec<UiAction>, nav: 
         .as_deref()
         .and_then(Screen::from_id)
         .filter(|screen| Screen::in_menu().any(|offered| offered == *screen));
-    let open_box = Rect::new(dismiss.x - 92.0, bar.y + 3.0, 84.0, 24.0);
+    let open_box = Rect::new(dismiss.x - 8.0 - button_width, button_y, button_width, 44.0);
     let text_right = if opens.is_some() {
         open_box.x - 12.0
     } else {
@@ -67,7 +70,7 @@ pub fn draw(hint: &HintDef, pointer: Pointer, actions: &mut Vec<UiAction>, nav: 
         bar.x + 16.0,
         bar.y + 4.0,
         text_right - (bar.x + 16.0),
-        24.0,
+        (bar.h - 8.0).max(24.0),
         14.0,
         0.0,
         palette::text_bright(),

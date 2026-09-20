@@ -38,6 +38,17 @@ pub fn jackpot_strip_rect() -> Rect {
 
 /// The symbol window inside the reels panel.
 pub fn grid_rect() -> Rect {
+    grid_rect_with_shape(5, 3)
+}
+
+/// The symbol window for the active cabinet.  A 5x3 fit is not a safe global
+/// assumption: Tidepool, Wyrmspire and the ways/cascade cabinets use other
+/// shapes, and a wide portrait box otherwise turns their cells into slits.
+pub fn grid_rect_for(data: &GameData) -> Rect {
+    grid_rect_with_shape(data.config.reel_count, data.config.row_count)
+}
+
+fn grid_rect_with_shape(columns: usize, rows: usize) -> Rect {
     let panel = panel_rect();
     let strip = jackpot_strip_rect();
     let top = strip.bottom() + 10.0;
@@ -47,7 +58,7 @@ pub fn grid_rect() -> Rect {
         panel.w - 44.0,
         panel.bottom() - 36.0 - top,
     );
-    square_off(box_rect)
+    square_off(box_rect, columns, rows)
 }
 
 /// Keep the board's cells roughly square inside whatever box it is given.
@@ -62,12 +73,12 @@ pub fn grid_rect() -> Rect {
 /// deliberately does not ask which one is running: every caller derives its
 /// arithmetic from this rect, so the one thing it must be is *the same rect*
 /// for all of them, on every frame, without a `GameData` in hand.
-fn square_off(box_rect: Rect) -> Rect {
-    const NOMINAL: f32 = 5.0 / 3.0;
+fn square_off(box_rect: Rect, columns: usize, rows: usize) -> Rect {
+    let nominal = columns.max(1) as f32 / rows.max(1) as f32;
     if box_rect.w <= 0.0 || box_rect.h <= 0.0 {
         return box_rect;
     }
-    let wanted = box_rect.h * NOMINAL;
+    let wanted = box_rect.h * nominal;
     if wanted >= box_rect.w {
         return box_rect;
     }
@@ -90,7 +101,7 @@ fn cell_size(data: &GameData) -> Vec2 {
 /// two-row reel draws two tall cells beside a seven-row reel drawing seven
 /// short ones. That is what makes the shape of the board readable at a glance.
 fn cell_size_on(data: &GameData, rows: usize) -> Vec2 {
-    let rect = grid_rect();
+    let rect = grid_rect_for(data);
     vec2(
         rect.w / data.config.reel_count.max(1) as f32,
         rect.h / rows.max(1) as f32,
@@ -110,7 +121,7 @@ fn cell_slot(data: &GameData, reel: usize, row: f32) -> Rect {
 }
 
 fn cell_slot_on(data: &GameData, reel: usize, row: f32, rows: usize) -> Rect {
-    let rect = grid_rect();
+    let rect = grid_rect_for(data);
     let size = cell_size_on(data, rows);
     Rect::new(
         rect.x + reel as f32 * size.x,
@@ -132,7 +143,7 @@ pub fn grid_center() -> Vec2 {
 
 /// Bottom edge of a reel, where its landing dust puffs up from.
 pub fn reel_foot(data: &GameData, reel: usize) -> Vec2 {
-    let rect = grid_rect();
+    let rect = grid_rect_for(data);
     let size = cell_size(data);
     vec2(rect.x + (reel as f32 + 0.5) * size.x, rect.bottom() - 4.0)
 }
@@ -188,7 +199,7 @@ pub fn draw_reels(data: &GameData, session: &GameSession, shake: Vec2, ui_time: 
         ladder::draw_jackpot_ladder(data, session, shake, ui_time);
     }
 
-    let bounds = grid_rect().offset(shake);
+    let bounds = grid_rect_for(data).offset(shake);
     let highlights = winning_cells(data, session);
     let clearing = session.cascade_clearing();
     let pulse = 0.55 + 0.45 * (ui_time * PULSE_RATE).sin();
@@ -221,14 +232,7 @@ fn feature_title(data: &GameData, session: &GameSession) -> String {
     // has traded spins for it (§5.64), and a banner quoting the machine while
     // the reels pay something else is the kind of small lie this game does not
     // tell.
-    let base = format!(
-        "The Vault — Free Spins  ·  wilds expand  ·  line wins x{}",
-        session
-            .free_spins
-            .as_ref()
-            .map_or(data.freespins.multiplier.max(1), |state| state
-                .multiplier(data))
-    );
+    let base = "The Vault — Free Spins".to_owned();
     let Some(refine) = data.freespins.refine.as_ref() else {
         return base;
     };
@@ -422,7 +426,7 @@ fn draw_strip_pass(data: &GameData, reel: usize, position: f32, pass: StripPass)
 fn draw_anticipation_frame(data: &GameData, reel: usize, shake: Vec2, bounds: Rect) {
     let size = cell_size(data);
     let column = Rect::new(
-        grid_rect().offset(shake).x + reel as f32 * size.x,
+        grid_rect_for(data).offset(shake).x + reel as f32 * size.x,
         bounds.y,
         size.x,
         bounds.h,

@@ -26,4 +26,7 @@ Applies to all Rust game projects in this workspace. `CODE_STANDARDS.md` is the 
 - Follow `rust_management/docs/COMMIT_STYLE.md` (relative to the workspace root): a subject in the game's voice ending with a clear parenthetical tag, an honest explanatory body, and AI co-authorship. No Conventional-Commits prefixes or forced metaphors for mechanical changes.
 - Read `mytherra` or `stellar_legacy` history before the first commit in a new game.
 - Finish, validate, and commit each independently useful major change before starting the next. Keep exploratory edits uncommitted until their outcome is known.
-- After implementation and validation, check the working tree and commit unless the user asks otherwise. Stage all modified and untracked project files, including pre-existing changes; report the hash and validation result.
+- After implementation and validation, stage and commit all modified and untracked project files, including pre-existing changes, unless the user asks otherwise.
+- Never cherry-pick a subset of touched files or hunks to commit, or leave changes uncommitted when finishing. Preserve existing work; do not discard changes just to make the working tree clean.
+- Work directly on `master`; do not create a branch unless the user explicitly requests one.
+- Before finishing, verify that `git status --short` is empty and report the commit hash and validation results. If a blocker prevents committing, report it explicitly rather than claiming the work is complete.

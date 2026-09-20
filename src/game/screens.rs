@@ -49,6 +49,8 @@ pub enum Screen {
     Ledger,
     /// The way in to everything else, for anyone without a keyboard (§5.72).
     Menu,
+    /// Save, load, start over, and recover a session without competing with play.
+    Storage,
     /// The payline diagrams (§5.60).
     Lines,
     /// The log of sessions played (§5.70).
@@ -76,7 +78,7 @@ pub enum Screen {
 }
 
 impl Screen {
-    pub const ALL: [Screen; 22] = [
+    pub const ALL: [Screen; 23] = [
         Screen::Paytable,
         Screen::Rules,
         Screen::Limits,
@@ -88,6 +90,7 @@ impl Screen {
         Screen::FeatureBuy,
         Screen::Ledger,
         Screen::Menu,
+        Screen::Storage,
         Screen::Lines,
         Screen::Sessions,
         Screen::Proofs,
@@ -115,6 +118,7 @@ impl Screen {
             Screen::FeatureBuy => "featurebuy",
             Screen::Ledger => "ledger",
             Screen::Menu => "menu",
+            Screen::Storage => "storage",
             Screen::Lines => "lines",
             Screen::Sessions => "sessions",
             Screen::Proofs => "proofs",
@@ -148,6 +152,7 @@ impl Screen {
     pub fn label(self) -> &'static str {
         match self {
             Screen::Menu => "Everything else",
+            Screen::Storage => "Save & Recovery",
             Screen::Paytable => "Paytable",
             Screen::Rules => "How this cabinet plays",
             Screen::Limits => "Session limits",
@@ -161,7 +166,7 @@ impl Screen {
             Screen::Lines => "The paylines",
             Screen::Sessions => "Your sessions",
             Screen::Proofs => "Check a spin",
-            Screen::Waveforms => "Sound",
+            Screen::Waveforms => "Sound inspection",
             Screen::Vision => "Colour vision",
             Screen::Bonus => "The Vault Pick",
             Screen::Gamble => "The Gamble",
@@ -218,6 +223,7 @@ impl Game {
             Screen::FeatureBuy => self.show_featurebuy,
             Screen::Ledger => self.show_ledger,
             Screen::Menu => self.show_menu,
+            Screen::Storage => self.show_storage,
             Screen::Lines => self.show_lines,
             Screen::Sessions => self.show_sessions,
             Screen::Proofs => self.show_proofs,
@@ -254,6 +260,7 @@ impl Game {
             Screen::FeatureBuy => &mut self.show_featurebuy,
             Screen::Ledger => &mut self.show_ledger,
             Screen::Menu => &mut self.show_menu,
+            Screen::Storage => &mut self.show_storage,
             Screen::Lines => &mut self.show_lines,
             Screen::Sessions => &mut self.show_sessions,
             Screen::Proofs => &mut self.show_proofs,

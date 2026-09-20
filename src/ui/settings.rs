@@ -49,6 +49,14 @@ pub fn draw(
         panel.y + 32.0,
         TextStyle::new(21.0, palette::gold_bright()).params(),
     );
+    draw_text_centered_in_box_ex(
+        &format!("Version {}", config.version),
+        panel.right() - 218.0,
+        panel.y + 8.0,
+        90.0,
+        32.0,
+        TextStyle::new(13.0, palette::text_dim()),
+    );
     if virtual_button(
         crate::ui::close_button(panel),
         "Close",
@@ -155,15 +163,15 @@ pub fn draw(
     ) {
         actions.push(UiAction::ToggleLimits);
     }
-    y += 46.0;
 
+    let footer_y = y + 50.0;
     draw_text_block(
         "Settings are kept separately from your save — a new game keeps them.",
         panel.x + 20.0,
-        y + 4.0,
+        footer_y,
         panel.w - 40.0,
-        38.0,
-        15.0,
+        24.0,
+        13.0,
         3.0,
         palette::text_dim(),
     );

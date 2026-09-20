@@ -200,6 +200,15 @@ impl Game {
                 self.show_menu = !self.show_menu;
                 self.sound.play(Sfx::Click);
             }
+            ActionOutcome::StorageToggled => {
+                self.show_storage = !self.show_storage;
+                self.sound.play(Sfx::Click);
+            }
+            ActionOutcome::ScreenOpened(crate::game::screens::Screen::Storage) => {
+                self.show_storage = true;
+                self.show_menu = false;
+                self.sound.play(Sfx::Click);
+            }
             ActionOutcome::ScreenOpened(screen) => {
                 // The menu closes behind the choice: leaving it up would put a
                 // list of doors on top of the door just opened (§5.72).

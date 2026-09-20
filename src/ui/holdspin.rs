@@ -28,7 +28,7 @@ const FLASH: f32 = 0.45;
 pub fn draw(data: &GameData, round: &HoldSpinRound, ui_time: f32) {
     // Dim everything but the reel window. The board is the whole game while it
     // is up, and the bet controls beside it are inert.
-    let grid = reels::grid_rect();
+    let grid = reels::grid_rect_for(data);
     draw_rectangle(
         0.0,
         0.0,

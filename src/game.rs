@@ -46,6 +46,8 @@ pub struct Game {
     /// The payline diagrams (§5.60).
     show_lines: bool,
     show_menu: bool,
+    /// Save and recovery actions, kept out of the wager decision.
+    show_storage: bool,
     show_sessions: bool,
     /// Sessions already played (§5.70).
     sessions: crate::state::sessions::SessionLog,
@@ -137,6 +139,7 @@ impl Game {
             show_ledger: false,
             show_lines: false,
             show_menu: false,
+            show_storage: false,
             show_sessions: false,
             sessions: crate::state::sessions::SessionLog::default(),
             session_over_dismissed: false,

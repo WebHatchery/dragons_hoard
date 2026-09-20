@@ -37,11 +37,15 @@ use macroquad_toolkit::ui::{
 
 /// Sized per frame, now that the screen can change shape (§5.46).
 pub fn panel() -> Rect {
-    // Wider than it was: the panel is two fixed columns and §5.57 added a
-    // sentence that pushed Frost Wyrm into a third. Every other overlay in the
-    // game is already this wide, and the extra 140px is the cheapest room
-    // available — shrinking the type instead runs into the readability floor.
-    frame::centred_at(1180.0, frame::BELOW_HEADER, 620.0)
+    // On a turned frame the panel becomes a readable single-column disclosure
+    // with enough vertical room for every cabinet's core rules. Narrowing four
+    // columns until their prose is technically present made the rules look
+    // like a chart rather than something a player could use.
+    frame::centred_at(
+        1180.0,
+        frame::BELOW_HEADER,
+        if frame::is_portrait() { 760.0 } else { 620.0 },
+    )
 }
 pub const COLUMN_GAP: f32 = 28.0;
 pub const PADDING: f32 = 22.0;
@@ -90,7 +94,7 @@ pub fn draw(ctx: &UiContext<'_>, pointer: Pointer, actions: &mut Vec<UiAction>, 
             slot.y + body + 2.0,
             TextStyle::new(body + 3.0, palette::gold()).params(),
         );
-        let mut line_y = slot.y + body + 12.0 + body;
+        let mut line_y = slot.y + body + if frame::is_portrait() { 8.0 } else { 12.0 } + body;
         // This panel wraps its own text and then draws it a line at a time, so
         // it owns the expansion contract that `draw_text_block` handles
         // internally: expand once, here, and suppress it for the draws below
@@ -105,7 +109,7 @@ pub fn draw(ctx: &UiContext<'_>, pointer: Pointer, actions: &mut Vec<UiAction>, 
                 line_y,
                 TextStyle::new(body, palette::text_dim()).params(),
             );
-            line_y += body + 4.0;
+            line_y += body + if frame::is_portrait() { 2.0 } else { 4.0 };
         }
     }
 
@@ -135,10 +139,19 @@ pub fn draw(ctx: &UiContext<'_>, pointer: Pointer, actions: &mut Vec<UiAction>, 
 /// bought its layout by going below it would be a panel nobody reads.
 pub const COLUMNS: usize = 4;
 
+fn columns() -> usize {
+    if frame::is_portrait() {
+        1
+    } else {
+        COLUMNS
+    }
+}
+
 /// Column width and the vertical room a column has.
 pub fn geometry() -> (f32, f32) {
+    let columns = columns();
     let column_width =
-        (panel().w - PADDING * 2.0 - COLUMN_GAP * (COLUMNS as f32 - 1.0)) / COLUMNS as f32;
+        (panel().w - PADDING * 2.0 - COLUMN_GAP * (columns as f32 - 1.0)) / columns as f32;
     let available = panel().bottom() - (panel().y + HEADER) - PADDING;
     (column_width, available)
 }
@@ -175,7 +188,11 @@ pub fn plan(rules: &[Rule], body: f32, measure: Measure<'_>) -> Vec<Slot> {
 /// Height one rule takes: its heading, its wrapped body, and the gap after it.
 pub fn block_height(rule: &Rule, width: f32, body: f32, measure: Measure<'_>) -> f32 {
     let lines = measure(&rule.text, width, body) as f32;
-    body + 12.0 + lines * (body + 4.0) + 10.0
+    if frame::is_portrait() {
+        body + 8.0 + lines * (body + 2.0) + 4.0
+    } else {
+        body + 12.0 + lines * (body + 4.0) + 10.0
+    }
 }
 
 /// The largest body size at which every rule fits in the two columns.
@@ -192,7 +209,7 @@ pub fn fitting_size(
 ) -> f32 {
     let mut size = MAX_BODY;
     while size > MIN_BODY {
-        if columns_used(rules, size, measure) <= COLUMNS {
+        if columns_used(rules, size, measure) <= columns() {
             return size;
         }
         size -= 0.5;

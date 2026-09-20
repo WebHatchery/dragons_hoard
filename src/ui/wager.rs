@@ -1,17 +1,19 @@
-//! The wager panel: bet ladder, spin button, and the session buttons under it.
+//! The wager panel: bet ladder, spin button, and compact gameplay decisions.
 //!
 //! Split out of `ui.rs` on size. It is the one part of the screen that is a
 //! *form* rather than a display — every control here changes something, which is
 //! also why it holds most of the game's focusable controls (§5.27).
 
 use super::{palette, virtual_button, ButtonTone, Color, Rect, TextStyle, UiAction, UiContext};
+use crate::state::featurebuy::cheapest as cheapest_feature;
+use crate::ui::frame;
 use crate::ui::naming;
 use crate::ui::nav::Nav;
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::Pointer;
 use macroquad_toolkit::ui::{
-    draw_surface, draw_text_block, draw_text_centered_in_box_ex, draw_text_right, draw_ui_text_ex,
-    RectExt, Region, SurfaceStyle,
+    draw_surface, draw_text_block, draw_text_centered_in_box_ex, draw_ui_text_ex, RectExt, Region,
+    SurfaceStyle,
 };
 
 pub fn draw_control_panel(
@@ -25,65 +27,72 @@ pub fn draw_control_panel(
     let _region = Region::on(rect, palette::stone());
     draw_surface(
         rect,
-        &SurfaceStyle::new(palette::stone())
-            .with_border(1.0, palette::gold_dim())
-            .with_header(44.0, palette::stone_header())
-            .with_header_divider(1.0, palette::gold_dim()),
-    );
-    draw_ui_text_ex(
-        if ctx.session.in_free_spins() {
-            "Free Spins"
-        } else {
-            "Wager"
-        },
-        rect.x + 18.0,
-        rect.y + 30.0,
-        TextStyle::new(19.0, palette::gold()).params(),
+        &SurfaceStyle::new(palette::stone()).with_border(1.0, palette::gold_dim()),
     );
 
     // The wager readout flows from the top and the buttons are anchored to the
     // bottom, so the free-spin banner can claim the space between them without
     // pushing anything off the panel.
     let content = rect.inset(18.0);
-    let mut y = content.y + 44.0;
-    y = draw_win_readout(ctx, content, y);
-    y = draw_bet_controls(ctx, content, y, pointer, actions, nav);
+    let mut y = content.y;
+    y = draw_win_readout(ctx, content, y, pointer, actions, nav);
+    if !ctx.session.in_free_spins() {
+        y = draw_bet_controls(ctx, content, y, pointer, actions, nav);
+    }
     draw_feature_banner(ctx, content, y);
 
-    let buttons_top = draw_session_buttons(ctx, content, pointer, actions, nav);
-    draw_spin_button(ctx, content, buttons_top, pointer, actions, nav);
+    draw_spin_button(ctx, content, content.bottom(), pointer, actions, nav);
 }
 
-fn draw_win_readout(ctx: &UiContext<'_>, content: Rect, y: f32) -> f32 {
-    // 54, not 62. The controls below all grew to the touch standard (§5.78)
-    // and the panel is a fixed 520 tall; the win readout is the one block here
-    // that is read rather than pressed, so it is the one that gives up room.
-    let rect = Rect::new(content.x, y, content.w, 54.0);
-    draw_surface(
-        rect,
-        &SurfaceStyle::new(Color::new(0.07, 0.06, 0.05, 1.0)).with_border(1.0, palette::gold_dim()),
+fn draw_win_readout(
+    ctx: &UiContext<'_>,
+    content: Rect,
+    y: f32,
+    pointer: Pointer,
+    actions: &mut Vec<UiAction>,
+    nav: &mut Nav,
+) -> f32 {
+    // The result is supporting information, not another strong panel. Gamble is
+    // offered beside an eligible settled win so its stake and consequence are
+    // visible at the moment the player decides whether to risk it.
+    let rect = Rect::new(content.x, y, content.w, 56.0);
+    draw_ui_text_ex(
+        "Last result",
+        rect.x,
+        rect.y + 23.0,
+        TextStyle::new(16.0, palette::text_dim()).params(),
     );
     draw_ui_text_ex(
-        "WIN",
-        rect.x + 14.0,
-        rect.y + 38.0,
-        TextStyle::new(18.0, palette::text_dim()).params(),
+        &naming::credits(ctx.session.displayed_win()),
+        rect.x + 116.0,
+        rect.y + 23.0,
+        TextStyle::new(21.0, palette::gold_bright()).params(),
     );
-    let win = ctx.session.displayed_win();
-    draw_text_right(
-        &naming::credits(win),
-        rect.right() - 14.0,
-        rect.y + 42.0,
-        TextStyle::new(
-            30.0,
-            if win > 0 {
-                palette::gold_bright()
-            } else {
-                palette::text_dim()
-            },
-        ),
-    );
-    y + 68.0
+    if ctx.session.can_gamble() {
+        let win = ctx.session.last_win;
+        let button = Rect::new(rect.right() - 166.0, rect.y, 166.0, 44.0);
+        if virtual_button(
+            button,
+            &format!("Gamble {} · 2×", naming::credits(win)),
+            true,
+            ButtonTone::Secondary,
+            pointer,
+            nav,
+        ) {
+            actions.push(UiAction::OfferGamble);
+        }
+        draw_ui_text_ex(
+            "Risk the win for double or nothing",
+            rect.x,
+            rect.y + 51.0,
+            TextStyle::new(13.0, palette::text_dim()).params(),
+        );
+    }
+    if ctx.session.can_gamble() {
+        y + 64.0
+    } else {
+        y + 56.0
+    }
 }
 
 fn draw_bet_controls(
@@ -137,43 +146,73 @@ fn draw_bet_controls(
     }
 
     let y = y + 48.0;
-    draw_text_block(
-        &format!(
-            "{}\nTotal Bet: {}",
-            // A ways cabinet has no lines to count, and "Lines: 0" would read as
-            // a fault rather than as a different machine.
-            match (ctx.data.ways_count(), ctx.data.max_ways()) {
-                (Some(ways), _) => format!("{} ways   (all active)", ways),
-                // A shifting cabinet (§5.20) has a different number of ways
-                // every spin, so it reads the board rather than the config.
-                // Quoting the ceiling alone would be advertising a grid the
-                // player is almost never looking at.
-                (None, Some(ceiling)) => format!(
-                    "{} ways this spin   (up to {})",
-                    ctx.session.display_grid().ways(),
-                    ceiling
-                ),
-                // A cluster cabinet has neither, and "Lines: 0" would read as a
-                // fault rather than as a different machine (§5.35).
-                _ if ctx.data.config.evaluation == crate::data::Evaluation::Cluster => format!(
-                    "{} cells   (groups of {}+ pay)",
-                    ctx.data.config.reel_count * ctx.data.config.row_count,
-                    crate::engine::cluster::MIN_CLUSTER
-                ),
-                _ => format!("Lines: {}   (all active)", ctx.data.paylines.len()),
-            },
-            ctx.session.staked(ctx.data)
-        ),
-        content.x,
-        y,
-        content.w,
-        46.0,
-        17.0,
-        4.0,
-        palette::text_dim(),
-    );
+    if !frame::is_portrait() {
+        draw_text_block(
+            &format!(
+                "{}\nTotal Bet: {}",
+                // A ways cabinet has no lines to count, and "Lines: 0" would read as
+                // a fault rather than as a different machine.
+                match (ctx.data.ways_count(), ctx.data.max_ways()) {
+                    (Some(ways), _) => format!("{} ways   (all active)", ways),
+                    // A shifting cabinet (§5.20) has a different number of ways
+                    // every spin, so it reads the board rather than the config.
+                    // Quoting the ceiling alone would be advertising a grid the
+                    // player is almost never looking at.
+                    (None, Some(ceiling)) => format!(
+                        "{} ways this spin   (up to {})",
+                        ctx.session.display_grid().ways(),
+                        ceiling
+                    ),
+                    // A cluster cabinet has neither, and "Lines: 0" would read as a
+                    // fault rather than as a different machine (§5.35).
+                    _ if ctx.data.config.evaluation == crate::data::Evaluation::Cluster => format!(
+                        "{} cells   (groups of {}+ pay)",
+                        ctx.data.config.reel_count * ctx.data.config.row_count,
+                        crate::engine::cluster::MIN_CLUSTER
+                    ),
+                    _ => format!("Lines: {}   (all active)", ctx.data.paylines.len()),
+                },
+                ctx.session.staked(ctx.data)
+            ),
+            content.x,
+            y,
+            content.w,
+            42.0,
+            17.0,
+            4.0,
+            palette::text_dim(),
+        );
+        y + 46.0
+    } else {
+        draw_ui_text_ex(
+            &format!(
+                "{} · Total {}",
+                compact_line_summary(ctx),
+                ctx.session.staked(ctx.data)
+            ),
+            content.x,
+            y + 20.0,
+            TextStyle::new(15.0, palette::text_dim()).params(),
+        );
+        y + 28.0
+    }
+}
 
-    y + 50.0
+fn compact_line_summary(ctx: &UiContext<'_>) -> String {
+    match (ctx.data.ways_count(), ctx.data.max_ways()) {
+        (Some(ways), _) => format!("{} ways", ways),
+        (None, Some(ceiling)) => format!(
+            "{} ways (up to {})",
+            ctx.session.display_grid().ways(),
+            ceiling
+        ),
+        _ if ctx.data.config.evaluation == crate::data::Evaluation::Cluster => format!(
+            "{} cells ({}+ groups)",
+            ctx.data.config.reel_count * ctx.data.config.row_count,
+            crate::engine::cluster::MIN_CLUSTER
+        ),
+        _ => format!("Lines: {}", ctx.data.paylines.len()),
+    }
 }
 
 /// The ante switch (§5.75), in the secondary row (§5.78).
@@ -318,9 +357,9 @@ fn draw_spin_choices(
                 .map_or(0, |run| shape.spins(run.awarded));
             let slot = Rect::new(
                 content.x + index as f32 * (width + 8.0),
-                spin_y - 62.0,
+                spin_y - 66.0,
                 width,
-                34.0,
+                44.0,
             );
             if virtual_button(
                 slot,
@@ -350,24 +389,41 @@ fn draw_spin_choices(
             draw_text_centered_in_box_ex(
                 &measured,
                 slot.x,
-                slot.bottom() + 1.0,
+                slot.bottom() + 2.0,
                 slot.w,
-                14.0,
-                TextStyle::new(12.0, palette::text_dim()),
+                16.0,
+                TextStyle::new(13.0, palette::text_dim()),
             );
         }
-    } else if virtual_button(
-        // The rules panel (§5.29) otherwise gets this gap, and gets it because
-        // R alone is not an affordance — a shortcut nobody is told about is the
-        // problem the panel exists to fix.
-        Rect::new(content.x, spin_y - 52.0, content.w, 44.0),
-        &format!("How {} plays", ctx.data.config.display_name),
-        true,
-        ButtonTone::Secondary,
-        pointer,
-        nav,
-    ) {
-        actions.push(UiAction::ToggleRules);
+    } else {
+        // Rules and Buy are both secondary gameplay decisions, so they share
+        // this quiet row above Spin rather than competing with navigation.
+        let width = (content.w - 8.0) / 2.0;
+        if virtual_button(
+            Rect::new(content.x, spin_y - 52.0, width, 44.0),
+            &format!("How {} plays", ctx.data.config.display_name),
+            true,
+            ButtonTone::Secondary,
+            pointer,
+            nav,
+        ) {
+            actions.push(UiAction::ToggleRules);
+        }
+        let buy_label = cheapest_feature(&ctx.data.featurebuy, ctx.session.total_bet(ctx.data))
+            .map_or_else(
+                || "Buy".to_owned(),
+                |price| format!("Buy {}", naming::credits(price)),
+            );
+        if virtual_button(
+            Rect::new(content.x + width + 8.0, spin_y - 52.0, width, 44.0),
+            &buy_label,
+            ctx.session.is_settled() && !ctx.session.in_free_spins(),
+            ButtonTone::Secondary,
+            pointer,
+            nav,
+        ) {
+            actions.push(UiAction::ToggleFeatureBuy);
+        }
     }
 }
 
@@ -438,107 +494,5 @@ fn draw_spin_controls(
         actions.push(UiAction::ToggleAutospin);
     }
 
-    // The ante takes this slot, and the paytable gives it up (§5.78).
-    //
-    // Once every control grew to 44 there was no longer a spare line for the
-    // ante beside the Total Bet figure — it overlapped the number it changes.
-    // Of the two candidates for the slot, the ante alters what every spin costs
-    // and the paytable is read once an evening; and the paytable is already in
-    // the menu (§5.72) with a key of its own, whereas the ante had nowhere else
-    // to be. A row this full is a series of decisions, not a list.
     draw_ante(ctx, content, secondary_y, third, pointer, actions, nav);
-}
-
-/// Save/load/new/delete, anchored to the bottom of the panel. Returns the top
-/// of the block so the spin controls can sit on top of it.
-fn draw_session_buttons(
-    ctx: &UiContext<'_>,
-    content: Rect,
-    pointer: Pointer,
-    actions: &mut Vec<UiAction>,
-    nav: &mut Nav,
-) -> f32 {
-    // Four across in a turned frame, two-by-two in a column (§5.79).
-    //
-    // The panel is 684 wide when the layout turns and 374 when it does not, and
-    // a row of four fits comfortably in the first. That is 52 pixels of height
-    // given back to the reel window, which is the part of a portrait layout
-    // with the least room to spare.
-    let across = crate::ui::frame::is_portrait();
-    let half = if across {
-        (content.w - 30.0) / 4.0
-    } else {
-        (content.w - 10.0) / 2.0
-    };
-    // 44-tall rows, 8 apart. At 34 and 42 apart these were the control that
-    // decided the whole game's touch requirement (§5.77) — the audit named
-    // "182x34" as the worst thing on screen.
-    let bottom_row = content.bottom() - 44.0;
-    let top_row = if across {
-        bottom_row
-    } else {
-        bottom_row - 52.0
-    };
-
-    // Saving mid-feature would bank a session whose free spins are not
-    // persisted, and loading mid-spin would strand a committed stake.
-    let storage_ready = ctx.session.is_settled() && !ctx.session.in_free_spins();
-
-    if virtual_button(
-        Rect::new(content.x, top_row, half, 44.0),
-        "Save",
-        storage_ready,
-        ButtonTone::Positive,
-        pointer,
-        nav,
-    ) {
-        actions.push(UiAction::Save);
-    }
-    if virtual_button(
-        Rect::new(content.x + half + 10.0, top_row, half, 44.0),
-        "Load",
-        storage_ready && ctx.save_exists,
-        ButtonTone::Primary,
-        pointer,
-        nav,
-    ) {
-        actions.push(UiAction::Load);
-    }
-    if virtual_button(
-        Rect::new(
-            content.x + if across { (half + 10.0) * 2.0 } else { 0.0 },
-            bottom_row,
-            half,
-            44.0,
-        ),
-        "New Game",
-        ctx.session.phase.is_idle(),
-        ButtonTone::Secondary,
-        pointer,
-        nav,
-    ) {
-        actions.push(UiAction::NewGame);
-    }
-    if virtual_button(
-        Rect::new(
-            content.x
-                + if across {
-                    (half + 10.0) * 3.0
-                } else {
-                    half + 10.0
-                },
-            bottom_row,
-            half,
-            44.0,
-        ),
-        "Delete Save",
-        ctx.session.phase.is_idle() && ctx.save_exists,
-        ButtonTone::Danger,
-        pointer,
-        nav,
-    ) {
-        actions.push(UiAction::DeleteSave);
-    }
-
-    top_row
 }

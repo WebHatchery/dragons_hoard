@@ -46,7 +46,7 @@ fn winning_cells_are_empty_before_the_first_spin() {
 #[test]
 fn every_cell_sits_inside_the_reel_window() {
     let data = GameData::load().unwrap();
-    let bounds = grid_rect();
+    let bounds = grid_rect_for(&data);
 
     for reel in 0..data.config.reel_count {
         for row in 0..data.config.row_count {
@@ -54,6 +54,36 @@ fn every_cell_sits_inside_the_reel_window() {
             assert!(bounds.contains(center), "cell {},{} escaped", reel, row);
         }
     }
+}
+
+#[test]
+fn every_cabinet_keeps_its_active_grid_shape_in_portrait() {
+    let (width, height) = crate::ui::frame::logical_size(720.0, 960.0);
+    crate::ui::frame::set_width(width);
+    crate::ui::frame::set_height(height);
+
+    for machine in crate::data::MACHINES {
+        let data = GameData::load_machine(machine).unwrap();
+        let grid = grid_rect_for(&data);
+        let wanted = data.config.reel_count.max(1) as f32 / data.config.row_count.max(1) as f32;
+        let actual = grid.w / grid.h;
+        assert!(
+            grid.w > 100.0 && grid.h > 60.0,
+            "{} collapsed: {:?}",
+            machine.id,
+            grid
+        );
+        assert!(
+            (actual - wanted).abs() < 0.02,
+            "{} is {:.2}, wanted {:.2}",
+            machine.id,
+            actual,
+            wanted
+        );
+    }
+
+    crate::ui::frame::set_width(crate::ui::frame::DESIGN_WIDTH);
+    crate::ui::frame::set_height(crate::ui::frame::HEIGHT);
 }
 
 #[test]

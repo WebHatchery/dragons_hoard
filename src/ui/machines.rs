@@ -32,6 +32,14 @@ pub fn panel_rows() -> usize {
     MACHINES.len().div_ceil(COLUMNS)
 }
 
+fn layout_columns() -> usize {
+    if frame::is_portrait() {
+        1
+    } else {
+        COLUMNS
+    }
+}
+
 pub fn draw(
     data: &GameData,
     profiles: &ProfileBook,
@@ -52,10 +60,12 @@ pub fn draw(
     // and the sixth cabinet could not be chosen at all (§5.50). A single column
     // cannot hold six rows this tall; the grid is the fix, and `panel_rows`
     // below is the rule that stops it happening again.
-    let rows = panel_rows();
-    let height = 120.0 + rows as f32 * ROW_HEIGHT;
+    let columns = layout_columns();
+    let row_height = if columns == 1 { 102.0 } else { ROW_HEIGHT };
+    let rows = MACHINES.len().div_ceil(columns);
+    let height = 120.0 + rows as f32 * row_height;
     let panel = frame::centred(PANEL_WIDTH, height);
-    let column_w = (panel.w - 40.0 - COLUMN_GAP) / COLUMNS as f32;
+    let column_w = (panel.w - 40.0 - COLUMN_GAP * (columns - 1) as f32) / columns as f32;
     // Everything drawn below is measured against this panel (§5.37).
     let _region = Region::on(panel, palette::stone());
     draw_surface(
@@ -87,12 +97,21 @@ pub fn draw(
     // order on screen.
     for (index, machine) in MACHINES.iter().enumerate() {
         let row = Rect::new(
-            panel.x + 20.0 + (index % COLUMNS) as f32 * (column_w + COLUMN_GAP),
-            panel.y + 62.0 + (index / COLUMNS) as f32 * ROW_HEIGHT,
+            panel.x + 20.0 + (index % columns) as f32 * (column_w + COLUMN_GAP),
+            panel.y + 62.0 + (index / columns) as f32 * row_height,
             column_w,
-            ROW_HEIGHT - 12.0,
+            row_height - 12.0,
         );
-        draw_row(data, profiles, machine, row, pointer, actions, nav);
+        draw_row(
+            data,
+            profiles,
+            machine,
+            row,
+            columns == 1,
+            pointer,
+            actions,
+            nav,
+        );
     }
 
     // Wrapped rather than set on one line: at 130% text it ran 234px past the
@@ -110,11 +129,13 @@ pub fn draw(
     );
 }
 
+#[allow(clippy::too_many_arguments)]
 fn draw_row(
     data: &GameData,
     profiles: &ProfileBook,
     machine: &'static MachineDef,
     row: Rect,
+    compact: bool,
     pointer: Pointer,
     actions: &mut Vec<UiAction>,
     nav: &mut Nav,
@@ -142,31 +163,58 @@ fn draw_row(
     // The display name lives in each machine's own config, so the picker reads
     // it from there rather than duplicating it in the catalog.
     let name = machine_display_name(data, machine);
-    draw_ui_text_ex(
-        &name,
-        row.x + 18.0,
-        row.y + 32.0,
-        TextStyle::new(23.0, palette::gold_bright()).params(),
-    );
-    // Clipped to leave the Play button alone — the longest blurb ran straight
-    // under it. At half width (§5.50) it needs two lines rather than one, and
-    // the profile below moves down to make room.
-    draw_text_block(
-        machine.blurb,
-        row.x + 18.0,
-        row.y + 44.0,
-        row.w - 220.0,
-        40.0,
-        15.0,
-        2.0,
-        palette::text(),
-    );
+    if compact {
+        // Portrait uses one cabinet per row, so the name, blurb and profile can
+        // share the full-width reading column without fighting a second card.
+        let text_width = row.w - 220.0;
+        draw_ui_text_ex(
+            &name,
+            row.x + 18.0,
+            row.y + 28.0,
+            TextStyle::new(20.0, palette::gold_bright()).params(),
+        );
+        draw_text_block(
+            machine.blurb,
+            row.x + 18.0,
+            row.y + 42.0,
+            text_width,
+            18.0,
+            13.0,
+            0.0,
+            palette::text(),
+        );
+        draw_profile(
+            profiles,
+            machine.id,
+            Rect::new(row.x + 18.0, row.y + 64.0, text_width, 22.0),
+        );
+    } else {
+        draw_ui_text_ex(
+            &name,
+            row.x + 18.0,
+            row.y + 32.0,
+            TextStyle::new(23.0, palette::gold_bright()).params(),
+        );
+        // Clipped to leave the Play button alone — the longest blurb ran straight
+        // under it. At half width (§5.50) it needs two lines rather than one, and
+        // the profile below moves down to make room.
+        draw_text_block(
+            machine.blurb,
+            row.x + 18.0,
+            row.y + 44.0,
+            row.w - 220.0,
+            40.0,
+            15.0,
+            2.0,
+            palette::text(),
+        );
 
-    draw_profile(
-        profiles,
-        machine.id,
-        Rect::new(row.x + 18.0, row.y + 86.0, row.w - 36.0, 40.0),
-    );
+        draw_profile(
+            profiles,
+            machine.id,
+            Rect::new(row.x + 18.0, row.y + 86.0, row.w - 36.0, 40.0),
+        );
+    }
 
     if playing {
         draw_text_centered_in_box_ex(

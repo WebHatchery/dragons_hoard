@@ -32,6 +32,27 @@ src/
 └── actions.rs           # the intent dispatcher; the only thing that mutates the session
 ```
 
+## Screen brief
+
+Normal play answers one question: can I afford the next spin, and what bet makes
+that decision worthwhile? The reels are the dominant focus. The compact action
+area keeps the line bet, total charge (including ante), balance, last result,
+Spin, Auto, Max Bet, Buy, and the cabinet rules route together. A settled win
+also exposes the amount at risk and the double-or-nothing consequence beside a
+visible Gamble entry. Save, Load, New Game, and Delete Save live in the separate
+Save & Recovery utility reached through More; navigation never changes the stake.
+
+During free spins, the current run's remaining spins, multiplier, and accumulated
+win support the reels while the base bet controls stay deferred. During a seam,
+the board remains the dominant area and each rite's movement, cost, and possible
+result are shown beside its choice. Help and history remain reopenable through
+the utility routes rather than permanent tutorial or statistics wallpaper.
+
+The normal native/browser canvas is 1280×720. The responsive frame also supports
+the current landscape and portrait review sizes of 960×720 and 720×960; the
+smallest browser/device support limits remain subject to the verification matrix
+in `TODO.md` until fresh published-browser measurements are complete.
+
 Symbol art and the whole SFX set are generated in code rather than shipped as
 assets (§7.1). Paytables, reel strips, paylines, machine profiles, symbol sets,
 achievements, hints and limits are all data under `assets/data/`.

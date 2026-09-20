@@ -8,8 +8,8 @@
 //! Split out of `ui.rs` when it crossed 800 lines (§5.79).
 
 use super::{
-    cheapest_feature, frame, naming, palette, shortcuts, virtual_button, ButtonTone, Color,
-    Pointer, Rect, Region, UiAction, UiContext,
+    frame, naming, palette, virtual_button, ButtonTone, Color, Pointer, Rect, Region, UiAction,
+    UiContext,
 };
 use crate::ui::nav::Nav;
 use macroquad::prelude::*;
@@ -46,7 +46,7 @@ pub(super) fn draw_header(
     };
     // The badges keep their right-hand anchors on the top row, so the title
     // still has to stop short of them — just by less than the buttons wanted.
-    let right = rect.right() - if portrait { 486.0 } else { 946.0 };
+    let right = rect.right() - if portrait { 258.0 } else { 828.0 };
     let title_span = right - (rect.x + 18.0) - 12.0;
     if title_span >= 120.0 {
         draw_text_block(
@@ -71,32 +71,13 @@ pub(super) fn draw_header(
     //
     // The badges beside them keep their height: nothing presses a badge.
     //
-    // The header has the only spare width on screen, and these should be
-    // reachable from anywhere rather than buried in the wager panel.
-    // The button carries the entry price, so the cost of the cheapest feature
-    // is visible without opening anything — and it moves with the bet ladder,
-    // which is the quickest way to see that the menu is priced per stake.
-    let from = cheapest_feature(&ctx.data.featurebuy, ctx.session.total_bet(ctx.data));
-    if virtual_button(
-        nav_slot(rect, portrait, buttons_y, 0, 946.0),
-        &match from {
-            Some(price) => format!("Buy {}", naming::credits(price)),
-            None => "Buy".to_owned(),
-        },
-        true,
-        ButtonTone::Secondary,
-        pointer,
-        nav,
-    ) {
-        actions.push(UiAction::ToggleFeatureBuy);
-    }
     // The door to everything the header has no room for (§5.72). It takes the
     // slot Awards used to have: the header is full by design — the cabinet name
     // gets whatever the buttons leave — and Awards has a row in the menu like
     // everything else, whereas four screens had no door at all. One of them was
     // the colour-vision panel, an accessibility feature that needed a keyboard.
     if virtual_button(
-        nav_slot(rect, portrait, buttons_y, 1, 828.0),
+        nav_slot(rect, portrait, buttons_y, 0, 828.0),
         "More",
         true,
         ButtonTone::Secondary,
@@ -106,7 +87,7 @@ pub(super) fn draw_header(
         actions.push(UiAction::ToggleMenu);
     }
     if virtual_button(
-        nav_slot(rect, portrait, buttons_y, 2, 710.0),
+        nav_slot(rect, portrait, buttons_y, 1, 710.0),
         "Machines",
         true,
         ButtonTone::Secondary,
@@ -116,7 +97,7 @@ pub(super) fn draw_header(
         actions.push(UiAction::ToggleMachines);
     }
     if virtual_button(
-        nav_slot(rect, portrait, buttons_y, 3, 592.0),
+        nav_slot(rect, portrait, buttons_y, 2, 592.0),
         "Settings",
         true,
         ButtonTone::Secondary,
@@ -126,34 +107,16 @@ pub(super) fn draw_header(
         actions.push(UiAction::ToggleSettings);
     }
 
-    let hoard = &ctx.session.hoard;
-    draw_badge(
-        Rect::new(rect.right() - 470.0, rect.y + 18.0, 200.0, 28.0),
-        &format!(
-            "Hoard {}/{}  pot {}",
-            hoard.count,
-            ctx.data.config.hoard_capacity,
-            naming::credits(hoard.pot)
-        ),
-        Color::new(0.22, 0.16, 0.10, 1.0),
-        palette::text(),
-    );
     draw_badge(
         Rect::new(rect.right() - 258.0, rect.y + 18.0, 152.0, 28.0),
         &format!("Balance {}", naming::credits(ctx.session.balance)),
         Color::new(0.16, 0.20, 0.13, 1.0),
         palette::text_bright(),
     );
-    draw_badge(
-        Rect::new(rect.right() - 96.0, rect.y + 18.0, 78.0, 28.0),
-        &format!("v{}", ctx.data.config.version),
-        Color::new(0.18, 0.15, 0.22, 1.0),
-        palette::text_dim(),
-    );
 }
 
-/// Bottom strip: hoard progress and session stats. The far right is left clear
-/// for the notification stack, which anchors bottom-right.
+/// Bottom strip: the hoard's one persistent home and a quiet route to help and
+/// records. Session statistics belong to Ledger/history, not permanent chrome.
 pub(super) fn draw_footer(ctx: &UiContext<'_>) {
     let rect = ctx.frame.footer;
     // The footer, where the generated shortcut line clipped (§5.29).
@@ -164,9 +127,17 @@ pub(super) fn draw_footer(ctx: &UiContext<'_>) {
             .with_border(1.0, palette::gold_dim()),
     );
 
+    // The contextual hint owns this strip while it is open. Leaving the
+    // persistent facts underneath makes the hint compete with the very facts
+    // it is trying to teach, and the responsive bar is allowed to cover them
+    // at the narrow landscape contract.
+    if ctx.hint.is_some() {
+        return;
+    }
+
     let hoard = &ctx.session.hoard;
     meter(
-        Rect::new(rect.x + 18.0, rect.y + 14.0, 420.0, 22.0),
+        Rect::new(rect.x + 18.0, rect.y + 18.0, 300.0, 22.0),
         hoard.count as f32,
         ctx.data.config.hoard_capacity as f32,
         palette::ember(),
@@ -176,79 +147,27 @@ pub(super) fn draw_footer(ctx: &UiContext<'_>) {
             hoard.count, ctx.data.config.hoard_capacity
         )),
     );
-    // Fitted to the room before the shortcut line, not set at 15px and left to
-    // run. The shortcut line beside it has been width-fitted since §5.29; this
-    // sentence never was, so under the 40% pseudolocale (§5.39) it ran straight
-    // through it — 315px² of overlap that nothing saw for as long as the sweep
-    // was running on a cabinet whose pot happened to be a shorter number
-    // (§5.76).
     draw_text_block(
-        &format!(
-            "Fill the hoard to hatch a prize worth {}x the banked pot ({}).",
-            ctx.data.config.hatch_pot_multiplier, hoard.pot
-        ),
-        rect.x + 18.0,
-        rect.y + 44.0,
-        SHORTCUT_LINE_X - 30.0,
+        &format!("Banked pot {}", naming::credits(hoard.pot)),
+        rect.x + 336.0,
+        rect.y + 20.0,
+        (rect.w - 354.0).max(120.0),
         22.0,
         15.0,
         0.0,
         palette::text_dim(),
     );
-
-    let stats = &ctx.session.stats;
-    // Staked credits appear here the moment there are any, and nowhere else in
-    // the line is conditional. That is the point: a stipend that was never
-    // mentioned again would quietly make every other figure on this row a lie
-    // (§5.53).
-    let staked = if stats.staked > 0 {
-        format!("   Staked {}", naming::credits(stats.staked))
-    } else {
-        String::new()
-    };
     draw_text_block(
-        &format!(
-            "Spins {}   Best win {}   Free spins played {}   Hatches {}{}",
-            stats.total_spins,
-            naming::credits(stats.biggest_win),
-            stats.free_spins_played,
-            stats.hatches,
-            staked
-        ),
-        rect.x + 470.0,
-        rect.y + 18.0,
-        rect.right() - rect.x - 470.0 - 8.0,
+        "Help, records and saves: More",
+        rect.x + 336.0,
+        rect.y + 44.0,
+        (rect.w - 354.0).max(120.0),
         22.0,
-        16.0,
+        14.0,
         0.0,
-        palette::text(),
+        palette::text_dim(),
     );
-    // A hint (§5.28) takes this line while it is showing. The two say the same
-    // sort of thing and only one of them gets read.
-    if ctx.hint.is_none() {
-        // Sized to fit rather than set at 15: the line is generated from the
-        // shortcut table now (§5.29), so adding a binding lengthens it and a
-        // fixed size would quietly clip the last one off the right edge.
-        let left = rect.x + SHORTCUT_LINE_X;
-        draw_text_block(
-            &shortcuts::footer_line(&ctx.data.presentation.shortcuts),
-            left,
-            rect.y + 42.0,
-            rect.right() - left - 8.0,
-            18.0,
-            15.0,
-            0.0,
-            palette::text_dim(),
-        );
-    }
 }
-
-/// Where the shortcut line starts, measured from the footer's left edge.
-///
-/// Named because two things depend on it and they used to disagree: the
-/// shortcut line was fitted to the space from here rightwards, and the hoard
-/// sentence to its left was not fitted to anything at all.
-const SHORTCUT_LINE_X: f32 = 470.0;
 
 /// Where one of the header's four navigation buttons goes.
 ///

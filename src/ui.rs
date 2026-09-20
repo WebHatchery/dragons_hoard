@@ -30,6 +30,7 @@ pub mod sessionover;
 pub mod sessions;
 pub mod settings;
 pub mod shortcuts;
+pub mod storage;
 pub mod symbols;
 pub mod theme;
 pub mod vision;
@@ -38,7 +39,6 @@ pub mod waveform;
 
 use crate::data::GameData;
 use crate::state::achievements::AchievementBook;
-use crate::state::featurebuy::cheapest as cheapest_feature;
 use crate::state::GameSession;
 use crate::ui::nav::Nav;
 use macroquad::prelude::*;
@@ -130,6 +130,7 @@ pub enum UiAction {
     ToggleLines,
     /// The way in to everything else (§5.72).
     ToggleMenu,
+    ToggleStorage,
     /// The ante side bet (§5.75).
     ToggleAnte,
     /// The spin verifier (§5.74).
@@ -214,6 +215,7 @@ impl UiAction {
             UiAction::ToggleLedger => "toggle_ledger",
             UiAction::ToggleLines => "toggle_lines",
             UiAction::ToggleMenu => "toggle_menu",
+            UiAction::ToggleStorage => "toggle_storage",
             UiAction::ToggleAnte => "toggle_ante",
             UiAction::ToggleProofs => "toggle_proofs",
             UiAction::CheckProofs => "check_proofs",
@@ -278,6 +280,7 @@ pub struct UiContext<'a> {
     pub show_ledger: bool,
     pub show_lines: bool,
     pub show_menu: bool,
+    pub show_storage: bool,
     pub show_sessions: bool,
     pub session_over_dismissed: bool,
     pub show_rules: bool,
@@ -366,6 +369,9 @@ fn draw_panels(ctx: &UiContext<'_>, pointer: Pointer, actions: &mut Vec<UiAction
             actions,
             nav,
         );
+    }
+    if ctx.show_storage {
+        storage::draw(ctx, pointer, actions, nav);
     }
 }
 

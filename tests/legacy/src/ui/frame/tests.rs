@@ -69,6 +69,23 @@ fn a_turned_frame_stacks_the_reels_above_the_controls() {
     );
 }
 
+#[test]
+fn near_breakpoint_and_square_windows_keep_one_explicit_portrait_canvas() {
+    for (window_width, window_height) in [(900.0, 800.0), (720.0, 720.0)] {
+        let (width, height) = logical_size(window_width, window_height);
+        assert_eq!((width, height), (PORTRAIT_WIDTH, 960.0));
+        let frame = Frame::sized(width, height);
+        assert!(frame.header.bottom() <= frame.reels.y);
+        assert!(frame.reels.bottom() <= frame.wager.y);
+        assert!(frame.wager.bottom() <= frame.footer.y);
+        for rect in [frame.header, frame.reels, frame.wager, frame.footer] {
+            assert!(rect.x >= 0.0 && rect.y >= 0.0);
+            assert!(rect.right() <= frame.width);
+            assert!(rect.bottom() <= frame.height);
+        }
+    }
+}
+
 /// Landscape must be untouched by all of this. Every panel in the game is
 /// positioned against it.
 #[test]
@@ -190,6 +207,15 @@ fn an_overlay_too_wide_for_the_screen_is_clamped_rather_than_clipped() {
 fn a_top_pinned_overlay_keeps_its_top_and_stays_on_screen() {
     let frame = Frame::sized_wide(DESIGN_WIDTH);
     let panel = frame.panel_at(900.0, 44.0, 900.0);
-    assert!((panel.y - 44.0).abs() < 0.01);
+    assert!(panel.y >= frame.header.bottom() + MARGIN);
     assert!(panel.bottom() <= HEIGHT);
+}
+
+#[test]
+fn a_portrait_overlay_clears_the_taller_header() {
+    let (width, height) = logical_size(720.0, 960.0);
+    let frame = Frame::sized(width, height);
+    let panel = frame.panel_at(900.0, BELOW_HEADER, 600.0);
+    assert!(panel.y >= frame.header.bottom() + MARGIN);
+    assert!(panel.bottom() <= height);
 }
