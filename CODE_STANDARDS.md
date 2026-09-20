@@ -83,6 +83,7 @@ Each module/subdirectory owns a single conceptual domain:
 game_name/
 ├── Cargo.toml              # Project manifest
 ├── CODE_STANDARDS.md       # This file
+├── UI_STYLE.md             # Screen composition and visual review
 ├── src/
 │   ├── lib.rs              # Public game logic used by the binary and tests
 │   ├── main.rs             # Entry point and game loop
@@ -206,6 +207,10 @@ Use `eprintln!` for error conditions that should be visible during development b
 
 ## 7. UI Code (Macroquad-Toolkit)
 
+Read [UI_STYLE.md](UI_STYLE.md) before designing or changing a screen. It defines
+the required screen brief, visual hierarchy, progressive disclosure, template
+adaptation, and visual review. The rules below govern implementation.
+
 ### 7.1 UI Is Dumb
 UI code:  
 - Reads game state  
@@ -235,6 +240,7 @@ Use shared toolkit widgets, input helpers, and palettes. Prefer buttons that fir
 - Games are touch-first: starting, tutorials, core interactions, and recovery must work through visible tap/click controls without a physical keyboard.
 - Keyboard shortcuts may supplement controls. Player-facing shortcut text must also name the equivalent visible touch control.
 - Tutorial prompts name the exact visible control or gesture needed next, such as “Tap CONTINUE” or “Drag the map.”
+- Dismiss completed tutorial prompts and keep help reopenable; preserve visible, understandable controls during normal play (`UI_STYLE.md` §5).
 - Keep drawing separate from mutation. Support common desktop browser sizes and responsive scaling; use fixed positions only with an intentional virtual resolution.
 
 ## 8. Deployment & Web Standards
@@ -319,6 +325,7 @@ Focus tests on:
 
 ## 12. Verification Artifacts
 
+- For UI changes, follow the visual and interaction review in `UI_STYLE.md` §9; inspect normal and minimum supported sizes and relevant dense states. Compilation and geometry checks alone do not verify usability.
 - Store verification screenshots directly in `docs/verification/`.
 - Do not create screenshot subfolders under `docs/verification/`.
 - If a new capture represents the same screen or state as an existing screenshot, replace the existing image instead of keeping duplicates.

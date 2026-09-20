@@ -136,6 +136,11 @@ if input.enter_pressed { activate(options[cursor.index()]); }
 
 ### UI (`ui` module)
 
+Choose screen composition with [UI_STYLE.md](UI_STYLE.md) before choosing widgets.
+These examples demonstrate APIs; they do not prescribe a panel, label, badge,
+or permanent control for every system. Preserve the current gameplay focus
+and use contextual disclosure for secondary information.
+
 ```rust
 use macroquad_toolkit::ui::*;
 
