@@ -17,6 +17,8 @@ Start from the working template and follow its README's rename checklist:
 ```powershell
 # Run from the RustGames workspace root.
 Copy-Item .\rust_management\template .\my_game -Recurse
+# Add my_game to rust_management/workspace/Cargo.toml members, then:
+python .\rust_management\sync-workspace.py
 Set-Location .\my_game
 ```
 
@@ -34,13 +36,13 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-macroquad = "0.4"
+macroquad = "=0.4.16"
 macroquad-toolkit = { path = "../macroquad-toolkit" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 ```
 
-> **Note**: Profile settings (`[profile.release]`) are defined at the workspace root.
+> **Note**: Root configuration is versioned in `rust_management/workspace/`. Use `..\rust_management\cargo.ps1` for local builds/checks/tests/run so simultaneous work shares a bounded three-slot pool and sccache. Publishing and capture use it automatically. Keep the exact Macroquad pin for the shared browser runtime; see `rust_management/docs/CARGO_WORKSPACE.md`.
 
 ---
 
@@ -377,10 +379,10 @@ Run this with no parameters from the affected project directory after meaningful
 
 ```bash
 # Windows release
-cargo build --release
+..\rust_management\cargo.ps1 build --release
 
 # WebGL/WASM
-cargo build --release --target wasm32-unknown-unknown
+..\rust_management\cargo.ps1 build --release --target wasm32-unknown-unknown
 ```
 
 ### Generated Web Page (`game_page.json`)
