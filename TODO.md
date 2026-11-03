@@ -347,3 +347,7 @@ ownership; do not spend a separate pass polishing borders before these changes.
   hint captures and browser note were replaced or refreshed, and generated
   review folders were removed from the project. The full traceability review
   remains open until the final verification matrix is green.
+
+## Settings and display
+
+- [ ] Add a Fullscreen toggle to Settings and persist/apply the player's display preference.
