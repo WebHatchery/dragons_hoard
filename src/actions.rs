@@ -31,6 +31,7 @@ pub enum ActionOutcome {
     BetChanged(i64),
     PaytableToggled,
     SettingsToggled,
+    FullscreenToggled,
     MachinesToggled,
     AchievementsToggled,
     FeatureBuyToggled,
@@ -95,6 +96,7 @@ pub fn apply(
     match action {
         UiAction::TogglePaytable
         | UiAction::ToggleSettings
+        | UiAction::ToggleFullscreen
         | UiAction::ToggleMachines
         | UiAction::ToggleAchievements
         | UiAction::ToggleFeatureBuy
@@ -147,6 +149,7 @@ fn apply_navigation(show_paytable: &mut bool, action: UiAction) -> ActionOutcome
             ActionOutcome::PaytableToggled
         }
         UiAction::ToggleSettings => ActionOutcome::SettingsToggled,
+        UiAction::ToggleFullscreen => ActionOutcome::FullscreenToggled,
         UiAction::ToggleMachines => ActionOutcome::MachinesToggled,
         UiAction::ToggleAchievements => ActionOutcome::AchievementsToggled,
         UiAction::ToggleFeatureBuy => ActionOutcome::FeatureBuyToggled,

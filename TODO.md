@@ -350,4 +350,4 @@ ownership; do not spend a separate pass polishing borders before these changes.
 
 ## Settings and display
 
-- [ ] Add a Fullscreen toggle to Settings and persist/apply the player's display preference.
+- [x] Add a Fullscreen toggle to Settings and persist/apply the player's display preference.

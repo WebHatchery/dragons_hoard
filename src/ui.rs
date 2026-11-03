@@ -120,6 +120,7 @@ pub enum UiAction {
     ToggleAutospin,
     TogglePaytable,
     ToggleSettings,
+    ToggleFullscreen,
     ToggleMachines,
     ToggleAchievements,
     /// Open or close the Feature Buy menu (§5.13).
@@ -209,6 +210,7 @@ impl UiAction {
             UiAction::ToggleAutospin => "toggle_autospin",
             UiAction::TogglePaytable => "toggle_paytable",
             UiAction::ToggleSettings => "toggle_settings",
+            UiAction::ToggleFullscreen => "toggle_fullscreen",
             UiAction::ToggleMachines => "toggle_machines",
             UiAction::ToggleAchievements => "toggle_achievements",
             UiAction::ToggleFeatureBuy => "toggle_feature_buy",
@@ -266,6 +268,7 @@ pub struct UiContext<'a> {
     pub save_exists: bool,
     pub show_paytable: bool,
     pub show_settings: bool,
+    pub fullscreen: bool,
     pub show_machines: bool,
     pub show_achievements: bool,
     pub show_featurebuy: bool,
@@ -365,6 +368,7 @@ fn draw_panels(ctx: &UiContext<'_>, pointer: Pointer, actions: &mut Vec<UiAction
         settings::draw(
             &ctx.data.config,
             &ctx.session.preferences,
+            ctx.fullscreen,
             pointer,
             actions,
             nav,

@@ -39,6 +39,7 @@ pub struct Game {
     ui_time: f32,
     show_paytable: bool,
     show_settings: bool,
+    fullscreen: bool,
     show_machines: bool,
     show_achievements: bool,
     show_featurebuy: bool,
@@ -93,10 +94,9 @@ pub struct Game {
 
 impl Game {
     pub async fn new() -> Self {
-        crate::state::persist::set_read_only(
-            capture::capture_requested("DRAGONS_HOARD")
-                || crate::game::drift::DriftConfig::from_env().is_some(),
-        );
+        let harness_mode = capture::capture_requested("DRAGONS_HOARD")
+            || crate::game::drift::DriftConfig::from_env().is_some();
+        crate::state::persist::set_read_only(harness_mode);
         let boot = BootResources::load().await;
         let BootResources {
             data,
@@ -111,6 +111,17 @@ impl Game {
             ledger,
             proofs,
         } = boot;
+
+        // Browsers require a user gesture before entering fullscreen, so the
+        // runtime starts windowed while retaining the saved preference.
+        #[cfg(target_arch = "wasm32")]
+        let fullscreen = false;
+        #[cfg(not(target_arch = "wasm32"))]
+        let fullscreen = session.preferences.shared.fullscreen && !harness_mode;
+        #[cfg(not(target_arch = "wasm32"))]
+        if fullscreen {
+            set_fullscreen(true);
+        }
 
         // Text size (§5.38) and the cabinet's palette (§5.43) are applied once
         // at boot and again whenever their settings change.
@@ -133,6 +144,7 @@ impl Game {
             ui_time: 0.0,
             show_paytable: false,
             show_settings: false,
+            fullscreen,
             show_machines: false,
             show_achievements: false,
             show_featurebuy: false,

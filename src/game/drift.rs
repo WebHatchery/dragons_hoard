@@ -287,6 +287,7 @@ const SETTINGS: &[UiAction] = &[
     UiAction::CycleRealityCheck,
     UiAction::ToggleShake,
     UiAction::ToggleParticles,
+    UiAction::ToggleFullscreen,
 ];
 
 /// The presses that throw the game away.

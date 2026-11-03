@@ -21,6 +21,7 @@ const ROW_HEIGHT: f32 = 52.0;
 pub fn draw(
     config: &GameConfig,
     prefs: &Preferences,
+    fullscreen: bool,
     pointer: Pointer,
     actions: &mut Vec<UiAction>,
     nav: &mut Nav,
@@ -51,12 +52,30 @@ pub fn draw(
     );
     draw_text_centered_in_box_ex(
         &format!("Version {}", config.version),
-        panel.right() - 218.0,
+        panel.x + 108.0,
         panel.y + 8.0,
         90.0,
         32.0,
         TextStyle::new(13.0, palette::text_dim()),
     );
+    if virtual_button(
+        Rect::new(panel.right() - 332.0, panel.y + 2.0, 192.0, 44.0),
+        if fullscreen {
+            "Fullscreen: On"
+        } else {
+            "Fullscreen: Off"
+        },
+        true,
+        if fullscreen {
+            ButtonTone::Positive
+        } else {
+            ButtonTone::Secondary
+        },
+        pointer,
+        nav,
+    ) {
+        actions.push(UiAction::ToggleFullscreen);
+    }
     if virtual_button(
         crate::ui::close_button(panel),
         "Close",

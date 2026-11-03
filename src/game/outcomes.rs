@@ -17,6 +17,7 @@ use crate::state::gamble::GambleBlocked;
 use crate::state::ruin::Lifeline;
 use crate::state::{GameSession, SpinBlocked};
 use crate::ui::{self, UiAction};
+use macroquad::prelude::set_fullscreen;
 use macroquad_toolkit::rng::random_u64;
 
 impl Game {
@@ -46,6 +47,19 @@ impl Game {
             }
             ActionOutcome::SettingsToggled => {
                 self.show_settings = !self.show_settings;
+                self.sound.play(Sfx::Click);
+            }
+            ActionOutcome::FullscreenToggled => {
+                let next_fullscreen = !self.fullscreen;
+                self.session.preferences.shared.fullscreen = next_fullscreen;
+                self.fullscreen = next_fullscreen;
+                if crate::game::drift::DriftConfig::from_env().is_none() {
+                    set_fullscreen(next_fullscreen);
+                }
+                let result = self.session.preferences.save(&self.data.config);
+                if let Err(error) = result {
+                    self.report_persistence_error("fullscreen preference save", error);
+                }
                 self.sound.play(Sfx::Click);
             }
             ActionOutcome::MachinesToggled => {

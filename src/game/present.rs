@@ -34,6 +34,7 @@ impl Game {
                 save_exists: self.save_exists,
                 show_paytable: self.show_paytable,
                 show_settings: self.show_settings,
+                fullscreen: self.fullscreen,
                 show_machines: self.show_machines,
                 show_achievements: self.show_achievements,
                 show_featurebuy: self.show_featurebuy,
